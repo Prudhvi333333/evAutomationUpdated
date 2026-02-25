@@ -188,7 +188,7 @@ Provide a concise, specific answer citing relevant companies.
 Answer:"""
         
         response = ollama.generate(
-            model="tinyllama",
+            model="qwen2.5:14b",
             prompt=prompt,
             options={'temperature': 0.3, 'num_predict': 300}
         )
