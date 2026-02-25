@@ -161,20 +161,41 @@ def extract_questions(filepath: str, limit: int = 101) -> List[str]:
     return valid_questions[:limit]
 
 
-def query_tinyllama_rag(retriever: PipelineRetriever, question: str) -> Dict:
+def format_context(results: List[Dict]) -> str:
+    """Format retrieval results into context string."""
+    context_parts = []
+    for i, r in enumerate(results, 1):
+        company = r.get('metadata', {}).get('company', 'Unknown')
+        context_parts.append(f"[Source {i}: {company}]\n{r.get('text', '')}")
+    return "\n\n".join(context_parts) if context_parts else "No relevant context."
+
+
+def compute_retrieval_metrics(results: List[Dict]) -> Dict:
+    """Compute simple per-question retrieval relevance metrics."""
+    scores = [float(r.get('score', 0)) for r in results]
+    top_score = round(scores[0], 3) if scores else 0.0
+    top_company = results[0].get('metadata', {}).get('company') if results else None
+    if scores:
+        top3 = scores[:3]
+        avg_top3 = round(sum(top3) / len(top3), 3)
+    else:
+        avg_top3 = 0.0
+
+    return {
+        'retrieval_top_score': top_score,
+        'retrieval_avg_top3_score': avg_top3,
+        'retrieval_top_company': top_company
+    }
+
+
+def query_tinyllama_rag(retriever: PipelineRetriever, question: str, retrieval_results: List[Dict] = None) -> Dict:
     """Query TinyLlama with RAG."""
     import time
     start = time.time()
     
     try:
-        results = retriever.retrieve(question, top_k=8)
-        
-        # Format context
-        context_parts = []
-        for i, r in enumerate(results, 1):
-            company = r['metadata'].get('company', 'Unknown')
-            context_parts.append(f"[Source {i}: {company}]\n{r['text']}")
-        context = "\n\n".join(context_parts) if context_parts else "No relevant context."
+        results = retrieval_results if retrieval_results is not None else retriever.retrieve(question, top_k=8)
+        context = format_context(results)
         
         prompt = f"""Answer based ONLY on the provided context about Georgia EV supply chain companies.
 
@@ -206,20 +227,14 @@ Answer:"""
         }
 
 
-def query_gemini_rag(retriever: PipelineRetriever, question: str, model: str) -> Dict:
+def query_gemini_rag(retriever: PipelineRetriever, question: str, model: str, retrieval_results: List[Dict] = None) -> Dict:
     """Query Gemini with RAG."""
     import time
     start = time.time()
     
     try:
-        results = retriever.retrieve(question, top_k=8)
-        
-        # Format context
-        context_parts = []
-        for i, r in enumerate(results, 1):
-            company = r['metadata'].get('company', 'Unknown')
-            context_parts.append(f"[Source {i}: {company}]\n{r['text']}")
-        context = "\n\n".join(context_parts) if context_parts else "No relevant context."
+        results = retrieval_results if retrieval_results is not None else retriever.retrieve(question, top_k=8)
+        context = format_context(results)
         
         prompt = f"""Answer based ONLY on the provided context about Georgia EV supply chain companies.
 
@@ -340,11 +355,16 @@ def run_full_pipeline():
             'question_number': idx,
             'question': question
         }
+
+        # Retrieve once for relevance metrics and reuse for RAG calls
+        retrieval_results = retriever.retrieve(question, top_k=8)
+        retrieval_metrics = compute_retrieval_metrics(retrieval_results)
+        row.update(retrieval_metrics)
         
         # Test 1: TinyLlama with RAG
         if tinyllama_working:
             print("  [1/3] TinyLlama RAG...")
-            result = query_tinyllama_rag(retriever, question)
+            result = query_tinyllama_rag(retriever, question, retrieval_results=retrieval_results)
             row['tinyllama_rag'] = result['answer']
             row['tinyllama_rag_time'] = result['time']
             row['tinyllama_rag_success'] = result['success']
@@ -356,7 +376,7 @@ def run_full_pipeline():
         # Test 2: Gemini with RAG
         if gemini_model:
             print("  [2/3] Gemini RAG...")
-            result = query_gemini_rag(retriever, question, gemini_model)
+            result = query_gemini_rag(retriever, question, gemini_model, retrieval_results=retrieval_results)
             row['gemini_rag'] = result['answer']
             row['gemini_rag_time'] = result['time']
             row['gemini_rag_success'] = result['success']
@@ -394,6 +414,9 @@ def run_full_pipeline():
         rows.append({
             'Question Number': r['question_number'],
             'Question': r['question'],
+            'Retrieval Top Score': r.get('retrieval_top_score', 0),
+            'Retrieval Avg Top3 Score': r.get('retrieval_avg_top3_score', 0),
+            'Retrieval Top Company': r.get('retrieval_top_company'),
             'TinyLlama RAG': r['tinyllama_rag'],
             'TinyLlama Time (s)': r['tinyllama_rag_time'],
             'TinyLlama Success': r['tinyllama_rag_success'],
