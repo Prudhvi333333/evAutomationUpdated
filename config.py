@@ -9,7 +9,7 @@ QDRANT_USE_MEMORY = True  # Set to False for persistent storage
 COLLECTION_NAME = "documents"
 
 # Ollama Settings
-OLLAMA_MODEL = "qwen2.5:14b"
+OLLAMA_MODEL = "tinyllama"
 OLLAMA_BASE_URL = "http://localhost:11434"
 
 # Embedding Settings
