@@ -72,6 +72,18 @@ The app will open in your browser at `http://localhost:8501`
 
 ## Usage
 
+### Run all pipeline phases
+
+On Linux/macOS (bash):
+```bash
+./pipeline/run_all_phases.sh
+```
+
+On Windows (Command Prompt or PowerShell):
+```powershell
+.\pipeline\run_all_phases.bat
+```
+
 ### Step 1: Upload Documents
 1. Navigate to the "Upload Documents" tab
 2. Click "Choose files to upload"
