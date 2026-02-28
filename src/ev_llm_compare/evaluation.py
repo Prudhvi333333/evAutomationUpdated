@@ -154,8 +154,11 @@ def export_results(
                 }
             )
 
+    comparison_df = _build_comparison_sheet(response_rows, ragas_per_run)
+
     with pd.ExcelWriter(workbook_path, engine="openpyxl") as writer:
-        pd.DataFrame(response_rows).to_excel(writer, sheet_name="responses", index=False)
+        comparison_df.to_excel(writer, sheet_name="responses", index=False)
+        pd.DataFrame(response_rows).to_excel(writer, sheet_name="responses_raw", index=False)
         pd.DataFrame(retrieval_rows).to_excel(writer, sheet_name="retrieval", index=False)
         pd.DataFrame(
             [{"question": question, "reference_answer": answer} for question, answer in references.items()]
@@ -205,3 +208,54 @@ def _result_to_dict(result: Any) -> dict[str, Any]:
     if isinstance(result, dict):
         return result
     return {}
+
+
+def _build_comparison_sheet(
+    response_rows: list[dict[str, Any]],
+    ragas_per_run: pd.DataFrame | None,
+) -> pd.DataFrame:
+    question_order = list(dict.fromkeys(row["question"] for row in response_rows))
+    run_order = list(dict.fromkeys(row["run_name"] for row in response_rows))
+
+    response_lookup = {
+        (row["question"], row["run_name"]): row
+        for row in response_rows
+    }
+
+    metric_names: list[str] = []
+    metric_lookup: dict[tuple[str, str], dict[str, Any]] = {}
+    if ragas_per_run is not None and not ragas_per_run.empty:
+        metric_names = [
+            column
+            for column in ragas_per_run.columns
+            if column not in {"run_name", "question"}
+        ]
+        metric_lookup = {
+            (row["question"], row["run_name"]): row
+            for row in ragas_per_run.to_dict(orient="records")
+        }
+
+    comparison_rows: list[dict[str, Any]] = []
+    for question in question_order:
+        row: dict[str, Any] = {"Question": question}
+
+        for run_name in run_order:
+            response = response_lookup.get((question, run_name), {})
+            row[run_name] = response.get("answer", "")
+
+        for run_name in run_order:
+            metrics = metric_lookup.get((question, run_name), {})
+            for metric_name in metric_names:
+                row[f"{run_name}_{metric_name}"] = metrics.get(metric_name)
+
+        for run_name in run_order:
+            response = response_lookup.get((question, run_name), {})
+            row[f"{run_name}_latency_seconds"] = response.get("latency_seconds")
+
+        for run_name in run_order:
+            response = response_lookup.get((question, run_name), {})
+            row[f"{run_name}_prompt_tokens_estimate"] = response.get("prompt_tokens_estimate")
+
+        comparison_rows.append(row)
+
+    return pd.DataFrame(comparison_rows)
