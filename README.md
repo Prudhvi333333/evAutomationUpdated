@@ -1,154 +1,94 @@
-# RAG Pipeline with Streamlit, Ollama, and Qdrant
+# EV LLM Comparison Pipeline
 
-A complete Retrieval-Augmented Generation (RAG) system with a user-friendly Streamlit interface for document Q&A.
+This repository is now organized around one production use case: compare multiple LLMs on Excel-based EV supply-chain questions, with and without RAG, and export a single evaluation workbook with responses, retrieval evidence, reference answers, and RAGAS scores.
 
-## Features
+## Supported runs
 
-- Document Upload: Support for PDF, DOCX, and TXT files
-- Vector Search: Powered by Qdrant for efficient similarity search
-- AI Responses: Uses Ollama for natural language generation
-- Interactive Chat: Ask questions and get context-aware answers
-- Document Management: Track uploaded files and database statistics
+- Qwen with RAG
+- Qwen without RAG
+- TinyLlama with RAG
+- TinyLlama without RAG
+- Gemini 2.5 Flash with RAG
+- Gemini 2.5 Flash without RAG
 
-## Prerequisites
+## What changed
 
-1. **Python 3.8+**
-2. **uv** - Fast Python package installer
-   ```bash
-   curl -LsSf https://astral.sh/uv/install.sh | sh
-   ```
-3. **Ollama** - Local LLM runtime
-   ```bash
-   # Install from https://ollama.ai or use:
-   curl -fsSL https://ollama.com/install.sh | sh
-   ```
+- Replaced the generic document-QA prototype with an Excel-first pipeline under `src/ev_llm_compare/`
+- Archived experimental scripts, UI code, old tests, and generated outputs under `unused_files/`
+- Added structured row-aware chunking plus hybrid dense + lexical retrieval
+- Added a single CLI entrypoint for repeatable comparisons on changing workbooks
+- Added reference-answer generation and RAGAS scoring
 
-## Installation
+## Project layout
 
-Follow these commands one by one:
+- `src/ev_llm_compare/`: active production code
+- `unused_files/`: archived legacy files and generated artifacts
+- `artifacts/qdrant/`: local vector index storage
+- `artifacts/results/`: generated comparison workbooks
+- `main.py`: CLI entrypoint
 
-### 1. Create virtual environment
+## Setup
+
 ```bash
-uv venv
-```
-
-### 2. Activate virtual environment
-```bash
+uv sync
 source .venv/bin/activate
 ```
 
-### 3. Install dependencies
+Environment variables:
+
 ```bash
-uv sync
+export GEMINI_API_KEY=your_key_here
+export OLLAMA_BASE_URL=http://localhost:11434
+export QWEN_MODEL=qwen2.5:14b
+export TINYLLAMA_MODEL=tinyllama
 ```
 
-### 4. Start Ollama server
-Open a new terminal and run:
+Make sure the local Ollama models are pulled:
+
 ```bash
-ollama serve
+ollama pull qwen2.5:14b
+ollama pull tinyllama
 ```
 
-### 5. Pull your preferred model
-In another terminal:
+## Run
+
 ```bash
-ollama pull [MODELNAME]
-# Or use another model like:
-# ollama pull llama2
-# ollama pull mistral
+python main.py \
+  --data-workbook "GNEM updated excel (1).xlsx" \
+  --question-workbook "Sample questions.xlsx"
 ```
 
-### 6. Configure the model
-Edit `config.py` and set your model:
-```python
-OLLAMA_MODEL = "[MODELNAME]"  # Change to your pulled model
-```
+To skip RAGAS while validating model access:
 
-### 7. Run the application
 ```bash
-streamlit run streamlit_ui.py
+python main.py --skip-ragas
 ```
 
-The app will open in your browser at `http://localhost:8501`
+## Retrieval and chunking strategy
 
-## Usage
+- Every tabular Excel row becomes multiple chunk views:
+  - full row snapshot
+  - company profile
+  - identity theme
+  - location theme
+  - supply-chain theme
+  - product theme
+- Single-column sheets such as methodology or definitions are indexed as note/reference chunks.
+- Retrieval uses sentence-transformer dense search plus lexical overlap scoring and reciprocal-rank fusion.
+- Exact entity mentions such as company names receive metadata boosts to improve precision.
 
-### Run all pipeline phases
+## Outputs
 
-On Linux/macOS (bash):
-```bash
-./pipeline/run_all_phases.sh
-```
+Each run writes an Excel report in `artifacts/results/` with:
 
-On Windows (Command Prompt or PowerShell):
-```powershell
-.\pipeline\run_all_phases.bat
-```
+- `responses`
+- `retrieval`
+- `references`
+- `ragas_per_question`
+- `ragas_summary`
 
-### Step 1: Upload Documents
-1. Navigate to the "Upload Documents" tab
-2. Click "Choose files to upload"
-3. Select PDF, DOCX, or TXT files
-4. Click "Process and Upload"
-5. Wait for processing to complete
+## Notes
 
-### Step 2: Ask Questions
-1. Navigate to the "Ask Questions" tab
-2. Enter your question in the text input
-3. Toggle "Show sources" to view citations
-4. Click "Ask" to get an answer
-5. View chat history with previous Q&A
-
-### Step 3: Manage Documents
-1. Navigate to "Uploaded Files" tab to view all documents
-2. Check sidebar for database statistics
-3. Use "Clear All Documents" to reset the database
-
-## How It Works
-
-1. **Document Processing**: Files are loaded and split into chunks with overlap
-2. **Embedding**: Each chunk is converted to a vector using sentence-transformers
-3. **Storage**: Vectors are stored in Qdrant for efficient retrieval
-4. **Query**: User questions are embedded and matched against stored vectors
-5. **Generation**: Relevant context is sent to Ollama to generate answers
-
-## Troubleshooting
-
-### Ollama connection error
-Ensure Ollama is running:
-```bash
-ollama serve
-```
-
-### Model not found
-Pull the model first:
-```bash
-ollama pull [MODELNAME]
-```
-
-### Check available models
-```bash
-ollama list
-```
-
-### Memory issues
-- Reduce `CHUNK_SIZE` in `config.py`
-- Use fewer documents
-- Try a smaller model
-
-### Slow responses
-- Use a smaller/faster model (e.g., `qwen3:4b` instead of larger models)
-- Reduce `TOP_K_RESULTS` in `config.py`
-
-### Port already in use
-If Ollama port 11434 is busy, it means Ollama is already running (which is good).
-
-### Qdrant errors
-The app uses in-memory Qdrant by default. For persistent storage:
-```python
-# In config.py
-QDRANT_USE_MEMORY = False
-```
-
-## License
-
-MIT License
+- The pipeline is workbook-driven, so you can point it at updated Excel files without changing code.
+- RAGAS requires the configured judge model and embedding backend to be available.
+- Non-RAG runs are still scored against the same question and reference answer, which makes model-to-model comparison easier.

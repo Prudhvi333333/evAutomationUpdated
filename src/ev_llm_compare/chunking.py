@@ -1,0 +1,168 @@
+from __future__ import annotations
+
+from collections import defaultdict
+import hashlib
+import re
+import uuid
+
+from .schemas import Chunk, TableRow, WorkbookNote
+from .settings import RetrievalSettings
+
+
+TOKEN_PATTERN = re.compile(r"[a-z0-9]+")
+
+
+def tokenize(text: str) -> set[str]:
+    return set(TOKEN_PATTERN.findall(text.lower()))
+
+
+class ExcelChunkBuilder:
+    def __init__(self, settings: RetrievalSettings):
+        self.settings = settings
+
+    def build(self, rows: list[TableRow], notes: list[WorkbookNote]) -> list[Chunk]:
+        chunks: list[Chunk] = []
+        for row in rows:
+            chunks.extend(self._build_row_chunks(row))
+        for note in notes:
+            chunks.extend(self._build_note_chunks(note))
+        return chunks
+
+    def _build_row_chunks(self, row: TableRow) -> list[Chunk]:
+        company = row.values.get("Company", "")
+        important_order = self._ordered_columns(row.values)
+        full_text = " | ".join(f"{column}: {row.values[column]}" for column in important_order)
+
+        chunk_specs = [
+            ("row_full", full_text),
+            ("company_profile", self._company_profile_text(row, important_order)),
+        ]
+        chunk_specs.extend(self._thematic_chunks(row))
+
+        chunks: list[Chunk] = []
+        for chunk_type, text in chunk_specs:
+            if not text.strip():
+                continue
+            chunk_id = self._make_chunk_id(
+                f"{row.sheet_name}-{row.row_number}-{chunk_type}-{text[:64]}"
+            )
+            metadata = {
+                "source_file": row.workbook_path.name,
+                "sheet_name": row.sheet_name,
+                "row_number": row.row_number,
+                "company": company,
+                "chunk_type": chunk_type,
+                "fields": list(row.values.keys()),
+            }
+            chunks.append(
+                Chunk(
+                    chunk_id=chunk_id,
+                    text=text,
+                    metadata=metadata,
+                    token_set=tokenize(text),
+                )
+            )
+        return chunks
+
+    def _build_note_chunks(self, note: WorkbookNote) -> list[Chunk]:
+        text = note.text
+        size = self.settings.note_chunk_size
+        overlap = self.settings.note_chunk_overlap
+        start = 0
+        chunks: list[Chunk] = []
+        while start < len(text):
+            end = min(len(text), start + size)
+            candidate = text[start:end].strip()
+            if candidate:
+                chunk_id = self._make_chunk_id(f"{note.sheet_name}-note-{start}")
+                chunks.append(
+                    Chunk(
+                        chunk_id=chunk_id,
+                        text=candidate,
+                        metadata={
+                            "source_file": note.workbook_path.name,
+                            "sheet_name": note.sheet_name,
+                            "chunk_type": "note_reference",
+                        },
+                        token_set=tokenize(candidate),
+                    )
+                )
+            if end == len(text):
+                break
+            start = max(end - overlap, start + 1)
+        return chunks
+
+    def _company_profile_text(self, row: TableRow, ordered_columns: list[str]) -> str:
+        priority = [
+            "Company",
+            "Category",
+            "Industry Group",
+            "EV Supply Chain Role",
+            "Primary OEMs",
+            "Location",
+            "Employment",
+            "Product / Service",
+            "EV / Battery Relevant",
+        ]
+        selected = [column for column in priority if column in row.values]
+        remaining = [column for column in ordered_columns if column not in selected][:4]
+        fields = selected + remaining
+        return " | ".join(f"{column}: {row.values[column]}" for column in fields)
+
+    def _thematic_chunks(self, row: TableRow) -> list[tuple[str, str]]:
+        themes = {
+            "identity_theme": [
+                "Company",
+                "Category",
+                "Industry Group",
+                "Classification Method",
+            ],
+            "location_theme": [
+                "Company",
+                "Location",
+                "Primary Facility Type",
+                "Employment",
+            ],
+            "supply_chain_theme": [
+                "Company",
+                "EV Supply Chain Role",
+                "Supplier or Affiliation Type",
+                "Primary OEMs",
+            ],
+            "product_theme": [
+                "Company",
+                "Product / Service",
+                "EV / Battery Relevant",
+                "Category",
+            ],
+        }
+        chunks: list[tuple[str, str]] = []
+        for theme_name, columns in themes.items():
+            available = [column for column in columns if column in row.values]
+            if len(available) >= 2:
+                text = " | ".join(f"{column}: {row.values[column]}" for column in available)
+                chunks.append((theme_name, text))
+        return chunks
+
+    def _ordered_columns(self, values: dict[str, str]) -> list[str]:
+        preferred = [
+            "Company",
+            "Category",
+            "Industry Group",
+            "Location",
+            "Primary Facility Type",
+            "EV Supply Chain Role",
+            "Primary OEMs",
+            "Supplier or Affiliation Type",
+            "Employment",
+            "Product / Service",
+            "EV / Battery Relevant",
+            "Classification Method",
+        ]
+        ordered = [column for column in preferred if column in values]
+        ordered.extend(column for column in values if column not in ordered)
+        return ordered
+
+    def _make_chunk_id(self, raw: str) -> str:
+        digest = hashlib.sha1(raw.encode("utf-8")).hexdigest()
+        return str(uuid.uuid5(uuid.NAMESPACE_URL, digest))

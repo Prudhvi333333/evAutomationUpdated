@@ -1,23 +1,28 @@
 [project]
-name = "ftthings"
+name = "ev-llm-comparison"
 version = "0.1.0"
-description = "Add your description here"
+description = "Production Excel-first pipeline for LLM comparison with RAG and RAGAS."
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 dependencies = [
-    "docling>=2.70.0",
-    "langchain>=1.2.6",
-    "langchain-ollama>=1.0.1",
-    "ollama>=0.6.1",
+    "datasets>=2.20.0",
+    "google-generativeai>=0.8.0",
+    "langchain>=0.3.0",
+    "langchain-community>=0.3.0",
+    "langchain-google-genai>=2.0.0",
+    "langchain-ollama>=0.2.0",
+    "ollama>=0.6.0",
     "openpyxl>=3.1.0",
-    "peft>=0.18.1",
-    "pypdf2>=3.0.1",
-    "python-docx>=1.2.0",
-    "qdrant-client>=1.16.2",
-    "sentence-transformers>=5.2.0",
-    "streamlit>=1.53.0",
-    "torch>=2.9.1",
-    "transformers>=4.57.5",
-    "google-generativeai>=0.7.0",
-    "pandas>=2.0.0",
+    "pandas>=2.2.0",
+    "python-dotenv>=1.0.1",
+    "qdrant-client>=1.12.0",
+    "ragas>=0.2.0",
+    "sentence-transformers>=3.0.0",
 ]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ev_llm_compare"]

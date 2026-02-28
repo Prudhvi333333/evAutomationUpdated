@@ -1,25 +1,14 @@
-"""
-Configuration settings for the RAG pipeline
-"""
+from pathlib import Path
+import sys
 
-# Qdrant Settings
-QDRANT_HOST = "localhost"
-QDRANT_PORT = 6333
-QDRANT_USE_MEMORY = True  # Set to False for persistent storage
-COLLECTION_NAME = "documents"
 
-# Ollama Settings
-OLLAMA_MODEL = "tinyllama"
-OLLAMA_BASE_URL = "http://localhost:11434"
+PROJECT_ROOT = Path(__file__).resolve().parent
+SRC_DIR = PROJECT_ROOT / "src"
 
-# Embedding Settings
-EMBEDDING_MODEL = "all-MiniLM-L6-v2"
-EMBEDDING_DIMENSION = 384
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
 
-# Document Processing Settings
-CHUNK_SIZE = 1000
-CHUNK_OVERLAP = 200
+from ev_llm_compare.settings import AppConfig, load_config
 
-# RAG Settings
-TOP_K_RESULTS = 3
-TEMPERATURE = 0.8
+
+__all__ = ["AppConfig", "load_config"]
