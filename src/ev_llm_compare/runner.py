@@ -106,15 +106,28 @@ class ComparisonRunner:
                 )
                 judge_client = create_client(judge_spec, self.config.runtime)
                 references = build_reference_answers(questions, retrievals, judge_client)
-                self._log("Running RAGAS evaluation")
-                ragas_per_run, ragas_summary = run_ragas(
+                checkpoint_path = export_results(
+                    output_dir=self.config.runtime.output_dir,
                     responses=responses,
-                    reference_answers=references,
-                    judge_provider=self.config.ragas_judge_provider,
-                    judge_model=self.config.ragas_judge_model,
-                    embedding_provider=self.config.ragas_embedding_provider,
-                    embedding_model=self.config.ragas_embedding_model,
+                    retrievals=retrievals,
+                    references=references,
+                    ragas_per_run=None,
+                    ragas_summary=None,
+                    filename_prefix="comparison_checkpoint",
                 )
+                self._log(f"Checkpoint workbook written to {checkpoint_path}")
+                self._log("Running RAGAS evaluation")
+                try:
+                    ragas_per_run, ragas_summary = run_ragas(
+                        responses=responses,
+                        reference_answers=references,
+                        judge_provider=self.config.ragas_judge_provider,
+                        judge_model=self.config.ragas_judge_model,
+                        embedding_provider=self.config.ragas_embedding_provider,
+                        embedding_model=self.config.ragas_embedding_model,
+                    )
+                except Exception as exc:
+                    self._log(f"RAGAS evaluation failed: {exc}. Continuing without RAGAS sheets.")
 
             self._log("Exporting results workbook")
             output_path = export_results(

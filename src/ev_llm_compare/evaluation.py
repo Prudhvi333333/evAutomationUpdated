@@ -114,10 +114,11 @@ def export_results(
     references: dict[str, str],
     ragas_per_run: pd.DataFrame | None,
     ragas_summary: pd.DataFrame | None,
+    filename_prefix: str = "comparison_report",
 ) -> Path:
     output_dir.mkdir(parents=True, exist_ok=True)
     timestamp = pd.Timestamp.utcnow().strftime("%Y%m%d_%H%M%S")
-    workbook_path = output_dir / f"comparison_report_{timestamp}.xlsx"
+    workbook_path = output_dir / f"{filename_prefix}_{timestamp}.xlsx"
 
     response_rows: list[dict[str, Any]] = []
     retrieval_rows: list[dict[str, Any]] = []
