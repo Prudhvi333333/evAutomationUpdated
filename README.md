@@ -58,6 +58,28 @@ python main.py \
   --question-workbook "Sample questions.xlsx"
 ```
 
+To compare only the four Ollama runs and save clean per-run response files:
+
+```bash
+python main.py \
+  --data-workbook "GNEM updated excel (1).xlsx" \
+  --question-workbook "Sample questions.xlsx" \
+  --run-name qwen_rag \
+  --run-name qwen_no_rag \
+  --run-name tinyllama_rag \
+  --run-name tinyllama_no_rag \
+  --output-dir "artifacts/results/sample_run" \
+  --response-dir "artifacts/correct_responses/sample_run" \
+  --skip-ragas
+```
+
+Optional runtime overrides:
+
+```bash
+export MODEL_MAX_TOKENS=1600
+export MODEL_TEMPERATURE=0.1
+```
+
 To skip RAGAS while validating model access:
 
 ```bash
@@ -87,8 +109,15 @@ Each run writes an Excel report in `artifacts/results/` with:
 - `ragas_per_question`
 - `ragas_summary`
 
+Per-run response exports are written to `artifacts/correct_responses/` by default:
+
+- `all_runs_responses.csv`
+- `<run_name>_responses.csv`
+- `<run_name>_responses.md`
+
 ## Notes
 
 - The pipeline is workbook-driven, so you can point it at updated Excel files without changing code.
 - RAGAS requires the configured judge model and embedding backend to be available.
 - Non-RAG runs are still scored against the same question and reference answer, which makes model-to-model comparison easier.
+- The checked-in `Sample questions.xlsx` currently contains 1 question. Use a workbook with 20 rows in the question column when you are ready to run the 20-question comparison.

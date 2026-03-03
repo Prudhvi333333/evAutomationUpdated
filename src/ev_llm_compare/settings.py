@@ -34,7 +34,7 @@ class ModelSpec:
     rag_enabled: bool
     enabled: bool = True
     temperature: float = 0.1
-    max_tokens: int = 700
+    max_tokens: int = 1600
 
 
 @dataclass(slots=True)
@@ -105,6 +105,11 @@ def _build_models() -> list[ModelSpec]:
 def load_config() -> AppConfig:
     config = AppConfig()
     config.models = [model for model in _build_models() if model.enabled]
+    default_temperature = float(os.getenv("MODEL_TEMPERATURE", "0.1"))
+    default_max_tokens = int(os.getenv("MODEL_MAX_TOKENS", "1600"))
+    for model in config.models:
+        model.temperature = default_temperature
+        model.max_tokens = default_max_tokens
     config.retrieval.embedding_model = os.getenv(
         "EMBEDDING_MODEL",
         config.retrieval.embedding_model,

@@ -5,7 +5,12 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from .chunking import ExcelChunkBuilder
-from .evaluation import build_reference_answers, export_results, run_ragas
+from .evaluation import (
+    build_reference_answers,
+    export_response_sets,
+    export_results,
+    run_ragas,
+)
 from .excel_loader import load_questions, load_workbook
 from .models import create_client, safe_generate
 from .prompts import build_non_rag_prompt, build_rag_prompt, format_context
@@ -27,7 +32,13 @@ class ComparisonRunner:
         question_sheet: str | None = None,
         skip_ragas: bool = False,
         question_limit: int | None = None,
+        selected_run_names: list[str] | None = None,
+        output_dir: str | None = None,
+        response_output_dir: str | None = None,
     ) -> Path:
+        active_models = self._select_models(selected_run_names)
+        if output_dir is not None:
+            self.config.runtime.output_dir = Path(output_dir)
         self._log(f"Loading data workbook: {data_workbook}")
         rows, notes = load_workbook(data_workbook)
         self._log(f"Loaded workbook content: {len(rows)} tabular rows, {len(notes)} note sheets")
@@ -53,9 +64,9 @@ class ComparisonRunner:
             self._log("Retrieval complete")
             responses: list[ModelResponse] = []
 
-            for model_index, spec in enumerate(self.config.models, start=1):
+            for model_index, spec in enumerate(active_models, start=1):
                 self._log(
-                    f"Running model {model_index}/{len(self.config.models)}: "
+                    f"Running model {model_index}/{len(active_models)}: "
                     f"{spec.run_name} ({spec.model_name}, rag={spec.rag_enabled})"
                 )
                 client = create_client(spec, self.config.runtime)
@@ -129,6 +140,15 @@ class ComparisonRunner:
                 except Exception as exc:
                     self._log(f"RAGAS evaluation failed: {exc}. Continuing without RAGAS sheets.")
 
+            if response_output_dir:
+                response_dir_path = export_response_sets(
+                    output_dir=Path(response_output_dir),
+                    responses=responses,
+                    references=references,
+                    ragas_per_run=ragas_per_run,
+                )
+                self._log(f"Per-run response files written to {response_dir_path}")
+
             self._log("Exporting results workbook")
             output_path = export_results(
                 output_dir=self.config.runtime.output_dir,
@@ -145,3 +165,16 @@ class ComparisonRunner:
 
     def _log(self, message: str) -> None:
         print(f"[ev-llm-compare] {message}", flush=True)
+
+    def _select_models(self, selected_run_names: list[str] | None) -> list[ModelSpec]:
+        if not selected_run_names:
+            return self.config.models
+
+        requested = set(selected_run_names)
+        selected = [model for model in self.config.models if model.run_name in requested]
+        missing = sorted(requested - {model.run_name for model in selected})
+        if missing:
+            available = ", ".join(model.run_name for model in self.config.models)
+            missing_display = ", ".join(missing)
+            raise ValueError(f"Unknown run name(s): {missing_display}. Available runs: {available}")
+        return selected

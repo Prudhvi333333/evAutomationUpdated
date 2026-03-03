@@ -32,6 +32,8 @@ class ExcelChunkBuilder:
         company = row.values.get("Company", "")
         important_order = self._ordered_columns(row.values)
         full_text = " | ".join(f"{column}: {row.values[column]}" for column in important_order)
+        row_key = f"{row.workbook_path.name}::{row.sheet_name}::{row.row_number}"
+        row_summary = self._row_summary_text(row)
 
         chunk_specs = [
             ("row_full", full_text),
@@ -50,7 +52,16 @@ class ExcelChunkBuilder:
                 "source_file": row.workbook_path.name,
                 "sheet_name": row.sheet_name,
                 "row_number": row.row_number,
+                "row_key": row_key,
+                "row_summary": row_summary,
                 "company": company,
+                "category": row.values.get("Category", ""),
+                "ev_supply_chain_role": row.values.get("EV Supply Chain Role", ""),
+                "product_service": row.values.get("Product / Service", ""),
+                "primary_oems": row.values.get("Primary OEMs", ""),
+                "location": row.values.get("Location", ""),
+                "employment": row.values.get("Employment", ""),
+                "ev_battery_relevant": row.values.get("EV / Battery Relevant", ""),
                 "chunk_type": chunk_type,
                 "fields": list(row.values.keys()),
             }
@@ -108,6 +119,20 @@ class ExcelChunkBuilder:
         remaining = [column for column in ordered_columns if column not in selected][:4]
         fields = selected + remaining
         return " | ".join(f"{column}: {row.values[column]}" for column in fields)
+
+    def _row_summary_text(self, row: TableRow) -> str:
+        summary_fields = [
+            "Company",
+            "Category",
+            "EV Supply Chain Role",
+            "Primary OEMs",
+            "Product / Service",
+            "Location",
+            "Employment",
+            "EV / Battery Relevant",
+        ]
+        available = [column for column in summary_fields if row.values.get(column)]
+        return " | ".join(f"{column}: {row.values[column]}" for column in available)
 
     def _thematic_chunks(self, row: TableRow) -> list[tuple[str, str]]:
         themes = {

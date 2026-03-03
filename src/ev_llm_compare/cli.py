@@ -34,6 +34,23 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Optional limit for the number of questions to run.",
     )
+    parser.add_argument(
+        "--run-name",
+        action="append",
+        dest="run_names",
+        default=None,
+        help="Limit execution to one or more configured run names. Repeat the flag for multiple runs.",
+    )
+    parser.add_argument(
+        "--output-dir",
+        default=None,
+        help="Optional directory for the comparison workbook.",
+    )
+    parser.add_argument(
+        "--response-dir",
+        default="artifacts/correct_responses",
+        help="Directory where per-run response files will be written.",
+    )
     return parser
 
 
@@ -51,6 +68,9 @@ def main() -> int:
         question_sheet=args.question_sheet,
         skip_ragas=args.skip_ragas,
         question_limit=args.question_limit,
+        selected_run_names=args.run_names,
+        output_dir=args.output_dir,
+        response_output_dir=args.response_dir,
     )
     print(f"Report written to {Path(report_path).resolve()}")
     return 0

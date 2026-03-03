@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
@@ -156,9 +155,11 @@ def export_results(
             )
 
     comparison_df = _build_comparison_sheet(response_rows, ragas_per_run)
+    single_sheet_df = _build_single_sheet_report(response_rows, ragas_per_run)
 
     with pd.ExcelWriter(workbook_path, engine="openpyxl") as writer:
         comparison_df.to_excel(writer, sheet_name="responses", index=False)
+        single_sheet_df.to_excel(writer, sheet_name="all_in_one", index=False)
         pd.DataFrame(response_rows).to_excel(writer, sheet_name="responses_raw", index=False)
         pd.DataFrame(retrieval_rows).to_excel(writer, sheet_name="retrieval", index=False)
         pd.DataFrame(
@@ -170,6 +171,75 @@ def export_results(
             ragas_summary.to_excel(writer, sheet_name="ragas_summary", index=False)
 
     return workbook_path
+
+
+def export_response_sets(
+    output_dir: Path,
+    responses: list[ModelResponse],
+    references: dict[str, str],
+    ragas_per_run: pd.DataFrame | None = None,
+) -> Path:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    timestamp = pd.Timestamp.utcnow().strftime("%Y%m%d_%H%M%S")
+    run_dir = output_dir / f"response_set_{timestamp}"
+    run_dir.mkdir(parents=True, exist_ok=True)
+
+    all_rows: list[dict[str, Any]] = []
+    grouped: defaultdict[str, list[ModelResponse]] = defaultdict(list)
+    for response in responses:
+        grouped[response.run_name].append(response)
+        all_rows.append(
+            {
+                "run_name": response.run_name,
+                "provider": response.provider,
+                "model_name": response.model_name,
+                "rag_enabled": response.rag_enabled,
+                "question": response.question,
+                "reference_answer": references.get(response.question, ""),
+                "answer": response.answer,
+                "latency_seconds": response.latency_seconds,
+                "success": response.success,
+                "error_message": response.error_message,
+            }
+        )
+
+    pd.DataFrame(all_rows).to_csv(run_dir / "all_runs_responses.csv", index=False)
+    single_sheet_df = _build_single_sheet_report(all_rows, ragas_per_run)
+    with pd.ExcelWriter(run_dir / "all_runs_single_sheet.xlsx", engine="openpyxl") as writer:
+        single_sheet_df.to_excel(writer, sheet_name="all_in_one", index=False)
+
+    for run_name, run_responses in grouped.items():
+        rows = [
+            {
+                "question": response.question,
+                "reference_answer": references.get(response.question, ""),
+                "answer": response.answer,
+                "latency_seconds": response.latency_seconds,
+                "success": response.success,
+                "error_message": response.error_message,
+            }
+            for response in run_responses
+        ]
+        pd.DataFrame(rows).to_csv(run_dir / f"{run_name}_responses.csv", index=False)
+
+        markdown_lines = [f"# {run_name}", ""]
+        for index, response in enumerate(run_responses, start=1):
+            markdown_lines.extend(
+                [
+                    f"## Question {index}",
+                    f"Question: {response.question}",
+                    "",
+                    "Answer:",
+                    response.answer or "(empty)",
+                    "",
+                ]
+            )
+        (run_dir / f"{run_name}_responses.md").write_text(
+            "\n".join(markdown_lines),
+            encoding="utf-8",
+        )
+
+    return run_dir
 
 
 def _make_langchain_llm(provider: str, model: str):
@@ -260,3 +330,61 @@ def _build_comparison_sheet(
         comparison_rows.append(row)
 
     return pd.DataFrame(comparison_rows)
+
+
+def _build_single_sheet_report(
+    response_rows: list[dict[str, Any]],
+    ragas_per_run: pd.DataFrame | None,
+) -> pd.DataFrame:
+    question_order = list(dict.fromkeys(row["question"] for row in response_rows))
+    run_order = list(dict.fromkeys(row["run_name"] for row in response_rows))
+
+    response_lookup = {
+        (row["question"], row["run_name"]): row
+        for row in response_rows
+    }
+
+    metric_names: list[str] = []
+    metric_lookup: dict[tuple[str, str], dict[str, Any]] = {}
+    if ragas_per_run is not None and not ragas_per_run.empty:
+        metric_names = [
+            column
+            for column in ragas_per_run.columns
+            if column not in {"run_name", "question"}
+        ]
+        metric_lookup = {
+            (row["question"], row["run_name"]): row
+            for row in ragas_per_run.to_dict(orient="records")
+        }
+
+    rows: list[dict[str, Any]] = []
+    for question in question_order:
+        row: dict[str, Any] = {"Question": question}
+        for run_name in run_order:
+            response = response_lookup.get((question, run_name), {})
+            row[run_name] = response.get("answer", "")
+            metrics = metric_lookup.get((question, run_name), {})
+            row[f"{run_name}_scores"] = _format_score_summary(metrics, metric_names)
+        rows.append(row)
+
+    ordered_columns = ["Question"]
+    for run_name in run_order:
+        ordered_columns.append(run_name)
+        ordered_columns.append(f"{run_name}_scores")
+    return pd.DataFrame(rows, columns=ordered_columns)
+
+
+def _format_score_summary(metrics: dict[str, Any], metric_names: list[str]) -> str:
+    if not metrics or not metric_names:
+        return ""
+
+    parts: list[str] = []
+    for metric_name in metric_names:
+        value = metrics.get(metric_name)
+        if pd.isna(value):
+            continue
+        if isinstance(value, float):
+            parts.append(f"{metric_name}={value:.4f}")
+        else:
+            parts.append(f"{metric_name}={value}")
+    return "; ".join(parts)

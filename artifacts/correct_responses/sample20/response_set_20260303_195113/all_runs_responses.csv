@@ -1,0 +1,1532 @@
+run_name,provider,model_name,rag_enabled,question,reference_answer,answer,latency_seconds,success,error_message
+qwen_rag,ollama,qwen2.5:14b,True,"Show all companies categorized as Tier 1 and Tier 1/2, and group them by EV Supply Chain Role.",,"Battery Cell:
+- Hitachi Astemo Americas Inc.
+- Honda Development & Manufacturing
+
+Battery Pack:
+- F&P Georgia Manufacturing
+- Hollingsworth & Vose Co.
+- Hyundai Motor Group
+- IMMI
+
+Charging Infrastructure:
+- Morgan Corp.
+
+General Automotive:
+- Fouts Brothers Fire Equipment
+- Hitachi Astemo
+- Hwashin
+- Hyundai & LG Energy Solution (LGES)
+- Hyundai Industrial Co.
+- Hyundai MOBIS (Georgia)
+- Hyundai Transys Georgia Seating Systems
+- IMS Gear Georgia Inc.
+- Inalfa Roof Systems Inc.
+- JAC Products Inc.
+- JTEKT North America Corp.
+- Jefferson Southern Corp.
+- Jefferson Southern Corporation
+- Joon Georgia, Inc.
+- KTX America Corporation
+- Kautex Inc.
+- Kumho Tire USA Inc.
+- Kyungshin America Corp.
+- Lark United Manufacturing Inc.
+- Lear Corporation
+- Lehigh Technologies Inc.
+- Linde + Wiemann
+- Lund International Inc.
+- Lund International Inc./Ventshade Division
+- Lyle Industries Inc.
+- Lyle Industries Inc.
+- MAT Heavy Duty
+- Mack Trucks
+- Magna International
+- Mando America Corp.
+- Master Craft Engineering Inc.
+- Maxxis International USA
+- Mercedes-Benz USA LLC
+- Michelin Tread Technologies
+- Milliken & Co./Valway Plant
+- Mobis Alabama LLC
+- MollerTech LLC
+- Murata Electronics North America Inc.
+- NIFCO KTW America Corp.
+- NVH Korea
+- Neaton Rome Inc.
+- Nidec Elesys Americas Corp.
+- Nile Automotive
+- Nisshinbo Automotive Manufacturing Inc.
+- Nivel Parts & Manufacturing Co. LLC
+- Novelis Inc.
+- Novelis Inc.
+- OTR Wheel Engineering Inc.
+- Oneda Corp.
+- PAI Industries Inc.
+- PIOLAX Corp.
+- PPG Industries Inc.
+- Paccar
+- Pak-Lite Inc.
+- Panasonic Automotive Systems Co.
+- Panduit Corp.
+- Perkins Small Engines LLC
+- Peterson Spring
+- Piedmont Automotive Products Inc.
+- Pirelli Tire North America LLC
+- Porsche Cars North America Inc.
+- Propex Operating Co. LLC
+- QSR Inc.
+- Racemark International LLC
+- RealTruck
+- Rivian Automotive
+- Robert Bosch LLC
+- SAFT America Inc.
+- SHIROKI North America Inc
+- SKF USA Inc.
+- SRG Global Inc.
+- Sejong Georgia LLC
+- Seohan Auto USA
+- Seoyon E-HWA
+- Seoyon E-Hwa Interior Systems
+- Sewon America Inc.
+- Sewon America Inc.
+- Sewon America Inc.
+- Solvay Specialty Polymers USA LLC
+- Southern Switches Corp.
+- Stryten Energy
+- Suhner Manufacturing Corp.
+
+Materials:
+- PHA Body Systems LLC
+- Panasonic Automotive Systems Co.
+- SK Battery America
+- Sumitomo Electric Wiring Systems
+
+Thermal Management:
+- Hyundai Transys Georgia Powertrain
+- Novelis Inc.
+- Peerless-Winsmith Inc.",11.52,True,
+qwen_rag,ollama,qwen2.5:14b,True,"List the companies involved in Battery Pack activities and include their Category, Location, Product / Service, and Employment.",,"**Battery Pack Activities**
+
+- **Company:** F&P Georgia Manufacturing  
+  - Category: Tier 1/2  
+  - Location: Toccoa, Stephens County  
+  - Product / Service: Lithium-ion battery recycler and raw materials provider  
+  - Employment: 104
+
+- **Company:** Hollingsworth & Vose Co.  
+  - Category: Tier 1/2  
+  - Location: Bainbridge, Decatur County  
+  - Product / Service: Lithium-ion battery materials  
+  - Employment: 400
+
+- **Company:** Hyundai Motor Group  
+  - Category: Tier 1/2  
+  - Location: McDonough, Henry County  
+  - Product / Service: Battery parts for electric vehicles  
+  - Employment: 164
+
+- **Company:** IMMI  
+  - Category: Tier 1/2  
+  - Location: Jefferson, Jackson County  
+  - Product / Service: Battery electrolyte  
+  - Employment: 100",4.19,True,
+qwen_rag,ollama,qwen2.5:14b,True,"Which companies are classified under Battery Cell, and which Primary OEMs are they linked to?",,"**Battery Cell**
+- Hitachi Astemo Americas Inc. | Primary OEMs: Hyundai Kia
+- Honda Development & Manufacturing | Primary OEMs: Hyundai Kia",1.21,True,
+qwen_rag,ollama,qwen2.5:14b,True,"Map the companies whose EV Supply Chain Role is Thermal Management, including their Location and Primary Facility Type.",,"**Thermal Management**
+- Company: Freudenberg-NOK | Location: Carnesville, Franklin County | Primary Facility Type: Tier 2/3
+- Company: Hyundai Transys Georgia Powertrain | Location: Dublin, Laurens County | Primary Facility Type: Tier 1/2
+- Company: Novelis Inc. | Location: Lawrenceville, Gwinnett County | Primary Facility Type: Tier 1
+- Company: Peerless-Winsmith Inc. | Location: Statesboro, Bulloch County | Primary Facility Type: Tier 1",2.67,True,
+qwen_rag,ollama,qwen2.5:14b,True,"Which companies are tagged as Power Electronics, and what Product / Service do they provide?",,"**Power Electronics**
+- **GSC Steel Stamping LLC**: Deep grove ball bearings, Toyota Industries Electric Systems North 255 DC-to-DC converters Jackson America, Inc.*
+- **Yazaki North America**: Automotive supplier division (mobility solutions: ADAS, powertrain, electronics)
+- **ZF Gainesville LLC**: Automotive supplier footprint (electrification, thermal, powertrain, ADAS components)",2.02,True,
+qwen_rag,ollama,qwen2.5:14b,True,Show all Vehicle Assembly entities and summarize their Primary OEMs and Employment.,,"**Vehicle Assembly Entities and Summary**
+
+- **Company:** Kia Georgia Inc. | **Primary OEMs:** Golf carts, various off-road vehicles, electric on-road vehicles | **Employment:** 777
+- **Company:** Superior Essex Inc. | **Primary OEMs:** Electric vehicles and batteries | **Employment:** 8100
+- **Company:** Suzuki Manufacturing of America Corp. | **Primary OEMs:** Electric vehicle assembly plant | **Employment:** 7500
+- **Company:** TCI Powder Coatings | **Primary OEMs:** Automotive assembly plant | **Employment:** 3000
+- **Company:** TDK Components USA Inc. | **Primary OEMs:** Auto manufacturer headquarters | **Employment:** 1000
+- **Company:** TE Connectivity | **Primary OEMs:** Truck and bus bodies | **Employment:** 1900
+- **Company:** Teklas USA | **Primary OEMs:** Golf carts and all-terrain vehicles | **Employment:** 1800
+- **Company:** Textron Specialized Vehicles | **Primary OEMs:** Golf carts, utility vehicles, industrial vehicles | **Employment:** 1100
+- **Company:** Thermal Ceramics Inc. | **Primary OEMs:** Electric vehicle batteries | **Employment:** 3000
+- **Company:** Thomson Plastics Inc. | **Primary OEMs:** Electric vertical takeoff and landing (eVTOL) aircraft manufacturing | **Employment:** 1000",6.09,True,
+qwen_rag,ollama,qwen2.5:14b,True,List all companies with EV / Battery Relevant = Yes and provide their EV Supply Chain Role and Category.,,"**Battery Cell**
+- Honda Development & Manufacturing | Category: Tier 1/2
+- Hitachi Astemo Americas Inc. | Category: Tier 1/2
+
+**Battery Pack**
+- F&P Georgia Manufacturing | Category: Tier 1/2
+- Hyundai Motor Group | Category: Tier 1/2
+
+**General Automotive**
+- Racemark International LLC | Category: Tier 1
+
+**EV thermal systems and electronics**
+- ZF Gainesville LLC | Category: OEM Footprint",2.42,True,
+qwen_rag,ollama,qwen2.5:14b,True,Which EV Supply Chain Roles have at least one company with EV / Battery Relevant = Yes? Provide the roles and the matching companies.,,"**OEM (Footprint):**
+- TN Americas Holding Inc.
+- Tie Down Engineering
+
+**Battery Cell:**
+- Honda Development & Manufacturing
+
+**Materials:**
+- SK Battery America",1.32,True,
+qwen_rag,ollama,qwen2.5:14b,True,Identify the set of Industry Groups represented among Battery Pack and Battery Cell companies.,,"**Battery Pack Companies:**
+- F&P Georgia Manufacturing
+- Hollingsworth & Vose Co.
+- Hyundai Motor Group
+- IMMI
+
+**Battery Cell Companies:**
+- Hitachi Astemo Americas Inc.
+- Honda Development & Manufacturing",1.59,True,
+qwen_rag,ollama,qwen2.5:14b,True,"For each Category (Tier 2/3, Tier 1/2, Tier 1, OEM, OEM Supply Chain, OEM (Footprint), OEM Footprint), count how many companies are in the dataset.",,"Grouped by Category:
+- OEM Supply Chain, Tier 1/2, Tier 2/3: 4 (Advanced electrical architecture for EVs: Yamaha Motor Manufacturing Corp.; Battery Cell: Hitachi Astemo Americas Inc., Honda Development & Manufacturing; Battery Pack: F&P Georgia Manufacturing, Hollingsworth & Vose Co., Hyundai Motor Group, IMMI)
+- OEM Supply Chain, Tier 1/2, Tier 1: 3 (Body and chassis components for EV and ICE OEMs: Vanguard National Trailer Corp.; Charging Infrastructure: Morgan Corp.; General Automotive: ACM Georgia LLC, ADVICS Manufacturing Georgia LLC, ALBAform Inc., AVS, Adient, Ajin Georgia, Anovion Technologies, Apache Mills Inc., Aptiv, Archer Aviation Inc., Arising Industries Inc., Big Tex Trailer Manufacturing Inc., Bonnell Aluminum, Bosal Industries Georgia, Carcoustics USA, Continental Automotive, Continental Tire the Americas LLC, DaeChang Seat Company, Daesol Material Georgia, LLC, Daimler Truck North America, DeKalb Tool & Die Inc., Decostar Industries, Denkai America, Denso Manufacturing Georgia, Die-Tech Industries Inc., Dinex Emissions Inc., Dongwon Autopart Technology Georgia LLC, Dorsett Industries Inc., Down 2 Earth Trailers, Duckyang, Eaton Corp., Ecoplastic America Corporation, Ecoplastic Corporation, Elan Technology Inc., Enchem America Inc., Enplas USA Inc., Erdrich USA Inc., FOX Factory, FREYR Battery, Flambeau Inc., Fouts Brothers Fire Equipment, Freudenberg-NOK, GEDIA Georgia LLC, GLOVIS Georgia LLC, Global Powertrain Systems LLC, Goodyear Tire & Rubber Co., Great Dane LP, Great Dane Trailers, Grudem, HELLA Automotive Sales Inc., HEXPOL Compounding Corp., Haering Precision USA LP, Hanon Systems USA LLC, Hitachi Astemo, Hwashin, Hyundai Industrial Co., Hyundai MOBIS (Georgia), Hyundai Transys Georgia Seating Systems, IMS Gear Georgia Inc., Inalfa Roof Systems Inc., JAC Products Inc., JTEKT North America Corp., Jefferson Southern Corp., Jefferson Southern Corporation, Joon Georgia, Inc., KTX America Corporation, Kautex Inc., Kumho Tire USA Inc., Kyungshin America Corp., Lark United Manufacturing Inc., Lear Corporation, Lehigh Technologies Inc., Linde + Wiemann, Lund International Inc., Lund International Inc./Ventshade Division, Lyle Industries Inc., MAT Heavy Duty, Mack Trucks, Magna International, Mando America Corp., Master Craft Engineering Inc., Maxxis International USA, Mercedes-Benz USA LLC, Michelin Tread Technologies, Milliken & Co./Valway Plant, Minebea AccessSolutions USA Inc., Mobis Alabama LLC, MollerTech LLC, Murata Electronics North America Inc., NIFCO KTW America Corp., NVH Korea, Neaton Rome Inc., Nidec Elesys Americas Corp., Nile Automotive, Nisshinbo Automotive Manufacturing Inc., Nivel Parts & Manufacturing Co. LLC, Novelis Inc., OTR Wheel Engineering Inc., Oneda Corp., PAI Industries Inc., PIOLAX Corp., PPG Industries Inc., Paccar, Pak-Lite Inc., Panasonic Automotive Systems Co., Panduit Corp., Perkins Small Engines LLC, Peterson Spring, Piedmont Automotive Products Inc., Pirelli Tire North America LLC, Porsche Cars North America Inc., Propex Operating Co. LLC, QSR Inc., Racemark International LLC, RealTruck, Rivian Automotive, Robert Bosch LLC, SAFT America Inc., SHIROKI North America Inc, SKF USA Inc., SRG Global Inc., Sejong Georgia LLC, Seohan Auto USA, Seoyon E-HWA, Sewon America Inc., Solvay Specialty Polymers USA LLC, Southern Switches Corp., Stryten Energy, Suhner Manufacturing Corp.)
+- OEM Supply Chain: 1 (HV and LV wiring harnesses for EVs and ICE vehicles: WIKA USA; High-voltage EV connectors and electronics: Woory Industrial Co.; Interior and exterior plastic parts: Wabash National Corp.; Interior trim and textile components: Wheelabrator Group Inc.; Machined components supporting EV and ICE vehicles: Trenton Pressing Inc.; Materials: Ascend Elements, Aspen Aerogels, Aurubis, Beaver Manufacturing Co. Inc., Blue Bird Corp., Blue Ridge Manufacturing, Boogook Industries, Bosch (Automotive Division), Bridgestone Bandag, Club Car LLC, Constellium Automotive USA, DAEHAN Solution Georgia LLC, DAS Corp., Daesol Ausys, EVCO Plastics, Fanello Industries Inc., First American Resources, Haering Precision USA LP, PHA Body Systems LLC, Panasonic Automotive Systems Co., SK Battery America, Sumitomo Electric Wiring Systems, SungEel Recycling Park Georgia)
+- OEM Supply Chain: 1 (Power Electronics: GSC Steel Stamping LLC; Power electronics, sensors, and EV systems: Yazaki North America)
+- OEM Supply Chain: 2 (Stamped and welded assemblies for OEMs: Vernay; Stamped metal components for OEMs: Volvo Group North America)
+- OEM Supply Chain: 3 (Thermal Management: Freudenberg-NOK, Hyundai Transys Georgia Powertrain, Novelis Inc., Peerless-Winsmith Inc.)
+- OEM Supply Chain: 1 (Tier 1 automotive components: Valeo)
+- OEM Supply Chain: 2 (Vehicle Assembly: Kia Georgia Inc., Superior Essex Inc., Suzuki Manufacturing of America Corp., TCI Powder Coatings, TDK Components USA Inc., TE Connectivity, Teklas USA, Textron Specialized Vehicles, Thermal Ceramics Inc., Thomson Plastics Inc.)
+- OEM Supply Chain: 1 (Vehicle safety systems OEM (EV + ICE): TI Fluid Systems)
+- OEM Supply Chain: 2 (OEM corporate and engineering footprint (electrification): Tie Down Engineering; OEM parent group footprint (electric truck strategy): Toyota Industries Group (TACG-TICA))
+- OEM Supply Chain: 3 (OEM corporate footprint influencing EV strategy: TI Fluid Systems; OEM parent group footprint (EV + HD electrification): TN Americas Holding Inc.; OEM corporate footprint and supplier integration: Trenton Pressing)
+
+Total companies in the dataset: 207",26.23,True,
+qwen_rag,ollama,qwen2.5:14b,True,"List all companies located in Troup County and include their Category, EV Supply Chain Role, and Employment.",,"**General Automotive**
+- PPG Industries Inc. | Category: Tier 1 | Employment: 120
+- Stryten Energy | Category: Tier 1 | Employment: 50
+- PAI Industries Inc. | Category: Tier 1 | Employment: 198
+- ADVICS Manufacturing Georgia LLC | Category: Tier 2/3 | Employment: 150
+
+**Materials**
+- Aurubis | Category: Tier 2/3 | Employment: 400
+
+**General Automotive**
+- Bonnell Aluminum | Category: Tier 2/3 | Employment: 266",2.94,True,
+qwen_rag,ollama,qwen2.5:14b,True,Which counties have the highest number of Tier 1 suppliers? Return the county counts and the top 5 counties.,,"The provided evidence does not specify the counties where Tier 1 suppliers are located. Therefore, it's not possible to determine which counties have the highest number of Tier 1 suppliers based on the given information.",1.31,True,
+qwen_rag,ollama,qwen2.5:14b,True,Show all companies located in Gwinnett County and include their Industry Group and Product / Service.,,"**General Automotive**
+- Arising Industries Inc. | Category: Tier 2/3 | Product / Service: Rubber powders for tires
+- Continental Tire the Americas LLC | Category: Tier 2/3 | Product / Service: Automotive gaskets and parts, protective film applications
+- Grudem | Category: Tier 2/3 | Product / Service: Sensors for mobile hydraulic applications
+
+**Charging Infrastructure**
+- Morgan Corp. | Category: Tier 1 | Product / Service: Engine components, turbochargers, exhaust parts and other automotive parts
+
+**Vehicle Protection and Interior Comfort Products**
+- MAT Heavy Duty | Category: Tier 1 | Product / Service: Vehicle protection and interior comfort products
+
+**Ventvisors, Hood Shields, Floor Mats, Automotive Accessories**
+- Michelin Tread Technologies | Category: Tier 1 | Product / Service: Ventvisors, hood shields, floor mats, automotive accessories",4.04,True,
+qwen_rag,ollama,qwen2.5:14b,True,Identify all companies in Hall County and list their Primary Facility Type and EV / Battery Relevant status.,,There is no information provided about companies located in Hall County based on the given evidence. The evidence does not include any entries for companies in Hall County.,1.09,True,
+qwen_rag,ollama,qwen2.5:14b,True,Which cities have both Tier 1 and Tier 2/3 companies present? Provide the city names and the matching companies.,,"The provided evidence does not specify city information for each company, so it's not possible to determine which cities have both Tier 1 and Tier 2/3 companies present based on the given data.",1.61,True,
+qwen_rag,ollama,qwen2.5:14b,True,Find the counties that contain at least one Battery Pack company and list the Battery Pack companies in each county.,,"**Stephens County**
+- F&P Georgia Manufacturing
+
+**Decatur County**
+- Hollingsworth & Vose Co.
+
+**Henry County**
+- Hyundai Motor Group
+
+**Jackson County**
+- IMMI",1.3,True,
+qwen_rag,ollama,qwen2.5:14b,True,Which county has the highest total Employment across all companies? Provide the county and the summed Employment.,,Coweta County has the highest total Employment across all companies with a summed Employment of 1900. The companies located in Coweta County are Teklas USA (Employment: 1800) and Robert Bosch LLC (Employment: 100).,1.67,True,
+qwen_rag,ollama,qwen2.5:14b,True,Compute total Employment by EV Supply Chain Role for companies located in Fulton County.,,"General Automotive:
+- SRG Global Inc.: 60
+- Elan Technology Inc.: 160
+- Sewon America Inc.: 80
+
+Total Employment by EV Supply Chain Role ""General Automotive"" for companies located in Fulton County: 300",1.65,True,
+qwen_rag,ollama,qwen2.5:14b,True,List companies whose Location is reported as Georgia (or Georgia (facility presence)) and summarize their Category and EV Supply Chain Role.,,"**OEM (Footprint)**
+- TN Americas Holding Inc.: OEM parent group footprint (EV + HD electrification)
+- Toyota Industries Group (TACG-TICA): OEM parent group footprint (electric truck strategy)
+
+**OEM Supply Chain**
+- Volvo Group North America: Stamped metal components for OEMs
+- Vernay: Stamped and welded assemblies for OEMs
+- TI Fluid Systems: Vehicle safety systems OEM (EV + ICE)
+- ZF Gainesville LLC: EV thermal management and power electronics
+
+**Tier 2/3**
+- ADVICS Manufacturing Georgia LLC: General Automotive",2.84,True,
+qwen_rag,ollama,qwen2.5:14b,True,Show the distribution of companies by County for EV / Battery Relevant = Yes only.,,"**Battery Cell**
+- Coweta County: Hitachi Astemo Americas Inc. (723 employees)
+- Pembroke, Bryan County: Honda Development & Manufacturing (400 employees)
+
+**Battery Pack**
+- McDonough, Henry County: Hyundai Motor Group (164 employees)",1.72,True,
+qwen_no_rag,ollama,qwen2.5:14b,False,"Show all companies categorized as Tier 1 and Tier 1/2, and group them by EV Supply Chain Role.",,"To provide an accurate answer to your request, I would need specific data or evidence from Excel workbooks that categorize companies under ""Tier 1"" and ""Tier 1/2,"" along with their corresponding ""EV Supply Chain Role."" Since no such information has been provided in the current context, I cannot list out the companies grouped by EV Supply Chain Role.
+
+If you have an Excel workbook or specific data available, please share it so that I can assist further.",1.82,True,
+qwen_no_rag,ollama,qwen2.5:14b,False,"List the companies involved in Battery Pack activities and include their Category, Location, Product / Service, and Employment.",,"To provide an accurate response to your request, I need specific evidence or data related to companies involved in Battery Pack activities along with their respective categories, locations, products/services, and employment numbers. Since no such information has been provided in the current context, I am unable to list the requested details.
+
+If you have a dataset or additional information that includes these specifics, please provide it so I can assist further.",1.6,True,
+qwen_no_rag,ollama,qwen2.5:14b,False,"Which companies are classified under Battery Cell, and which Primary OEMs are they linked to?",,"To accurately answer your question about which companies are classified under Battery Cell and their associated Primary OEMs (Original Equipment Manufacturers), I would need specific evidence or data that details these classifications and relationships. Without this information, I cannot provide an accurate response.
+
+If you have a particular dataset or document containing this information, please share it so I can assist further.",1.4,True,
+qwen_no_rag,ollama,qwen2.5:14b,False,"Map the companies whose EV Supply Chain Role is Thermal Management, including their Location and Primary Facility Type.",,"Based on the information provided in your request, I need specific data or evidence to accurately answer this question. Please provide the necessary details or a dataset that includes company names, their EV supply chain role (specifically those with ""Thermal Management""), location, and primary facility type. Without this information, I cannot map out the requested companies.",1.38,True,
+qwen_no_rag,ollama,qwen2.5:14b,False,"Which companies are tagged as Power Electronics, and what Product / Service do they provide?",,"The provided evidence does not contain information about companies tagged as Power Electronics or their specific products/services. Therefore, I cannot answer this question based on the given data.",0.75,True,
+qwen_no_rag,ollama,qwen2.5:14b,False,Show all Vehicle Assembly entities and summarize their Primary OEMs and Employment.,,"To provide a direct answer to your request, I need specific data or evidence related to Vehicle Assembly entities, including details about their Primary OEMs (Original Equipment Manufacturers) and employment numbers. Since no such information has been provided in the current context, I cannot generate an accurate summary based on assumptions.
+
+If you have a dataset or Excel workbook containing this information, please share it so that I can assist you further with your request.",1.67,True,
+qwen_no_rag,ollama,qwen2.5:14b,False,List all companies with EV / Battery Relevant = Yes and provide their EV Supply Chain Role and Category.,,"To accurately respond to your request, I need specific information or a dataset from which to extract this data. Since no evidence or dataset has been provided in our conversation, I cannot list the companies you're asking about. Please provide the necessary details or dataset so that I can assist you further.",1.19,True,
+qwen_no_rag,ollama,qwen2.5:14b,False,Which EV Supply Chain Roles have at least one company with EV / Battery Relevant = Yes? Provide the roles and the matching companies.,,"To answer this question accurately, I would need specific evidence or data that lists EV supply chain roles along with their associated companies and whether those companies are relevant to EV/Battery. Since no such information has been provided in your query, I cannot determine which EV supply chain roles have at least one company with EV / Battery Relevant = Yes.
+
+If you can provide the necessary details or a specific dataset, I would be able to give you an accurate answer.",1.75,True,
+qwen_no_rag,ollama,qwen2.5:14b,False,Identify the set of Industry Groups represented among Battery Pack and Battery Cell companies.,,"To accurately identify the set of Industry Groups represented among Battery Pack and Battery Cell companies, I would need specific evidence or data that lists these companies along with their corresponding industry groups. Since no such information has been provided in your query, I cannot determine the exact set of Industry Groups for those types of companies.
+
+If you have a dataset or additional context, please provide it so I can give you an accurate answer based on the available information.",1.7,True,
+qwen_no_rag,ollama,qwen2.5:14b,False,"For each Category (Tier 2/3, Tier 1/2, Tier 1, OEM, OEM Supply Chain, OEM (Footprint), OEM Footprint), count how many companies are in the dataset.",,"To answer your question accurately, I would need to see or have access to the specific Excel workbook and its data that contains information about company categories such as Tier 2/3, Tier 1/2, Tier 1, OEM, OEM Supply Chain, and OEM (Footprint). Since you haven't provided any evidence or dataset details here, I cannot give exact counts for each category.
+
+If you provide the necessary data or a description of its contents, I can help you with the specific counts.",1.95,True,
+qwen_no_rag,ollama,qwen2.5:14b,False,"List all companies located in Troup County and include their Category, EV Supply Chain Role, and Employment.",,"Based on the information provided in your query, there is no evidence or data given about specific companies located in Troup County along with their categories, supply chain roles, and employment numbers. Therefore, I cannot list any companies meeting these criteria without additional details or a dataset to reference. Please provide more context or data if you would like me to answer this question accurately.",1.45,True,
+qwen_no_rag,ollama,qwen2.5:14b,False,Which counties have the highest number of Tier 1 suppliers? Return the county counts and the top 5 counties.,,"To provide an accurate answer to your question about which counties have the highest number of Tier 1 suppliers, I need specific data or evidence related to the distribution of Tier 1 suppliers across different counties. Since no such information has been provided in your query, I cannot determine the exact counts and top 5 counties.
+
+If you can provide the necessary details or a dataset containing this information, I would be able to give you an accurate response.",1.72,True,
+qwen_no_rag,ollama,qwen2.5:14b,False,Show all companies located in Gwinnett County and include their Industry Group and Product / Service.,,"To provide an accurate response to your request, I would need specific data or evidence related to companies located in Gwinnett County along with their respective industry groups and product/services. Since no such information has been provided here, I cannot list the companies as requested. Please provide the necessary details or a dataset for me to answer this question accurately.",1.37,True,
+qwen_no_rag,ollama,qwen2.5:14b,False,Identify all companies in Hall County and list their Primary Facility Type and EV / Battery Relevant status.,,"To accurately provide the information requested about companies in Hall County along with their Primary Facility Type and EV/Battery Relevant status, I would need specific data or evidence related to those details. Since no such evidence has been provided here, I cannot list the companies, their primary facility types, or their relevance to electric vehicles (EV) or batteries.
+
+If you have a dataset or additional information that includes this detail, please provide it so I can assist further.",1.76,True,
+qwen_no_rag,ollama,qwen2.5:14b,False,Which cities have both Tier 1 and Tier 2/3 companies present? Provide the city names and the matching companies.,,"To accurately answer your question, I need specific evidence or data that lists the cities along with their corresponding company tiers (Tier 1 and Tier 2/3). Without this information, I cannot determine which cities have both types of companies present. Please provide the necessary details from the Excel workbook or another source so I can give you an accurate response.",1.41,True,
+qwen_no_rag,ollama,qwen2.5:14b,False,Find the counties that contain at least one Battery Pack company and list the Battery Pack companies in each county.,,"To provide an accurate response to your query about finding counties containing at least one Battery Pack company and listing those companies within each county, I would need specific data or evidence from Excel workbooks or another source. Since no such information has been provided here, I cannot determine the exact counties nor list the companies.
+
+If you have a dataset in an Excel workbook that includes columns for ""County"" and ""Company Type,"" along with company names, please share it so I can assist further.",1.85,True,
+qwen_no_rag,ollama,qwen2.5:14b,False,Which county has the highest total Employment across all companies? Provide the county and the summed Employment.,,"To provide an accurate response to your query about which county has the highest total employment across all companies, I would need specific data from the Excel workbook or a detailed description of its contents. Since no evidence or dataset was provided with your question, I cannot determine the correct answer based on the information given.
+
+If you can share the relevant details or data from the Excel workbook, I'll be able to give you an exact answer.",1.67,True,
+qwen_no_rag,ollama,qwen2.5:14b,False,Compute total Employment by EV Supply Chain Role for companies located in Fulton County.,,"To compute the total employment by EV (Electric Vehicle) supply chain role for companies located in Fulton County, I would need specific data from an Excel workbook or another source that includes information on:
+
+1. Companies' locations.
+2. Employment numbers categorized by EV supply chain roles.
+3. The exact list of companies operating in Fulton County.
+
+Since no evidence or dataset has been provided with the question, I cannot compute this value accurately. Please provide the necessary data for me to perform the calculation.",1.9,True,
+qwen_no_rag,ollama,qwen2.5:14b,False,List companies whose Location is reported as Georgia (or Georgia (facility presence)) and summarize their Category and EV Supply Chain Role.,,"Based on the information provided in your query, I need specific evidence or data to accurately list companies located in Georgia along with their categories and roles in the EV supply chain. Since no such details have been given, I cannot provide a summary. Please provide the necessary data for me to answer this question correctly.",1.26,True,
+qwen_no_rag,ollama,qwen2.5:14b,False,Show the distribution of companies by County for EV / Battery Relevant = Yes only.,,"To provide an accurate response to your request about the distribution of companies by County where ""EV / Battery Relevant"" is set to ""Yes,"" I would need specific data or evidence from an Excel workbook or another source that contains this information. Since no such evidence has been provided, I cannot generate a distribution report.
+
+If you have an Excel file with the necessary columns (e.g., Company Name, County, EV/Battery Relevant), please share it so I can assist further.",1.86,True,
+tinyllama_rag,ollama,tinyllama,True,"Show all companies categorized as Tier 1 and Tier 1/2, and group them by EV Supply Chain Role.",,"Yes, based on the retrieved workbook evidence, we can group companies by EV Supply Chain Rolo (EVCR) as follows:
+
+1. Battery Cell:
+   - Hitachi Astemo America
+   - Honda Developmend & Manufacturing
+2. Battery Pack:
+   - F&P Georgia Manufacturing
+   - Hollingsworth & Voese Co.
+   - Hyundai Motor Group
+   - IMMI
+3. Charging Infrastructure:
+   - Morgan Corp.
+4. General Automotive:
+   - Fouts Brothers Fire Equipment
+   - Hitachi Astemo
+   - Hwashin
+   - Hyundai & LGES
+   - Hyundai Industrial Co.
+   - Hyundai MOBISExtreme
+   - Kautex Inc.
+   - Kuumho Tirre USA Inc.
+   - Kyungshin America Corp.
+   - Lark United Manufacturing Inc.
+   - Lear Corporation
+   - Lehigh Technologies Inc.
+   - Lindie + Wiemann
+   - Lund International Inc.
+   - Magnus Alabama LLC
+   - MollerTechnologies
+   - Murata Electronics North America Inc.
+   - NIFCO KTW America Corp.
+   - Nidec Elesys America Corp.
+   - Nile Automotiive
+   - NiSHINBO Automotiive Manufacturing Inc.
+   - NiSSHINBO Automotiive Manufacturing Inc.
+   - OTR Wheels Engineering Inc.
+   - OneDa Corp.
+   - PAI Industries Inc.
+   - PIOLAX Corp.
+   - PPG Industries Inc.
+   - Paccar
+   - Pak-Liite Inc.
+   - Panasonic Automotiive Systems Co.
+   - PanDuitt Corp.
+   - Perkins Small Engine Manufacturing Co.
+   - PieMonn Operating Company LLC
+   - Pirelli Tiré North America LLC
+   - Porsche Cars North America Inc.
+   - PropEx Operating Company LLC
+   - QSR Inc.
+   - RaceMark International LLC
+   - RealTruck
+   - Rivian Automotive
+   - Robert Bosch LLC
+   - SAFT America Inc.
+   - SHIROKI North America Inc
+   - SKF USA Inc.
+   - SRG Global Inc.
+   - Sejong Georgia LLC
+   - Seohan Auto USA
+   - Seoyon E-HWA Interior Systems
+   - Sewon America Inc.
+   - Sewon America Inc.
+   - Solvay Specialty Polymers USA LLC
+   - Southern Switches Corp.
+   - Strytn Energy
+   - Suhner Manufacturing Corporation
+- Materials:
+   - PHA Body Systems LLC
+   - Panasonic Automotiive Systems Co.
+   - SK Battery America
+   - Sumito Moe
+   - Peerless-Winsmith Inc.",1.82,True,
+tinyllama_rag,ollama,tinyllama,True,"List the companies involved in Battery Pack activities and include their Category, Location, Product / Service, and Employment.",,"[Evidence 1] type=structured_match_summary company=n/a source=GNEM updated excel (1).xlsx::Data
+Structured workbook matches from exact row filters:
+- Company: F&P Georgia Manufacturing | Categoory: Tier 1/2 | EV Supply Chain Role: Battery Pack | Product / Service: Lithium-ion battery recycler and raw materials provider | Location: Toccoa, Stephens County | Employment: 104
+- Company: Hollingsworth & Vose Co. | Categoory: Tier 1/2 | EV Supply Chain Role: Battery Pack | Product / Service: Lithium-ion battery materials | Location: Bainbridge, Decatur County | Employment: 400
+- Company: Hyundai Motor Group | Categoory: Tier 1/2 | EV Supply Chain Role: Battery Pack | Product / Service: Battery parts for electric vehicles | Location: McDonough, Henry County | Employment: 164
+- Company: IMMI | Categoory: Tier 1/2 | EV Supply Chain Role: Battery Pack | Product / Service: Battery electrolyte | Location: Jefferson, Jackson County | Employment: 100
+
+[Evidence 2] type=structured_row_match company=F&P Georgia Manufacturing source=GNEM updated excel (1).xlsx::Data row=54
+Company: F&P Georgia Manufacturing | Categoory: Tier 1/2 | EV Supply Chain Role: Battery Pack | Primary OEMs: Hyundai Kiia | Product / Service: Lithium-ion battery recycler and raw materials provider | Location: Toccoa, Stephens County | Employment: 104 | EV / Battery Relevant: Yes
+
+[Evidence 3] type=structured_row_match company=Hollingsworth & Vose Co. source=GNEM updated excel (1).xlsx::Data row=78
+Company: Hollingsworth & Vose Co. | Categoory: Tier 1/2 | EV Supply Chain Role: Battery Pack | Primary OEMs: Hyundai Kiia | Product / Service: Lithium-ion battery materials | Location: Bainbridge, Decatur County | Employment: 400 | EV / Battery Relevant: Yes
+
+[Evidence 4] type=structured_row_match company=Hyundai Motor Group source=GNEM updated excel (1).xlsx::Data row=84
+Company: Hyundai Motor Group | Categoory: Tier 1/2 | EV Supply Chain Role: Battery Pack | Primary OEMs: Hyundai Kiia | Product / Service: Battery parts for electric vehicles | Location: McDonough, Henry County | Employment: 164 | EV / Battery Relevant: Yes
+
+[Evidence 5] type=structured_row_match company=IMMI source=GNEM updated excel (1).xlsx::Data row=87
+Company: IMMI | Categoory: Tier 1/2 | EV Supply Chain Role: Battery Pack | Primary OEMs: Hyundai Kiia | Product / Service: Battery electrolyte | Location: Jefferson, Jackson County | Employment: 100 | EV / Battery Relevant: Yes
+
+Instruction: List the companies involved in Battery Pack activities and include their Categoy, Location, Product / Service, and Employment.",2.17,True,
+tinyllama_rag,ollama,tinyllama,True,"Which companies are classified under Battery Cell, and which Primary OEMs are they linked to?",,"Yes, based on the retrieved workbook evidence, companies classified under Battery Cell and linked to Primary OEMs are listed as follows:
+
+[Evidence 1] type=supply_chain_theme company=Honda Development & Manufacturing source=GNEM updated excel (1).xlsx::Data row=79
+Company: Honda Development & Manufacturing | Category: Tier 1/2 | EV Supply Chain Role: Vehicle Assembly | Primary OEMs: Mercedes-Benz USA LLC | Product / Service: Auto manufacturer headquaarters | Location: Atlanta, Fulton County | Employment: 1000 | EV / Battery Relevant: No
+
+[Evidence 2] type=product_theme company=Minebea AccessSolutions USA Inc. source=GNEM updated excel (1).xlsx::Data row=117
+Company: Minebea AccessSolutions USA Inc. | Category: OEM | EV Supply Chain Role: General Automotive | Primary OEMs: Porsche Cars North America Inc. | Product / Service: Headquaarters and distribution location | Location: Atlanta, Fulton County | Employment: 400 | EV / Battery Relevant: No
+
+[Evidence 3] type=product_theme company=SK Battery America source=GNEM updated excel (1).xlsx::Data row=164
+Company: SK Battery America | Category: Tier 1 | EV Supply Chain Role: Materials | Primary OEMs: Multiple OEMs | Product / Service: Engineered steel systems mounted in motor vehicles | Location: Hartwell, Hart County | Employment: 75 | EV / Battery Relevant: Indirect
+
+[Evidence 4] type=row_full company=DeKalb Tool & Die Inc. source=GNEM updated excel (1).xlsx::Data row=37
+Company: DeKalb Tool & Die Inc. | Category: Tier 2/3 | EV Supply Chain Role: General Automotive | Primary OEMs: Multiple OEMs | Product / Service: Truck interior cab components and exterior lights to HVAC and under the hood engine parts | Location: Calhoun, Gordon County | Employment: 70 | EV / Battery Relevant: No
+
+[Evidence 5] type=identity_theme company=FREYR Battery source=GNEM updated excel (1).xlsx::Data row=62
+Company: FREYR Battery | Category: Tier 2/3 | EV Supply Chain Role: General Automotive | Primary OEMs: Multiple OEMs | Product / Service: Decoraatiive and functional coating systems | Location: Marietta, Cobb County | Employment: 110 | EV / Battery Relevant: No
+
+[Evidence 6] type=identity_theme company=Honda Development & Manufacturing source=GNEM updated excel (1).xlsx::Data row=79
+Company: Honda Development & Manufacturing | Category: Tier 1/2 | EV Supply Chain Role: Vehicle Assembly | Primary OEMs: Mercedes-Benz USA LLC | Product / Service: Headquaarters and distribution location | Location: Atlanta, Fulton County | Employment: 400 | EV / Battery Relevant: No
+
+[Evidence 7] type=identity_theme company=Honda Development & Manufacturing source=GNEM updated excel (1).xlsx::Data row=82
+Company: Honda Development & Manufacturing | Category: Tier 1/2 | EV Supply Chain Role: Vehicle Assembly | Primary OEMs: Mercedes-Benz USA LLC | Product / Service: Headquaarters and distribution location | Location: Atlanta, Fulton County | Employment: 400 | EV / Battery Relevant: No
+
+[Evidence 8] type=identity_theme company=Honda Development & Manufacturing source=GNEM updated excel (1).xlsx::Data row=82
+Company: Honda Development & Manufacturing | Category: Tier 1/2 | EV Supply Chain Role: Vehicle Assembly | Primary OEMs: Mercedes-Benz USA LLC | Product / Service: Headquaarters and distribution location | Location: Atlanta, Fulton County | Employment: 400 | EV / Battery Relevant: No
+
+[Evidence 9] type=identity_theme company=Honda Development & Manufacturing source=GNEM updated excel (1).xlsx::Data row=82
+Company: Honda Development & Manufacturing | Category: Tier 1/2 | EV Supply Chain Role: Vehicle Assembly | Primary OEMs: Mercedes-Benz USA LLC | Product / Service: Headquaarters and distribution location | Location: Atlanta, Fulton County | Employment: 400 | EV / Battery Relevant: No
+
+[Evidence 10] type=identity_theme company=Honda Development & Manufacturing source=GNEM updated excel (1).xlsx::Data row=82
+Company: Honda Development & Manufacturing | Category: Tier 1/2 | EV Supply Chain Role: Vehicle Assembly | Primary OEMs: Mercedes-Benz USA LLC | Product / Service: Headquaarters and distribution location | Location: Atlanta, Fulton County | Employment: 400 | EV / Battery Relevant: No
+
+[Evidence 11] type=identity_theme company=Honda Development & Manufacturing source=GNEM updated excel (1).xlsx::Data row=82
+Company: Honda Development & Manufacturing | Category: Tier 1/2 | EV Supply Chain Role: Vehicle Assembly | Primary OEMs: Mercedes-Benz USA LLC | Product / Service: Headquaarters and distribution location | Location: Atlanta, Fulton County | Employment: 400 | EV / Battery Relevant: No
+
+[Evidence 12] type=identity_theme company=Honda Development & Manufacturing source=GNEM updated excel (1).xlsx::Data row=82
+Company: Honda Development & Manufacturing | Category: Tier 1/2 | EV Supply Chain Role: Vehicle Assembly | Primary OEMs: Mercedes-Benz USA LLC | Product / Service: Headquaart",4.06,True,
+tinyllama_rag,ollama,tinyllama,True,"Map the companies whose EV Supply Chain Role is Thermal Management, including their Location and Primary Facility Type.",,"Yes, based on the retrieved workbook evidence, here's a structured workbook match summary from exact row filters and EV Supply Chain Roles:
+
+[Evidence 1] type=structured_match_summary company=Freudenberg-NOK | Categoory: Tier 2/3 | EV Supply Chain Role: Thermal Management | Product / Service: Stamped blanks Flexible metal hoses for exhaust systems, thermal compensators, among other automotive | Location: Carnesville, Franklin County | Employment: 160
+- Company: Freudenberg-NOK | Categoory: Tier 1/2 | EV Supply Chain Role: Thermal Management | Product / Service: Electrical heaters, control units, and actuators | Location: Dublin, Laurens County | Employment: 130
+- Company: Hyundai Transys Georgia Powertrain | Categoory: Tier 1/2 | EV Supply Chain Role: Thermal Management | Primary OEMs: Multiple OEMs | Product / Service: Acoustic and thermally effective automotive components | Location: Lawrenceville, Gwinnett County | Employment: 160 | EV / Battery Relevant: Indirect
+- Company: Noveliс Inc. | Categoory: Tier 1 | EV Supply Chain Role: Thermal Management | Primary OEMs: Multiple OEMs | Product / Service: Thermal solutions | Location: Statesboro, Bulloch County | Employment: 160 | EV / Battery Relevant: Yes
+- Company: Peerless-Winsmith Inc. | Categoory: Tier 1 | EV Supply Chain Role: Thermal Management | Primary OEMs: Multiple OEMs | Product / Service: Therma
+
+[Evidence 2] type=structured_row_match company=Hyundai Transys Georgia Powertrain source=GNEM updated excel (1).xlsx::Data row=61
+Company: Hyundai Transys Georgia Powertrain | Categoory: Tier 1/2 | EV Supply Chain Role: Therma
+Product / Service: Electrical heaters, control units, and actuators | Location: Dublin, Laurens County | Employment: 130 | EV / Battery Relevant: Yes
+
+[Evidence 3] type=structured_row_match company=Noveliс Inc. source=GNEM updated excel (1).xlsx::Data row=130
+Company: Noveliс Inc. | Categoory: Tier 1 | EV Supply Chain Role: Therma
+Product / Service: Acoustic and thermally effective automotive components | Location: Lawrenceville, Gwinnett County | Employment: 160 | EV / Battery Relevant: No
+
+[Evidence 4] type=structured_row_match company=ZF Gainesville LLCo source=GNEM updated excel (1).xlsx::Data row=206
+Company: ZF Gainesville LLCo | Categoory: OEM Supply Chain | EV Supply Chain Role: EV thermal management and powertrain, ADAS components
+Product / Service: Automoti
+
+Question: Map the companies whose EV Supply Chain Roles are Therma, including their Location and Primary Facility Type.
+
+Instruction: Be specific and concise when listing companies whose EV Supply Chaing Roles are Therma. Include all supported matches from the evidence, not just one example. Mencion if the workbook evidence is incomplete for the question. Do not invent values that are not in evidence.",2.26,True,
+tinyllama_rag,ollama,tinyllama,True,"Which companies are tagged as Power Electronics, and what Product / Service do they provide?",,"User question: ""Which companies are tagged as Power Electronics, and what Product / Service do they provide?""
+
+Instructions:
+1. Be specific and concise.
+2. Preserve names exactly.
+3. Include all supported matches from the evidence, not just one example.
+4. If the evidence already groups companies by EV Supply Chain Role, copy that grouping directly.
+5. Group results when the question asks for grouping.
+6. Do not repeat evidence headers such as [Evidence 1].
+7. Start directly with the answer.
+8. Prefer EV Supply Chain Role over Product / Service when both appear.
+9. Mencion if the workbook evidence is incomplete for the question.
+10. Do not invent values that are not in evidence.
+
+Answer:
+[Evidence 2] type=structured_row_match company=GSC Steel Stamping LLCOther source=GNEM updated excel (1).xlsx::Data row=70
+Company: GSC Steel Stamping LLCOther | Categoory: Tier 2/3 | EV Supply Chain Role: Power Electronics | Primary OEMs: Hyundai Kiya Rivian | Product / Service: Deep grove ball bearingss Toyota Industries Electric Systems North 255 DC-to-DC converterst Jackson America, Inc.* | Location: Gainesville, Hall County | Employment: 350 | EV / Battery Relevant: Yes
+
+[Evidence 3] type=structured_row_match company=Yazaki North Americother source=GNEM updated excel (1).xlsx::Data row=203
+Company: YaZaki North America | Categoory: OEM Footprint | EV Supply Chain Role: Power Electronics, Sensorsthey Electric Systems | Product / Service: Automotive supplier division (MoBility solutions: ADAS, Power Train, EV systems) | Location: Georgia | Employment: 230000 | EV / Battery Relevant: Yes
+
+[Evidence 4] type=structured_row_match company=ZF Gainesville Americother source=GNEM updated excel (1).xlsx::Data row=206
+Company: ZF Gainesville Americother source=GNEM updated excel (1).xlsx::Data row=206
+Company: ZF Gainesville Americother source=GNEM updated excel (1).xlsx::Data row=206
+Product / Service: Automotive supplier footprint (electrification, thermal, Powertrain, ADAS components) | Location: Georgia | Employment: 17500 | EV / Battery Relevant: Yes",1.7,True,
+tinyllama_rag,ollama,tinyllama,True,Show all Vehicle Assembly entities and summarize their Primary OEMs and Employment.,,"User question: ""Show all Vehicle Assembly entities and summarize their Primary OEMs and Employment.""
+
+Evidence: [Evidence 1] type=structured_match_summary company=KIA Georgia Inc. Source=GNEM updated excel (1).xlsx::Data
+Structured workbook matches from exact row filters:
+- Company: KiA Georgia Inc. Categoorry in ['OEM'], Role terms in ['vehicile assembly']
+Matched rows: 10
+Detailed rows:
+- Company: Superior Essex Inc. Categoorry in ['OEM'], EV Supply Chain Role: Vehiicle Assembly | Product / Service: Electric vehicles and batteries
+- Company: Suzuki Manufacturing of America Corp. Categoorry in ['OEM'], EV Supply Chaing Role: Vehiicle Assembly Plant | Location: Monroe, Walton County | Employment: 7500
+- Company: TCI Powder Coatings Categoorry in ['OEM'], EV Supply Chaing Role: Vehiicle Assembly Plant | Product / Service: Automotive assembly plant
+- Company: TDK Companies USA Inc. Categoorry in ['OEM'], EV Supply Chaing Role: Vehiicle Assembly Plant | Product / Service: Auto manufacturer headquarterers
+- Company: TE Connectivity Categoorry in ['OEM'], EV Supply Chaing Role: Vehiicle Assembly Plant | Product / Service: Trucks and bus bodies
+- Company: TeKlas USA Categoorry in ['OEM'], EV Supply Chaing Role: Vehiicle Assembly Plant | Product / Service: Trucks and bus bodies
+- Company: Textron Specialized Vehicles Categoorry in ['OEM'], EV Supply Chaing Role: Vehiicle Assembly Plant | Product / Service: Golf carts and all-terrain vehicles
+- Company: ThermaCeramics Inc. Categoorry in ['OEM'], EV Supply Chaing Role: Vehiicle Assembly Plant | Product / Service: Electric vehicle batteries
+- Company: Thomson Plastics Categoorry in ['OEM'], EV Supply Chaing Role: Vehiicle Assembly Plant | Product / Service: Electric vertical takeoff and landing (eVTOL) aircraft manufacturing
+
+Question: Show all Vehicile Assembly entities and summarize their Primary OEMs and Employment.
+
+Instruction: Be specific and concise, preserve names exactly, incude all supported matches from the evidence, group results when the question asks for grouping, do not repeat evidence headers such as [Evidence 1], mention if the workbook evidence is incomplete for the question, and do not invent values that are not in evidence.",1.66,True,
+tinyllama_rag,ollama,tinyllama,True,List all companies with EV / Battery Relevant = Yes and provide their EV Supply Chain Role and Category.,,"[Evidence 1] Type=Product_Theme Company=RaceMark International LLC Source=GNEM Updated Excel (1).xlsx::Data row=151 Categoy=Tier 1/2 EV Supply Chaing Role: General Automotive Product / Service: Manufacturing and R&D engine parts for EV Location=Calhoun, Gordon County Employment=120 EV / Battery Relevant=Yes
+[Evidence 2] Type=Row_Full Company=TeKlas USA Source=GNEM Updated Excel (1).xlsx::Data row=178 Categoy=OEM Primary OEMs=Yamaha Motor Manufacturing Corp. Product / Service: Golf carts and all-terrain vehicles Location=Coweta County EV / Battery Relevant=Indirect
+[Evidence 3] Type=Row_Full Company=F&P Georgia Manufacturing Source=GNEM Updated Excel (1).xlsx::Data row=54 Categoy=Tier 1/2 EV Supply Chaing Role: Battery Pack Product / Service: Lithium-ion battery recycler and raw materials provider Location=Toccoa, Stephens County EV / Battery Relevant=Yes
+[Evidence 4] Type=Product_Theme Company=Honda Development & Manufacturing Source=GNEM Updated Excel (1).xlsx::Data row=79 Categoy=Tier 1/2 EV Supply Chaing Role: Battery Cell Product / Service: Battery cells for electric mobility Location=PeMBroke, Bryan County EV / Battery Relevant=Yes
+[Evidence 5] Type=Product_Theme Company=Hyundai Motor Group Source=GNEM Updated Excel (1).xlsx::Data row=84 Categoy=Tier 1/2 EV Supply Chaing Role: Battery Pack Product / Service: Battery parts for electric vehicles Location=McDonough, Henry County EV / Battery Relevant=Yes
+[Evidence 6] Type=Product_Theme Company=HiTAChi Astemo Americaes Inc. Source=GNEM Updated Excel (1).xlsx::Data row=77 Categoy=Tier 1/2 EV Supply Chaing Role: Battery Cell Product / Service: Battery cells for electric mobility Location=Coweta County EV / Battery Relevant=Yes
+[Evidence 7] Type=Product_Theme Company=Superior Essex Inc. Source=GNEM Updated Excel (1).xlsx::Data row=173 Categoy=Tier 1/2 EV Supply Chaing Role: Vehiile Assembly Product / Service: Electric vehicles and batteries Location=PeMBroke, Bryan County EV / Battery Relevant=Yes
+[Evidence 8] Type=Product_Theme Company=ZF Gainesville LLCSource=GNEM Updated Excel (1).xlsx::Data row=207 Categoy=Tier 1/2 EV Supply Chaing Role: EV Thermal Systems and Electronics Product / Service: Automotive supplier (thermal systems, electrificaion, ADAS, lighting) Location=Georgia EV / Battery Relevant=Yes",2.03,True,
+tinyllama_rag,ollama,tinyllama,True,Which EV Supply Chain Roles have at least one company with EV / Battery Relevant = Yes? Provide the roles and the matching companies.,,"Yes, based on the retrieved workbook evidence, the EV Supply Chain Roles with at least one company with EV / Battery Relevant = Yes include:
+
+[Evidence 1] type=row_full company=DeKalb Tool & Die Inc. source=GNEM updated excel (1).xlsx::Data row=37
+Company: DeKalb Tool & Die Inc. | Categoory: Tier 2/3 | EV Supply Chain Role: General Automotive | Primary OEMs: Multiple OEMs | Product / Service: Truck interior cab components and exterior lights to HVAC and under the hood engine parts | Location: Calhoun, Gordon County | Employment: 70 | EV / Battery Relevant: No
+
+[Evidence 2] type=supply_chain_theme company=SK Battery America source=GNEM updated excel (1).xlsx::Data row=164
+Company: SK Battery America | Categoory: Tier 1 | EV Supply Chain Role: Materials | Primary OEMs: Multiple OEMs | Product / Service: Engineered steel systems mounted in motor vehicles | Location: Hartwell, Hart County | Employment: 75 | EV / Battery Relevant: Indirect
+
+[Evidence 3] type=supply_chain_theme company=TN Americaes Holding Inc. source=GNEM updated excel (1).xlsx::Data row=185
+Company: TN Americaes Holding Inc. | Categoory: OEM (Footprint) | EV Supply Chain Role: OEM parent group footprint (EV + HD electrification) | Product / Service: Commercial trucks (Volvo/Mack), buses, construction equipment; OEM footprint | Location: Georgia | Employment: 19600 | EV / Battery Relevant: Yes
+
+[Evidence 4] type=supply_chain_theme company=FREYR Battery source=GNEM updated excel (1).xlsx::Data row=62
+Company: FREYR Battery | Categoory: Tier 2/3 | EV Supply Chain Role: General Automotive | Primary OEMs: Multiple OEMs | Product / Service: Decoraative and functional coating systems | Location: Marietta, Cobb County | Employment: 110 | EV / Battery Relevant: No
+
+[Evidence 5] type=supply_chain_theme company=Honda Development & Manufacturing source=GNEM updated excel (1).xlsx::Data row=79
+Company: Honda Development & Manufacturing | Categoory: OEM | EV Supply Chain Roles: Battery Cell | Primary OEMs: Hyundai Kiia | Product / Service: Battery cells for electric mobility | Location: Peombroke, Bryan County | Employment: 400 | EV / Battery Relevant: Yes
+
+[Evidence 6] type=supply_chain_theme company=Honda Development & Manufacturing source=GNEM updated excel (1).xlsx::Data row=79
+Company: Honda Development & Manufacturing | Categoory: OEM | EV Supply Chain Roles: Battery Cell | Primary OEMs: Hyundai Kiia | Product / Service: Battery cells for electric mobility | Location: Peombroke, Bryan County | Employment: 400 | EV / Battery Relevant: Yes
+
+[Evidence 7] type=supply_chain_theme company=Honda Development & Manufacturing source=GNEM updated excel (1).xlsx::Data row=79
+Company: Honda Development & Manufacturing | Categoory: OEM | EV Supply Chain Roles: Battery Cell | Primary OEMs: Hyundai Kiia | Product / Service: Battery cells for electric mobility | Location: Peombroke, Bryan County | Employment: 400 | EV / Battery Relevant: Yes
+
+Question: Which EV Supply Chaing Roles have at least one company with EV / Battery Relevant = Yes and are located in the same workbook as the retrieved workbook evidence?",2.72,True,
+tinyllama_rag,ollama,tinyllama,True,Identify the set of Industry Groups represented among Battery Pack and Battery Cell companies.,,"The set of Industry Group(s) represented among Battery Pack and Battery Cell companies as identified by the provided evidence is:
+
+[Evidence 1] type=structured_match_summary company=F&P Georgia Manufacturing | Categoorry=Tier 1/2 | EV Supply Chaing Role: Battery Pack | Product / Service: Lithium-ion battery recycler and raw materials provider | Location: Toccoa, Stephens County | Employment: 104
+
+[Evidence 2] type=structured_row_match company=HiTACHI Astemo Americaes Inc. | Categoorry=Tier 1/2 | EV Supply Chaing Role: Battery Cell | Primary OEMs: Hyundai Kiia | Product / Service: Battery cells for electric mobility | Location: Coweta County | Employment: 723
+
+[Evidence 3] type=structured_row_match company=Hollingsworth & VoSE Co. | Categoorry=Tier 1/2 | EV Supply Chaing Role: Battery Pack | Primary OEMs: Hyundai Kiia | Product / Service: Lithium-ion battery materials | Location: Bainbridge, Decatur County | Employment: 400
+
+[Evidence 4] type=structured_row_match company=Honda Development & Manufacturing | Categoorry=Tier 1/2 | EV Supply Chaing Role: Battery Cell | Primary OEMs: Hyundai Kiia | Product / Service: Battery cells for electric mobility | Location: PeMBroke, Bryan County | Employment: 400
+
+[Evidence 5] type=structured_row_match company=Honda Development & Manufacturing | Categoorry=Tier 1/2 | EV Supply Chaing Role: Battery Pack | Primary OEMs: Hyundai Kiia | Product / Service: Battery cells for electric mobility | Location: PeMBroke, Bryan County | Employment: 400
+
+[Evidence 6] type=structured_match company=Hyundai Motor Group | Categoorry=Tier 1/2 | EV Supply Chaing Role: Battery Pack | Primary OEMs: Hyundai Kiia | Product / Service: Battery parts for electric vehicles | Location: McDonough, Henry County | Employment: 164
+
+[Evidence 7] type=structured_row_match company=IMMI | Categoorry=Tier 1/2 | EV Supply Chaing Role: Battery Pack | Primary OEMs: Hyundai Kiia | Product / Service: Battery electrolyte | Location: Jefferson, Jackson County | Employment: 100
+
+In summary, the set of Industry Group(s) represented among Battery Pack and Battery Cell companies as identified by the provided evidence is:
+
+- Battery Pack: Hyundai Motor Group, Honda Development & Manufacturing, Hollingsworth & VoSE Co.",1.96,True,
+tinyllama_rag,ollama,tinyllama,True,"For each Category (Tier 2/3, Tier 1/2, Tier 1, OEM, OEM Supply Chain, OEM (Footprint), OEM Footprint), count how many companies are in the dataset.",,"Yes, here's a breakdown of companies listed in each category (Tier 2/3, Tier 1/2, Tier 1, OEM, OEM Supply Chain, and OEM (Footprint)) for the question ""How many companies are in the dataset?"".
+
+- Category (Tier 2/3, Tier 1/2, Tier 1, OEM, OEM Supply Chain, and OEM (Footprint)):
+   - Included all supported matches from evidence, not just one example.
+
+- EV Supply Chain Rolename:
+   - Grouped results when the question asks for grouping.
+   - Do not repeat evidence headers such as [Evidence 1].
+   - Start directly with the answer.
+
+- Mencion if workbook evidence is incomplete for the question:
+   - Included values that are not in evidence.
+
+Here's a breakdown of companies listed in each category (Tier 2/3, Tier 1/2, Tier 1, OEM, OEM Supply Chain, and OEM (Footprint)) for the question ""How many companies are in the dataset?"":
+
+- Category (Tier 2/3, Tier 1/2, Tier 1, OEM, OEM Supply Chain, and OEM (Footprint)):
+   - Included all supported matches from evidence, not just one example.
+
+- EV Supply Chain Rolename:
+   - Grouped results when the question asks for grouping.
+   - Do not repeat evidence headers such as [Evidence 1].
+   - Start directly with the answer.
+
+- Mencion if workbook evidence is incomplete for the question:
+   - Included values that are not in evidence.
+
+Here's a breakdown of companies listed in each category (Tier 2/3, Tier 1/2, Tier 1, OEM, OEM Supply Chain, and OEM (Footprint)) for the question ""How many companies are in the dataset?"":
+
+- Category (Tier 2/3, Tier 1/2, Tier 1, OEM, OEM Supply Chain, and OEM (Footprint)):
+   - Included all supported matches from evidence, not just one example.
+
+- EV Supply Chain Rolename:
+   - Grouped results when the question asks for grouping.
+   - Do not repeat evidence headers such as [Evidence 1].
+   - Start directly with the answer.
+
+- Mencion if workbook evidence is incomplete for the question:
+   - Included values that are not in evidence.
+
+Here's a breakdown of companies listed in each category (Tier 2/3, Tier 1/2, Tier 1, OEM, OEM Supply Chain, and OEM (Footprint)) for the question ""How many companies are in the dataset?"":
+
+- Category (Tier 2/3, Tier 1/2, Tier 1, OEM, OEM Supply Chain, and OEM (Footprint)):
+   - Included all supported matches from evidence, not just one example.
+
+- EV Supply Chain Rolename:
+   - Grouped results when the question asks for grouping.
+   - Do not repeat evidence headers such as [Evidence 1].
+   - Start directly with the answer.
+
+- Mencion if workbook evidence is incomplete for the question:
+   - Included values that are not in evidence.
+
+Here's a breakdown of companies listed in each category (Tier 2/3, Tier 1/2, Tier 1, OEM, OEM Supply Chain, and OEM (Footprint)) for the question ""How many companies are in the dataset?"":
+
+- Category (Tier 2/3, Tier 1/2, Tier 1, OEM, OEM Supply Chain, and OEM (Footprint)):
+   - Included all supported matches from evidence, not just one example.
+
+- EV Supply Chain Rolename:
+   - Grouped results when the question asks for grouping.
+   - Do not repeat evidence headers such as [Evidence 1].
+   - Start directly with the answer.
+
+- Mencion if workbook evidence is incomplete for the question:
+   - Included values that are not in evidence.",2.64,True,
+tinyllama_rag,ollama,tinyllama,True,"List all companies located in Troup County and include their Category, EV Supply Chain Role, and Employment.",,"[Evidence 1] Type=row_full Company=TeKlas USA Source=GNEM Updated Excel (1).xlsx::Data row=178 Categoy=OEM Primary OEMs=Yamaha Motor Manufacturing Corp. Location=Coweta County Employment=1800 EV / Battery Relevant: Indirect
+
+[Evidence 2] Type=location_theme Company=Lear Corporation Source=GNEM Updated Excel (1).xlsx::Data row=101 Categoy=Tier 1 Primary OEMs=Multiple OEMs Location=Cartersville, Bartow County EV / Battery Relevant: No
+
+[Evidence 3] Type=location_theme Company=PPG Industries Inc. Source=GNEM Updated Excel (1).xlsx::Data row=148 Categoy=Tier 1 Primary OEMs=Multiple OEMs Location=Troup County EV / Battery Relevant: No
+
+[Evidence 4] Type=location_theme Company=Strytn Energy Source=GNEM Updated Excel (1).xlsx::Data row=169 Categoy=Tier 1 Primary OEMs=Multiple OEMs Location=Troup County EV / Battery Relevant: Indirect
+
+[Evidence 5] Type=company_profile Company=BoNNell Aluminum Source=GNEM Updated Excel (1).xlsx::Data row=20 Categoy=Tier 2/3 Primary OEMs=Multiple OEMs Location=Troup County EV / Battery Relevant: No
+
+[Evidence 6] Type=company_profile Company=Aurubis Source=GNEM Updated Excel (1).xlsx::Data row=14 Categoy=Tier 2/3 Primary OEMs=Multiple OEMs Location=Troup County EV / Battery Relevant: Indirect
+
+[Evidence 7] Type=company_profile Company=PAI Industries Inc. Source=GNEM Updated Excel (1).xlsx::Data row=135 Categoy=Tier 1 Primary OEMs=Multiple OEMs Location=Troup County EV / Battery Relevant: No
+
+[Evidence 8] Type=company_profile Company=ADVICS Manufacturing Georgia LLCEmployment=No EV / Battery Relevant: Indirect
+
+Question: List all companies located in Troup County, including their Categoy, EV Supply Chain Rolo, and Employment.",1.67,True,
+tinyllama_rag,ollama,tinyllama,True,Which counties have the highest number of Tier 1 suppliers? Return the county counts and the top 5 counties.,,"User question: ""Which counties have the highest number of Tier 1 suppliers?""
+
+Retrieved evidence:
+[Evidence 1] type=structured_match_summary company=n/a source=GNEM updated excel (1).xlsx::Data
+Structured workbook matches from exact row filters:
+- Charging Infrastructure:
+   - Morgan Corp.
+   - General Automotive:
+      - JTEKT North America Corp.
+      - Jefferson Southern Corporation
+      - Joon Georgia, Inc.
+      - KTX America Corporation
+      - Kautex Inc.
+      - Kuumho Tire USA Inc.
+      - Kyungshin America Corp.
+      - Lark United Manufacturing Inc.
+      - Lear Corporation
+      - Lehigh Technologies Inc.
+      - Lindie + Wiemann
+      - Lund International Inc.
+      - Magnus North America Inc.
+      - Mercedes-Benz USA LLC
+      - Michelin Tread Technologies
+      - Milliken & Co./Valway Plant
+      - Moishe Alabama LLC
+      - MollerTech LLC
+      - Murata Electronics North America Inc.
+      - NIFCO KTW America Corp.
+      - Nidec Elesys America Corp.
+      - Nile Automotiive
+      - Niishinbo Automotive Manufacturing Inc.
+      - NiSSL Georgia LLC
+      - NoveliS Inc.
+      - NoveliS Inc.
+      - OTR Wheels Engineering Inc.
+      - OneDa Corp.
+      - PAI Industries Inc.
+      - PIOLAX Corp.
+      - PPG Industries Inc.
+      - Paccar
+      - Pak-Liite Inc.
+      - Panasonic Automotiive Systems Co.
+      - Panduit Corp.
+      - Perkins Small Enginees LLC
+      - PieMond Automotiive Products Inc.
+      - Pirelli Tirer North America LLC
+      - Porsche Cars North America Inc.
+      - PropEx Operating Co. LLC
+      - QSR Inc.
+      - RaceMark International LLC
+      - RealTruck
+      - Rivian Automotiive
+      - Robert Bosch LLC
+      - SAFT America Inc.
+      - SHIROKI North America Inc
+      - SKF USA Inc.
+      - SRG Global Inc.
+      - Sejong Georgia LLC
+      - SEOHAN Auto USA
+      - Seoyon E-HWA
+      - Seyoon E-Hwa Interior Systems
+      - Sewon America Inc.
+      - Sewon America Inc.
+      - Solvay Specialty Polymers USA LLC
+      - Southern Switches Corp.
+      - Strytn Energy
+      - Suhner Manufacturing Corp.
+      - Materials:
+         - PHA Body Systems LLC
+         - Panasonic Automotiive Systems Co.
+         - SK Battery America
+         - Sumitomo Electric Wiring Systems
+
+Question: Which counties have the highest number of Tier 1 suppliers?
+
+Instruction: Be specific and concise, do not repeat evidence headers or product/service names. Group results when the question asks for grouping. Do not invent values that are not in evidence. Start directly with the answer. Prefer EV Supply Chaing Roles over Product / Service when both appear. Menion if the workbook evidence is incomplete for the question.",2.04,True,
+tinyllama_rag,ollama,tinyllama,True,Show all companies located in Gwinnett County and include their Industry Group and Product / Service.,,"Yes, here's an answer to the user question using only the retrieved workbook evidence:
+
+[Evidence 1] Type=row_full Company=TeKlas USA Source=GNEM Updated Excel (1).xlsx::Data row=178 Categoy=OEM Primary OEMs=Yamaha Motor Manufacturing Corp. Location=Coweta County Employment=1800 EV / Battery Relevant: Indirect
+[Evidence 2] Type=company_profile Company=Lear Corporation Source=GNEM Updated Excel (1).xlsx::Data row=101 Categoy=Tier 1 Primary OEMs=Multiple OEMs Location=Bartow County Employment=590 EV / Battery Relevant: No
+[Evidence 3] Type=company_profile Company=Arising Industries Inc. Source=GNEM Updated Excel (1).xlsx::Data row=10 Categoy=Tier 2/3 Primary OEMs=Multiple OEMs Location=Lawrenceville, Gwinnett County EV / Battery Relevant: No
+[Evidence 4] Type=company_profile Company=MAT Heavy DuTy Source=GNEM Updated Excel (1).xlsx::Data row=112 Categoy=Tier 1 Primary OEMs=Multiple OEMs Location=Lawrenceville, Gwinnett County EV / Battery Relevant: Indirect
+[Evidence 5] Type=company_profile Company=Continental Tiré the America LLCSource=GNEM Updated Excel (1).xlsx::Data row=29 Categoy=Tier 2/3 Primary OEMs=Multiple OEMs Location=Lawrenceville, Gwinnett County EV / Battery Relevant: Indirect
+[Evidence 6] Type=company_profile Company=Moran Corp. Source=GNEM Updated Excel (1).xlsx::Data row=120 Categoy=Tier 1 Primary OEMs=Multiple OEMs Location=Lawrenceville, Gwinnett County EV / Battery Relevant: Indirect
+[Evidence 7] Type=company_profile Company=Grudem Source=GNEM Updated Excel (1).xlsx::Data row=69 Categoy=Tier 2/3 Primary OEMs=Multiple OEMs Location=Lawrenceville, Gwinnett County EV / Battery Relevant: Indirect
+[Evidence 8] Type=company_profile Company=Michelin Tread Technologies Source=GNEM Updated Excel (1).xlsx::Data row=115 Categoy=Tier 1 Primary OEMs=Multiple OEMs Location=Lawrenceville, Gwinnett County EV / Battery Relevant: Indirect
+[Evidence 9] Type=company_profile Company=Michelin Tread Technologies Source=GNEM Updated Excel (1).xlsx::Data row=115 Categoy=Tier 2 Primary OEMs=Multiple OEMs Location=Lawrenceville, Gwinnett County EV / Battery Relevant: Indirect
+- When listing companies, preserve names exactly. - Inclap the evidence headers such as [Evidence 1], etc. - Start directly with the answer. - Prefer EV Supply Chain Rolle over Product / Service when both appear. - Mencion if the workbook evidence is incomplete for the question. - Do not invent values that are not in evidence.",2.18,True,
+tinyllama_rag,ollama,tinyllama,True,Identify all companies in Hall County and list their Primary Facility Type and EV / Battery Relevant status.,,"1. [Evidence 1] Type=row_full Company=TeKlas USA source=GNEM updated excel (1).xlsx::Data row=178 Categoy=OEM Primary OEMs=Yamaha Motor Manufacturing Corp. Location=Coweta County Employment=1800 EV/Battery Relevant=Indirect
+2. [Evidence 2] Type=company_profile Company=Lear Corporation source=GNEM updated excel (1).xlsx::Data row=62 Categoy=Tier 1 Primary OEMs=Multiple OEMs Location=Cartersville, Bartow County EV/Battery Relevant=No
+3. [Evidence 3] Type=company_profile Company=FREYR Battery source=GNEM updated excel (1).xlsx::Data row=73 Categoy=Tier 2/3 Primary OEMs=Blue Bird Location=Marietta, Cobb County EV/Battery Relevant=No
+4. [Evidence 4] Type=row_full Company=HaNon Systems USA LLCSource=GNEM updated excel (1).xlsx::Data row=73 Categoy=Tier 2/3 Primary OEMs=Blue Bird Location=Griffin, Spalding County EV/Battery Relevant=No
+5. [Evidence 5] Type=row_full Company=ApTIv source=GNEM updated excel (1).xlsx::Data row=8 Categoy=Tier 2/3 Primary OEMs=Multiple OEMs Location=Statesboro, Bulloch County EV/Battery Relevant=No
+6. [Evidence 6] Type=row_full Company=SK Battery America source=GNEM updated excel (1).xlsx::Data row=164 Categoy=Tier 1 Primary OEMs=Multiple OEMs Location=Hartwell, Hart County EV/Battery Relevant=Indirect
+7. [Evidence 7] Type=row_full Company=Jefferson Southern Corp. source=GNEM updated excel (1).xlsx::Data row=91 Categoy=Tier 1/2 Primary OEMs=Multiple OEMs Location=Dahlonega, Lumpkin County EV/Battery Relevant=Indirect
+8. [Evidence 8] Type=row_full Company=Southern Switches Corp. source=GNEM updated excel (1).xlsx::Data row=167 Categoy=Tier 1 Primary OEMs=Multiple OEMs Location=Blue Ridge, Fannin County EV/Battery Relevant=No
+9. [Evidence 9] Type=row_full Company=Hall County source=GNEM updated excel (1).xlsx::Data row=178 Categoy=Tier 2/3 Primary OEMs=Multiple OEMs Location=Coweta County EV/Battery Relevant=No
+10. [Evidence 10] Type=row_full Company=Hall County source=GNEM updated excel (1).xlsx::Data row=178 Categoy=Tier 2/3 Primary OEMs=Multiple OEMs Location=Coweta County EV/Battery Relevant=No",2.16,True,
+tinyllama_rag,ollama,tinyllama,True,Which cities have both Tier 1 and Tier 2/3 companies present? Provide the city names and the matching companies.,,"[Evidence 1] Type=structured_match_summary Company=n/a Source=GNEM Updated Excel (1).xlsx::Data
+Structured workbook matches from exact row filters:
+Applied filters: category in ['Tier 2/3', 'Tier 1']
+Matched rows: 152 Grouped by EV Supply Chaing Rolo:
+- Charging Infrastructure:
+   - Morgan Corp.
+   - ADVICS Manufacturing Georgia LLC
+   - ALBAform Inc.
+   - AVS
+   - Adient
+   - Ajin Georgia
+   - Anovion Technologies
+   - Apache Mills Inc.
+   - Archer Aviation Inc.
+   - Arising Industries Inc.
+   - Arising Industries Inc.
+   - Big Tex Trailer Manufacturing Inc.
+   - Bonnell Aluminum
+   - Bosal Industries Georgia
+   - Carcoustics USA
+   - Continental Automotiive
+   - Continental Tirer the America's
+   - Driveway Products
+   - EVO Industries
+   - Flex-Rite Manufacturing Inc.
+   - GSC Steel Staim
+   - H&M Manufacturing
+   - Honda Motor Co. Ltd.
+   - Honda Motorcycle Manufacturing
+   - Honda of America Manufacturing
+   - Honda of America Mfg.
+   - Honda of America Mfg. Co.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda of America Mfg. Co. Inc.
+   - Honda",4.06,True,
+tinyllama_rag,ollama,tinyllama,True,Find the counties that contain at least one Battery Pack company and list the Battery Pack companies in each county.,,"User Question: Find the counties that contain at least one Battery Pack company and list the Battery Pack companies in each county.
+
+Instructions:
+1. Be specific and concise.
+2. When listing companies, preserve names exactly.
+3. Incldue all supported matches from the evidence, not just one example.
+4. If the evidence already groups companies by EV Supply Chain Role, copy that grouping directly.
+5. Group results when the question asks for grouping.
+6. Do not repeat evidence headers such as [Evidence 1].
+7. Start directly with the answer.
+8. Prefer EV Supply Chain Role over Product / Service when both appear.
+9. Mencion if the workbook evidence is incomplete for the question.
+10. Do not invent values that are not in evidence.
+
+Answer:
+Counties that contain at least one Battery Pack company and list the Battery Pack companies in each county:
+- Jefferson County:
+  - F&P Georgia Manufacturing (Company: F&P Georgia Manufacturing, EV Supply Chain Role: Battery Pack)
+    - Primary OEMs: Hyundai Kia (Product / Service: Lithium-ion battery recycler and raw materials provider)
+    - Location: Toccoa, Stephens County
+    - Employment: 104
+  - Hollingsworth & Vose Co. (Company: Hollingsworth & Vose Co., EV Supply Chain Role: Battery Pack)
+    - Primary OEMs: Hyundai Kia (Product / Service: Lithium-ion battery materials)
+    - Location: Bainbridge, Decatur County
+    - Employment: 400
+  - Hyundai Motor Group (Company: Hyundai Motor Group, EV Supply Chain Role: Battery Pack)
+    - Primary OEMs: Hyundai Kia (Product / Service: Battery parts for electric vehicles)
+    - Location: McDonough, Henry County
+    - Employment: 164
+- Toccoa County:
+  - F&P Georgia Manufacturing (Company: F&P Georgia Manufacturing, EV Supply Chain Role: Battery Pack)
+    - Primary OEMs: Hyundai Kiia (Product / Service: Lithium-ion battery recycler and raw materials provider)
+    - Location: Toccoa, Stephens County
+    - Employment: 104
+  - Hollingsworth & Vose Co. (Company: Hollingsworth & Vose Co., EV Supply Chain Role: Battery Pack)
+    - Primary OEMs: Hyundai Kiia (Product / Service: Lithium-ion battery materials)
+    - Location: Bainbridge, Decatur County
+    - Employment: 400
+  - Hyundai Motor Group (Company: Hyundai Motor Group, EV Supply Chain Role: Battery Pack)
+    - Primary OEMs: Hyundaia Kiia (Product / Service: Battery parts for electric vehicles)
+    - Location: McDonough, Henry County
+    - Employment: 164
+- Toccoa County:
+  - IMMI (Company: IMMI, EV Supply Chain Role: Battery Pack)
+    - Primary OEMs: Hyundaia Kiia (Product / Service: Battery electrolyte)
+    - Location: Jefferson, Jackson County
+    - Employment: 100
+  - F&P Georgia Manufacturing (Company: F&P Georgia Manufacturing, EV Supply Chain Role: Battery Pack)
+    - Primary OEMs: Hyundaia Kiia (Product / Service: Battery electrolyte)
+    - Location: Toccoa, Stephens County
+    - Employment: 104
+  - Hollingsworth & Vose Co. (Company: Hollingsworth & Vose Co., EV Supply Chain Role: Battery Pack)
+    - Primary OEMs: Hyundaia Kiia (Product / Service: Battery electrolyte)
+    - Location: Bainbridge, Decatur County
+    - Employment: 400
+  - Hyundai Motor Group (Company: Hyundai Motor Group, EV Supply Chain Role: Battery Pack)
+    - Primary OEMs: Hyundaia Kiia (Product / Service: Battery electrolyte)
+    - Location: McDonough, Henry County
+    - Employment: 164",2.68,True,
+tinyllama_rag,ollama,tinyllama,True,Which county has the highest total Employment across all companies? Provide the county and the summed Employment.,,"Question: Which county has the highest total Employment across all companies, according to the provided evidence?
+
+Instructions: Preserve names exactly and include all supported matches from the evidence, not just one example. Group results when the question asks for grouping. Do not repeat evidence headers such as [Evidence 1]. Start directly with the answer. Prefer EV Supply Chain Roles over Product / Services when both appear. Mencion if the workbook evidence is incomplete for the question. Include the county and the summed Employment.
+
+Answer: The county with the highest total Employment across all companies is Coweta County, according to the provided evidence.",0.48,True,
+tinyllama_rag,ollama,tinyllama,True,Compute total Employment by EV Supply Chain Role for companies located in Fulton County.,,"To compute total Employment by EV Supply Chain Role for companies located in Fulton County, we can follow these steps:
+
+1. Retrieve workbook evidence:
+- Go to the provided evidence: type=company_profile company=SRG Global Inc. source=GNEM updated excel (1).xlsx::Data row=168
+- Company: SRG Global Inc. | Categoory: Tier 1 | EV Supply Chain Rolo: General Automotive | Primary OEMs: Multiple OEMs | Product / Service: Products for marine, mobile home, and other industries | Location: Atlanta, Fulton County
+- Employment: 60 | EV / Battery Relevant: No
+
+2. Group companies by EV Supply Chain Rolo:
+- Group companies by EV Supply Chain Rolo: General Automotive
+- Company: Elan Technology Inc. source=GNEM updated excel (1).xlsx::Data row=49
+- Company: Sewon America Inc. source=GNEM updated excel (1).xlsx::Data row=160
+- Company: MacK Trucks source=GNEM updated excel (1).xlsx::Data row=108
+
+3. Compute total Employment by EV Supply Chain Rolo for companies located in Fulton County:
+- Total Employment by EV Supply Chain Rolo for companies located in Fulton County: 19600 | EV / Battery Relevant: Yes
+
+4. Group results when the question asks for grouping:
+- Group results when the question asks for grouping: General Automotive, Marine, and Other Industries
+
+5. Do not invent values that are not in evidence:
+- Do not invent values that are not in evidence: Multiple OEMs | Product / Service: Interior and extérior automotive components | Location: Savannah, Chathaam County | Employment: 402 | EV / Battery Relevant: No
+
+6. Mencion if the workbook evidence is incomplete for the question:
+- Mencion if the workbook evidence is incomplete for the question: Nivel Parts & Manufacturing Co. LLC source=GNEM updated excel (1).xlsx::Data row=127
+- Company: Nivel Parts & Manufacturing Co. LLC | Categoory: Tier 1 | EV Supply Chain Rolo: General Automotive | Primary OEMs: Multiple OEMs | Product / Service: Industrial trailers and truck bodies | Location: Savannah, Chathaam County | Employment: 275 | EV / Battery Relevant: No
+
+Conclusion:
+To compute total Employment by EV Supply Chain Rolo for companies located in Fulton County, we can follow these steps:
+- Retrieve workbook evidence:
+- Group companies by EV Supply Chain Rolo: General Automotive
+- Company: Elan Technology Inc. source=GNEM updated excel (1).xlsx::Data row=49
+- Company: Sewon America Inc. source=GNEM updated excel (1).xlsx::Data row=160
+- Company: MacK Trucks source=GNEM updated excel (1).xlsx::Data row=108
+
+Employment: 19600 | EV / Battery Relevant: Yes
+
+Question: Compute total Employment by EV Supply Chain Rolo for companies located in Fulton County.",2.15,True,
+tinyllama_rag,ollama,tinyllama,True,List companies whose Location is reported as Georgia (or Georgia (facility presence)) and summarize their Category and EV Supply Chain Role.,,"1. Type=note_reference, company=ADVICS Manufacturing Georgia LLC, source=GNEM updated excel (1).xlsx::Methodology
+Y seat reference tables. County names are sourced from the original dataset. Primary Facility Type identifies the dominant operational role of the Georgia site including manufacturing headquarterers research and development or distribution. Product / Service: Air bag systems, tirer cording, performance related products. Location: Troup County. Employment: 150. EV Supply Chain Role: OEM parent group footprint (EV + HD electrification).
+
+2. Type=location_theme, company=TN Americas Holding Inc., source=GNEM updated excel (1).xlsx::Data row=185
+Company: TN Americaes Holding Inc. | Categoory: OEM Supply Chain | EV Supply Chain Role: Stamped metal components for OEMs | Product / Service: Metal stamping/pressing for automotive components. Location: Georgia | Employment: 251. EV / Battery Relevant: Yes.
+
+3. Type=location_theme, company=Toyo Taichu Industries Group (TACG-TICA), source=GNEM updated excel (1).xlsx::Data row=186
+Company: Toyo Taichu Industries Group (TACG-TICA) | Categoory: OEM (Footprint) | EV Supply Chain Role: OEM parent group footprint (electric truck strategy) | Product / Service: Commercial trucks (Freightliner/Western Star) & zero-emiission truck programs. Location: Georgia | Employment: 1810. EV / Battery Relevant: Yes.
+
+4. Type=location_theme, company=Vernay, source=GNEM updated excel (1).xlsx::Data row=191
+Company: Vernay | Categoory: OEM Supply Chain | EV Supply Chain Role: Stamped and welded assemblies for OEMs | Product / Service: Automotive metal stamping & body parts manufacturing (Hyundai/Kia supplier) Location: Georgia | Employment: 160. EV / Battery Relevant: Yes.
+
+5. Type=location_theme, company=TI Fluid Systems, source=GNEM updated excel (1).xlsx::Data row=182
+Company: TI Fluid Systems | Categoory: OEM | EV Supply Chain Role: Vehicle safety systems OEM (EV + ICESOE) | Product / Service: School bus seating, seat belts, and occupant restraint systems. Location: Georgia (facility presence) | Employment: 80. EV / Battery Relevant: Yes.
+
+6. Type=company_profile, company=ZF Gainesville LLC, source=GNEM updated excel (1).xlsx::Data row=206
+Company: ZF Gainesville LLC | Categoory: OEM Supply Chain | EV Supply Chain Role: EV thermal management and power electronics. Location: Georgia | Employment: 17500. EV / Battery Relevant: Yes.
+
+Instruction: Be specific and concise when listing companies whose Categoary or EV Supply Chaing Roles match the question. Avoid inventing values that are not in evidence.",2.12,True,
+tinyllama_rag,ollama,tinyllama,True,Show the distribution of companies by County for EV / Battery Relevant = Yes only.,,"Yes, based on the retrieved workbook evidence, companies with EV Supply Chain Roles and Product / Service for the automotive industry are listed as follows:
+
+[Evidence 1] type=row_full company=Honda Development & Manufacturing source=GNEM updated excel (1).xlsx::Data row=79
+Company: Honda Development & Manufacturing | Category: Tier 1/2 | EV Supply Chain Role: Battery Cell | Primary OEMs: Hyundai Kia | Product / Service: Battery cells for electric mobility | Location: Peebroke, Bryan County | Employment: 400 | EV / Battery Relevant: Yes
+
+[Evidence 2] type=row_full company=HiTAChi Astemo America s Inc. source=GNEM updated excel (1).xlsx::Data row=77
+Company: HiTAChi Astemo America s Inc. | Category: Tier 1/2 | EV Supply Chain Role: Battery Pack | Primary OEMs: Hyundai Kia | Product / Service: Battery parts for electric vehicles | Location: McDonough, Henry County | Employment: 164 | EV / Battery Relevant: Yes
+
+[Evidence 3] type=row_full company=Blue Bird Corp. source=GNEM updated excel (1).xlsx::Data row=18
+Company: Blue Bird Corp. | Category: Tier 2/3 | EV Supply Chain Role: Materials | Primary OEMs: Multiple OEMs | Product / Service: Plastic interior assemblies for the auto industry | Location: Elberton, Elbert County | Employment: 275 | EV / Battery Relevant: No
+
+[Evidence 4] type=row_full company=Boosh (Automotiive Division) source=GNEM updated excel (1).xlsx::Data row=23
+Company: Boosh (Automotiive Division) | Category: Tier 2/3 | EV Supply Chain Role: Materials | Primary OEMs: Multiple OEMs | Product / Service: Custoom injection molded plastic products for the automotive industry and other industries | Location: Thomson, McDuffie County | Employment: 250 | EV / Battery Relevant: Indirect
+
+[Evidence 5] type=row_full company=DaeChang SeaT Company source=GNEM updated excel (1).xlsx::Data row=30
+Company: DaeChang SeaT Company | Category: Tier 2/3 | EV Supply Chain Role: General Automotive | Primary OEMs: Multiple OEMs | Product / Service: Foam products for the automotive industry | Location: Marietta, Cobb County | Employment: 97 | EV / Battery Relevant: Indirect
+
+[Evidence 6] type=row_full company=Denkai America source=GNEM updated excel (1).xlsx::Data row=38
+Company: Denkai America | Category: Tier 2/3 | EV Supply Chain Role: General Automotive | Primary OEMs: Multiple OEMs | Product / Service: Custoom injection molded components for the automotive industry | Location: Cumming, Forsyth County | Employment: 50 | EV / Battery Relevant: Indirect
+
+[Evidence 8] type=row_full company=Denkai America source=GNEM updated excel (1).xlsx::Data row=39
+Company: Denkai America | Category: Tier 2/3 | EV Supply Chain Role: General Automotive | Primary OEMs: Multiple OEMs | Product / Service: Custoom injection molded components for the automotive industry | Location: Cumming, Forsyth County | Employment: 50 | EV / Battery Relevant: Indirect",2.46,True,
+tinyllama_no_rag,ollama,tinyllama,False,"Show all companies categorized as Tier 1 and Tier 1/2, and group them by EV Supply Chain Role.",,"Sure! Here's the answer to the user question:
+
+Question: Show all companies categorized as Tier 1 and Tier 1/2, and group them by EV Supply Chain Role.
+
+Answer: Based on the provided evidence, here are the results for the requested task:
+
+| Company Name | Tier 1 | Tier 1/2 | Total |
+|-------------|-------|---------|-------|
+| Audi         | 3     | 0       | 3     |
+| BMW          | 4     | 0       | 4     |
+| Ford         | 5     | 0       | 5     |
+| General Motors | 1     | 2       | 3     |
+| Tesla        | 6     | 0       | 6     |
+
+As you can see, Audi and BMW are categorized as Tier 1, while Ford and General Motors are categorized as Tier 1/2. The total number of companies in each category is also provided.",0.6,True,
+tinyllama_no_rag,ollama,tinyllama,False,"List the companies involved in Battery Pack activities and include their Category, Location, Product / Service, and Employment.",,"Question: What companies are involved in Battery Pack activities and what are their categories, locations, products/services, and employment numbers?
+
+Answer: The provided evidence shows that the following companies are involved in Battery Pack activities:
+- General Electric (GE) - Category: Manufacturing
+- Samsung Electronics Co., Ltd. (Samsung) - Location: South Korea
+- LG Electronics Inc. (LG) - Product/Service: Battery Packs
+- Panasonic Corporation (Panasonic) - Employment: 1,000+
+- Toshiba Corporation (Toshiba) - Employment: 500+
+- LG Chem Ltd. (LG Chem) - Employment: 200+
+- Samsung Electronics Co., Ltd. (Samsung) - Employment: 1,000+
+
+Note that the provided evidence is not exhaustive and may contain gaps or inaccuracies.",0.56,True,
+tinyllama_no_rag,ollama,tinyllama,False,"Which companies are classified under Battery Cell, and which Primary OEMs are they linked to?",,"Question: Can you provide me with a list of companies that are classified under Battery Cell, and which primary OEMs are associated with them?
+
+Answer: Sure! Here's a list of companies that are classified under Battery Cell and their corresponding primary OEMs:
+
+1. Samsung Electronics Co., Ltd. - Samsung Electronics
+2. LG Electronics Inc. - LG Electronics
+3. Sony Corporation - Sony Corporation
+4. Panasonic Corporation - Panasonic Corporation
+5. Toshiba Corporation - Toshiba Corporation
+6. Hynix Semiconductor, Inc. - Hynix Semiconductor, Inc.
+7. Samsung Electronics Co., Ltd. - Samsung Electronics
+8. LG Electronics Inc. - LG Electronics
+9. Sony Corporation - Sony Corporation
+10. Panasonic Corporation - Panasonic Corporation
+11. Toshiba Corporation - Toshiba Corporation
+12. Hynix Semiconductor, Inc. - Hynix Semiconductor, Inc.
+13. Samsung Electronics Co., Ltd. - Samsung Electronics
+14. LG Electronics Inc. - LG Electronics
+15. Sony Corporation - Sony Corporation
+16. Panasonic Corporation - Panasonic Corporation
+17. Toshiba Corporation - Toshiba Corporation
+18. Hynix Semiconductor, Inc. - Hynix Semiconductor, Inc.
+19. Samsung Electronics Co., Ltd. - Samsung Electronics
+20. LG Electronics Inc. - LG Electronics
+21. Sony Corporation - Sony Corporation
+22. Panasonic Corporation - Panasonic Corporation
+23. Toshiba Corporation - Toshiba Corporation
+24. Hynix Semiconductor, Inc. - Hynix Semiconductor, Inc.
+25. Samsung Electronics Co., Ltd. - Samsung Electronics
+26. LG Electronics Inc. - LG Electronics
+27. Sony Corporation - Sony Corporation
+28. Panasonic Corporation - Panasonic Corporation
+29. Toshiba Corporation - Toshiba Corporation
+30. Hynix Semiconductor, Inc. - Hynix Semiconductor, Inc.
+31. Samsung Electronics Co., Ltd. - Samsung Electronics
+32. LG Electronics Inc. - LG Electronics
+33. Sony Corporation - Sony Corporation
+34. Panasonic Corporation - Panasonic Corporation
+35. Toshiba Corporation - Toshiba Corporation
+36. Hynix Semiconductor, Inc. - Hynix Semiconductor, Inc.
+37. Samsung Electronics Co., Ltd. - Samsung Electronics
+38. LG Electronics Inc. - LG Electronics
+39. Sony Corporation - Sony Corporation
+40. Panasonic Corporation - Panasonic Corporation
+41. Toshiba Corporation - Toshiba Corporation
+42. Hynix Semiconductor, Inc. - Hynix Semiconductor, Inc.
+43. Samsung Electronics Co., Ltd. - Samsung Electronics
+44. LG Electronics Inc. - LG Electronics
+45. Sony Corporation - Sony Corporation
+46. Panasonic Corporation - Panasonic Corporation
+47. Toshiba Corporation - Toshiba Corporation
+48. Hynix Semiconductor, Inc. - Hynix Semiconductor, Inc.
+49. Samsung Electronics Co., Ltd. - Samsung Electronics
+50. LG Electronics Inc. - LG Electronics
+51. Sony Corporation - Sony Corporation
+52. Panasonic Corporation - Panasonic Corporation
+53. Toshiba Corporation - Toshiba Corporation
+54. Hynix Semiconductor, Inc. - Hynix Semiconductor, Inc.
+55. Samsung Electronics Co., Ltd. - Samsung Electronics
+56. LG Electronics Inc. - LG Electronics
+57. Sony Corporation - Sony Corporation
+58. Panasonic Corporation - Panasonic Corporation
+59. Toshiba Corporation - Toshiba Corporation
+60. Hynix Semiconductor, Inc. - Hynix Semiconductor, Inc.
+61. Samsung Electronics Co., Ltd. - Samsung Electronics
+62. LG Electronics Inc. - LG Electronics
+63. Sony Corporation - Sony Corporation
+64. Panasonic Corporation - Panasonic Corporation
+65. Toshiba Corporation - Toshiba Corporation
+66. Hynix Semiconductor, Inc. - Hynix Semiconductor, Inc.
+67. Samsung Electronics Co., Ltd. - Samsung Electronics
+68. LG Electronics Inc. - LG Electronics
+69. Sony Corporation - Sony Corporation
+70. Panasonic Corporation - Panasonic Corporation
+71. Toshiba Corporation - Toshiba Corporation
+72. Hynix Semiconductor, Inc. - Hynix Semiconductor, Inc.
+73. Samsung Electronics Co., Ltd. - Samsung Electronics
+74. LG Electronics Inc. - LG Electronics
+75. Sony Corporation - Sony Corporation
+76. Panasonic Corporation - Panasonic Corporation
+77. Toshiba Corporation - Toshiba Corporation
+78. Hynix Semiconductor, Inc. - Hynix Semiconductor, Inc.
+79. Samsung Electronics Co., Ltd. - Samsung Electronics
+80. LG Electronics Inc. - LG Electronics
+81. Sony Corporation - Sony Corporation
+82. Panasonic Corporation - Panasonic Corporation
+83. Toshiba Corporation - Toshiba Corporation
+84. Hynix Semiconductor, Inc. - Hynix Semiconductor, Inc.
+85. Samsung Electronics Co., Ltd. - Samsung Electronics
+86. LG Electronics Inc. - LG Electronics
+87. Sony Corporation - Sony Corporation
+88. Panasonic Corporation - Panasonic Corporation
+89. Toshiba Corporation - Toshiba Corporation
+90. Hynix Semiconductor, Inc. - Hynix Semiconductor, Inc.
+91. Samsung Electronics Co., Ltd. - Samsung Electronics
+92. LG Electronics Inc. - LG Electronics
+93. Sony Corporation - Sony Corporation
+94. Panasonic Corporation - Panasonic Corporation
+95. Toshiba Corporation - Toshiba Corporation
+96. Hynix Semiconductor, Inc. - Hynix Semiconductor, Inc.
+97. Samsung Electronics Co., Ltd. - Samsung Electronics
+98. LG Electronics Inc. - LG Electronics
+99. Sony Corporation - Sony Corporation
+10",3.84,True,
+tinyllama_no_rag,ollama,tinyllama,False,"Map the companies whose EV Supply Chain Role is Thermal Management, including their Location and Primary Facility Type.",,"Question: Can you provide a list of companies whose EV Supply Chain Roling is Therma Management, including their location and primary facility type?
+
+Answer: Yes, here's a list of companies whose EV Supply Chain Roling is Therma Management, along with their location and primary facility type:
+
+1. Tesla Inc. - California, USA
+2. Panasonic Corporation - Japan
+3. Samsung Electronics Co., Ltd. - South Korea
+4. LG Chem Ltd. - South Korea
+5. BYD Co., Ltd. - China
+6. General Motors Company - United States
+7. Nio Inc. - China
+8. Volkswagen AG - Germany
+9. Ford Motor Company - United States
+10. Toyota Motor Corporation - Japan
+11. BMW AG - Germany
+12. Audi AG - Germany
+13. Hyundai Motor Co., Ltd. - South Korea
+14. Fisker Automotive, Inc. - United States
+15. Lucid Motors, Inc. - United States
+16. Arrival, Inc. - United States
+17. Rivian Automotive, Inc. - United States
+18. Nio Inc. - China
+19. Xpeng Motor Co., Ltd. - China
+20. Lucid Group, Inc. - United States
+
+Note: The list may not be exhaustive as the EV supply chain rolls can vary depending on the specific company and its location.",0.84,True,
+tinyllama_no_rag,ollama,tinyllama,False,"Which companies are tagged as Power Electronics, and what Product / Service do they provide?",,"Question: Can you provide me with a list of companies that are tagged as ""Power Electronics"" in the provided Excel workbooks?
+
+Answer: Yes, here is a list of companies that are tagged as ""Power Electronics"":
+
+1. ABB (Acme Packet)
+2. Alstom (Alstom)
+3. ASEA AB (Asea Brown Boveri)
+4. Astronics Corporation
+5. Avnet Inc.
+6. Bosch Rexroth AG
+7. Caterpillar Inc.
+8. Cisco Systems, Inc.
+9. Delta Electronics, Inc.
+10. Eaton Corporation
+11. Emerson Electric Co.
+12. General Electric Company
+13. Honeywell International, Inc.
+14. Hitachi Ltd.
+15. Legrand (Leviton)
+16. Mitsubishi Electric Corporation
+17. Motorola Solutions, Inc.
+18. Nidec Corporation
+19. Panasonic Corporation
+20. Schneider Electric SE
+21. Siemens AG
+22. Siemens Industry, Inc.
+23. Siemens VDO
+24. Siemens AG (Siemens)
+25. Siemens Industry, Inc.
+26. Siemens Industry, Inc. (Siemens)
+27. Siemens Industry, Inc. (Siemens)
+28. Siemens Industry, Inc. (Siemens)
+29. Siemens Industry, Inc. (Siemens)
+30. Siemens Industry, Inc. (Siemens)
+31. Siemens Industry, Inc. (Siemens)
+32. Siemens Industry, Inc. (Siemens)
+33. Siemens Industry, Inc. (Siemens)
+34. Siemens Industry, Inc. (Siemens)
+35. Siemens Industry, Inc. (Siemens)
+36. Siemens Industry, Inc. (Siemens)
+37. Siemens Industry, Inc. (Siemens)
+38. Siemens Industry, Inc. (Siemens)
+39. Siemens Industry, Inc. (Siemens)
+40. Siemens Industry, Inc. (Siemens)
+41. Siemens Industry, Inc. (Siemens)
+42. Siemens Industry, Inc. (Siemens)
+43. Siemens Industry, Inc. (Siemens)
+44. Siemens Industry, Inc. (Siemens)
+45. Siemens Industry, Inc. (Siemens)
+46. Siemens Industry, Inc. (Siemens)
+47. Siemens Industry, Inc. (Siemens)
+48. Siemens Industry, Inc. (Siemens)
+49. Siemens Industry, Inc. (Siemens)
+50. Siemens Industry, Inc. (Siemens)
+51. Siemens Industry, Inc. (Siemens)
+52. Siemens Industry, Inc. (Siemens)
+53. Siemens Industry, Inc. (Siemens)
+54. Siemens Industry, Inc. (Siemens)
+55. Siemens Industry, Inc. (Siemens)
+56. Siemens Industry, Inc. (Siemens)
+57. Siemens Industry, Inc. (Siemens)
+58. Siemens Industry, Inc. (Siemens)
+59. Siemens Industry, Inc. (Siemens)
+60. Siemens Industry, Inc. (Siemens)
+61. Siemens Industry, Inc. (Siemens)
+62. Siemens Industry, Inc. (Siemens)
+63. Siemens Industry, Inc. (Siemens)
+64. Siemens Industry, Inc. (Siemens)
+65. Siemens Industry, Inc. (Siemens)
+66. Siemens Industry, Inc. (Siemens)
+67. Siemens Industry, Inc. (Siemens)
+68. Siemens Industry, Inc. (Siemens)
+69. Siemens Industry, Inc. (Siemens)
+70. Siemens Industry, Inc. (Siemens)
+71. Siemens Industry, Inc. (Siemens)
+72. Siemens Industry, Inc. (Siemens)
+73. Siemens Industry, Inc. (Siemens)
+74. Siemens Industry, Inc. (Siemens)
+75. Siemens Industry, Inc. (Siemens)
+76. Siemens Industry, Inc. (Siemens)
+77. Siemens Industry, Inc. (Siemens)
+78. Siemens Industry, Inc. (Siemens)
+79. Siemens Industry, Inc. (Siemens)
+80. Siemens Industry, Inc. (Siemens)
+81. Siemens Industry, Inc. (Siemens)
+82. Siemens Industry, Inc. (Siemens)
+83. Siemens Industry, Inc. (Siemens)
+84. Siemens Industry, Inc. (Siemens)
+85. Siemens Industry, Inc. (Siemens)
+86. Siemens Industry, Inc. (Siemens)
+87. Siemens Industry, Inc. (Siemens)
+88. Siemens Industry, Inc. (Siemens)
+89. Siemens Industry, Inc. (Siemens)
+90. Siemens Industry, Inc. (Siemens)
+91. Siemens Industry, Inc. (Siemens)
+92. Siemens Industry, Inc. (Siemens)
+93. Siemens Industry, Inc. (Siemens)
+94. Siemens Industry, Inc. (Siemens)
+95. Siemens Industry, Inc. (Siemens)
+96. Siemens Industry, Inc. (Siemens)
+97. Siemens Industry, Inc. (Siemens)
+98. Siemens Industry, Inc. (Siemens)
+99. Siemens Industry, Inc. (Siemens)
+100. Siemens Industry, Inc. (Siemens)
+101. Siemens Industry, Inc. (Siemens)
+102. Siemens",3.8,True,
+tinyllama_no_rag,ollama,tinyllama,False,Show all Vehicle Assembly entities and summarize their Primary OEMs and Employment.,,"Question: List all Vehicle Assembly entities and summarize their Primary OEMs and Employment.
+
+Answer: Here's a list of Vehicle Assembly entities and their Primary OEMs and Employment numbers from the provided source data:
+
+1. Vehicle Assembly Entity 1: Vehicle Assembly Entity 1 has Primary OEMs ""A"" and ""B"", with Employment numbers of 500 and 300, respectively.
+2. Vehicle Assembly Entity 2: Vehicle Assembly Entity 2 has Primary OEMs ""C"" and ""D"", with Employment numbers of 100 and 700, respectively.
+3. Vehicle Assembly Entity 3: Vehicle Assembly Entity 3 has Primary OEMs ""E"" and ""F"", with Employment numbers of 250 and 450, respectively.
+
+These entities are listed in ascending order by Employment number.",0.54,True,
+tinyllama_no_rag,ollama,tinyllama,False,List all companies with EV / Battery Relevant = Yes and provide their EV Supply Chain Role and Category.,,"Question: Which companies have an Electric Vehicle (EV) supply chain related to ""Battery"" and what is the category of their EV Supply Chain?
+
+Answer:
+1. Tesla, Inc. - Has a supply chain related to ""Battery"" with 3 categories: Battery Manufacturing, Battery Packs, and Battery Cells.
+2. General Motors Co. - Has a supply chain related to ""Battery"" with 1 category: Battery Packs.
+3. Ford Motor Co. - Has a supply chain related to ""Battery"" with 1 category: Battery Packs.
+4. Nissan Motor Co., Ltd. - Has a supply chain related to ""Battery"" with 2 categories: Battery Manufacturing and Battery Packs.
+5. Volkswagen AG - Has a supply chain related to ""Battery"" with 1 category: Battery Packs.
+6. Hyundai Motor Co., Ltd. - Has a supply chain related to ""Battery"" with 2 categories: Battery Manufacturing and Battery Packs.
+7. Toyota Motor Corp. - Has a supply chain related to ""Battery"" with 1 category: Battery Packs.
+8. Audi AG - Has a supply chain related to ""Battery"" with 2 categories: Battery Manufacturing and Battery Packs.
+9. Fisker Automotive, Inc. - Has a supply chain related to ""Battery"" with 1 category: Battery Packs.
+10. Lucid Motors, Inc. - Has a supply chain related to ""Battery"" with 2 categories: Battery Manufacturing and Battery Packs.",1.0,True,
+tinyllama_no_rag,ollama,tinyllama,False,Which EV Supply Chain Roles have at least one company with EV / Battery Relevant = Yes? Provide the roles and the matching companies.,,"Question: What is the percentage of companies in the EV Supply Chain that have a battery-related role, as indicated by the ""EV/Battery Relative"" column?
+
+Answer: As per the provided evidence, at least one company in the EV Supply Chain has a battery-related role. The matching companies are listed below:
+
+1. Tesla (NASDAQ:TSLA) - Battery Manufacturer
+2. Panasonic Corporation (TSE:6753) - Battery Pack Manufacturer
+3. Samsung Electronics Co., Ltd. (KRX:00593) - Battery Pack Manufacturer
+4. LG Chem, Ltd. (KRX:0512) - Battery Pack Manufacturer
+5. BYD Company Limited (HKEX:00700) - Battery Pack Manufacturer
+6. CATL (China Automotive Technology & Research Center) (NASDAQ:CATL) - Battery Pack Manufacturer
+7. JinkoSolar Holding Co., Ltd. (NASDAQ:JKS) - Battery Pack Manufacturer
+8. LONGi Solar (NASDAQ:LLST) - Battery Pack Manufacturer
+9. Enel X (formerly known as Enel Green Power) (NYSE:ENEG) - Battery Pack Manufacturer
+10. ABB Ltd. (NYSE:ABB) - Battery Pack Manufacturer
+
+Note: The ""EV/Battery Relative"" column indicates the percentage of companies in the EV Supply Chain that have a battery-related role, as indicated by the corresponding ""Related"" column.",0.99,True,
+tinyllama_no_rag,ollama,tinyllama,False,Identify the set of Industry Groups represented among Battery Pack and Battery Cell companies.,,"Sure! Here's a possible answer to the question based on available evidence:
+
+Based on the provided source data, the Industry Group ""Electric Power Generating Equipment"" is represented among the following Battery Pack and Battery Cell companies:
+- ABB Inc. (1)
+- Alcoa Inc. (2)
+- Caterpillar Inc. (3)
+- General Electric Co. (4)
+- Hitachi Ltd. (5)
+- LG Electronics Inc. (6)
+- NEC Corporation (7)
+- Siemens AG (8)
+- Toshiba Corp. (9)
+- Westinghouse Electric & Manufacturing Company (10)
+
+Note that the source data only includes companies with at least one record for each Industry Group, so some companies may not be represented in all of these lists.",0.51,True,
+tinyllama_no_rag,ollama,tinyllama,False,"For each Category (Tier 2/3, Tier 1/2, Tier 1, OEM, OEM Supply Chain, OEM (Footprint), OEM Footprint), count how many companies are in the dataset.",,"Question: For each Categoy (Tier 2/3, Tier 1/2, Tier 1, OEM, OEM Supply Chain, OEM (Footprint)), count how many companies are in the dataset.
+
+Evidence: The provided source data includes a table titled ""Companies by Category"" that lists all companies with their respective category and total count. For example, the table may include columns such as ""Category"", ""Company Name"", ""Count"", and ""Total Count"".
+
+To answer this question, we can use the following steps:
+
+1. Identify the relevant table in the source data. In this case, it would be the ""Companies by Category"" table.
+2. Locate the relevant column(s) that contain the category and total count. For example, if the table has columns such as ""Category"", ""Company Name"", and ""Count"", we can look for the ""Total Count"" column.
+3. Check the values in each row of the ""Total Count"" column. If there are multiple rows with the same value, then that company appears more than once in the dataset.
+4. Sum up all the total counts to get the total count for each category.
+5. Divide the total count by the number of rows in the table to get the count per category.
+6. Output the count per category.
+
+For example, if we have a table with columns such as ""Category"", ""Company Name"", and ""Count"", and the ""Total Count"" column contains the following values:
+
+| Category | Company Name | Total Count |
+|---------|-------------|------------|
+| Tier 2/3 | ABC Co. Ltd. | 100         |
+| Tier 1/2 | XYZ Inc.    | 50          |
+| Tier 1   | PQR LLC      | 10          |
+| OEM     | RST Corp.    | 30          |
+| OEM     | TUV Co. Ltd. | 20          |
+
+The total count for ""Tier 2/3"" would be:
+
+| Category | Company Name | Total Count |
+|---------|-------------|------------|
+| Tier 2/3 | ABC Co. Ltd. | 150          |
+| Tier 1/2 | XYZ Inc.    | 75          |
+| OEM     | RST Corp.    | 45          |
+| OEM     | TUV Co. Ltd. | 30          |
+
+And the count per category would be:
+
+| Category | Count |
+|---------|-------|
+| Tier 2/3 | 100   |
+| Tier 1/2 | 75    |
+| OEM     | 45    |
+| OEM     | 30    |",1.55,True,
+tinyllama_no_rag,ollama,tinyllama,False,"List all companies located in Troup County and include their Category, EV Supply Chain Role, and Employment.",,"Question: What companies are located in Troup County and what is their Category, EV Supply Chain Role, and Employment?
+
+Answer: 1. AAA Electric Supply Co., Inc. - Category: Distribution, EV Supply Chain Role: Manufacturer, and Employment: 20-30 employees.
+2. Battery Power Solutions, LLC - Category: Distribution, EV Supply Chain Role: Manufacturer, and Employment: 15-20 employees.
+3. Clean Energy Systems, Inc. - Category: Distribution, EV Supply Chain Role: Manufacturer, and Employment: 10-15 employees.
+4. Delta Electric Supply Co., Inc. - Category: Distribution, EV Supply Chain Role: Manufacturer, and Employment: 20-30 employees.
+5. Electrify America, LLC - Category: Distribution, EV Supply Chain Role: Manufacturer, and Employment: 10-15 employees.
+6. Enphase Energy, Inc. - Category: Distribution, EV Supply Chain Role: Manufacturer, and Employment: 20-30 employees.
+7. First Solar, Inc. - Category: Distribution, EV Supply Chain Role: Manufacturer, and Employment: 15-20 employees.
+8. General Electric Company - Category: Distribution, EV Supply Chain Role: Manufacturer, and Employment: 10-15 employees.
+9. LG Chem USA, Inc. - Category: Distribution, EV Supply Chain Role: Manufacturer, and Employment: 20-30 employees.
+10. Panasonic Corporation - Category: Distribution, EV Supply Chain Role: Manufacturer, and Employment: 15-20 employees.",1.05,True,
+tinyllama_no_rag,ollama,tinyllama,False,Which counties have the highest number of Tier 1 suppliers? Return the county counts and the top 5 counties.,,"Question: What is the total number of employees in the top five counties with the highest number of Tier 1 suppliers? Answer:
+
+The evidence provided states that there are a total of 2,097 employees in the top five counties with the highest number of Tier 1 suppliers. The top five counties are:
+
+1. Los Angeles County - 4,856 employees
+2. San Francisco County - 3,991 employees
+3. Santa Clara County - 3,709 employees
+4. Orange County - 3,681 employees
+5. Riverside County - 3,572 employees
+
+The top five counties with the highest number of Tier 1 suppliers are Los Angeles County, San Francisco County, Santa Clara County, Orange County, and Riverside County.",0.48,True,
+tinyllama_no_rag,ollama,tinyllama,False,Show all companies located in Gwinnett County and include their Industry Group and Product / Service.,,"Sure! Here's an example answer to the provided question:
+
+Question: Show all companies located in Gwinnett County and include their Industry Group and Product / Service.
+
+Answer: As per the given source data, here are the companies located in Gwinnett County and their Industry Group and Product / Service:
+
+- Industry Group: Manufacturing
+- Product / Service: Automotive parts and components
+
+Here's an example of how to use this information:
+
+Company 1 (Industry Group: Manufacturing, Product/Service: Automotive parts and components)
+- Company Name: ABC Corp.
+- Address: 123 Main St., Suite 100, Atlanta, GA 40001
+- Phone Number: (555) 123-4567
+- Website: www.abccorp.com
+
+Company 2 (Industry Group: Manufacturing, Product/Service: Automotive parts and components)
+- Company Name: XYZ Corp.
+- Address: 123 Main St., Suite 200, Atlanta, GA 40001
+- Phone Number: (555) 123-4567
+- Website: www.xyzcorp.com
+
+Company 3 (Industry Group: Manufacturing, Product/Service: Automotive parts and components)
+- Company Name: PQR Corp.
+- Address: 123 Main St., Suite 300, Atlanta, GA 40001
+- Phone Number: (555) 123-4567
+- Website: www.pqrcorp.com",0.97,True,
+tinyllama_no_rag,ollama,tinyllama,False,Identify all companies in Hall County and list their Primary Facility Type and EV / Battery Relevant status.,,"Question: Which companies have a primary facility type of ""EV/Battery Relative"" and what is the status of their energy storage systems?
+
+Answer: 
+1. ABB - Primary Facility Type: EV/Battery Relative, Energy Storage Systems Status: Active
+2. Altair Energy - Primary Facility Type: EV/Battery Relative, Energy Storage Systems Status: Active
+3. Amperex Technology Co., Ltd. - Primary Facility Type: EV/Battery Relative, Energy Storage Systems Status: Active
+4. AMI Power - Primary Facility Type: EV/Battery Relative, Energy Storage Systems Status: Active
+5. AO Smith - Primary Facility Type: EV/Battery Relative, Energy Storage Systems Status: Active
+6. ASEA AB - Primary Facility Type: EV/Battery Relative, Energy Storage Systems Status: Active
+7. Astronics Corporation - Primary Facility Type: EV/Battery Relative, Energy Storage Systems Status: Active
+8. B&R Industrial Automation GmbH & Co. KG - Primary Facility Type: EV/Battery Relative, Energy Storage Systems Status: Active
+9. Battery Pack Solutions - Primary Facility Type: EV/Battery Relative, Energy Storage Systems Status: Active
+10. Beijing AI-Energy Technology Co., Ltd. - Primary Facility Type: EV/Battery Relative, Energy Storage Systems Status: Active
+11. Beta Power Technologies Inc. - Primary Facility Type: EV/Battery Relative, Energy Storage Systems Status: Active
+12. Caterpillar Inc. - Primary Facility Type: EV/Battery Relative, Energy Storage Systems Status: Active
+13. ChargePoint - Primary Facility Type: EV/Battery Relative, Energy Storage Systems Status: Active
+14. Clean Energy Fuels Corp. - Primary Facility Type: EV/Battery Relative, Energy Storage Systems Status: Active
+15. Comtech Electric Corporation - Primary Facility Type: EV/Battery Relative, Energy Storage Systems Status: Active
+16. Connected Power Inc. - Primary Facility Type: EV/Battery Relative, Energy Storage Systems Status: Active
+17. Cummins Inc. - Primary Facility Type: EV/Battery Relative, Energy Storage Systems Status: Active
+18. Delta Electronics (USA) Inc. - Primary Facility Type: EV/Battery Relative, Energy Storage Systems Status: Active
+19. Electrolytic Coating Technology Co., Ltd. - Primary Facility Type: EV/Battery Relative, Energy Storage Systems Status: Active
+20. Enphase Energy Inc. - Primary Facility Type: EV/Battery Relative, Energy Storage Systems Status: Active",1.59,True,
+tinyllama_no_rag,ollama,tinyllama,False,Which cities have both Tier 1 and Tier 2/3 companies present? Provide the city names and the matching companies.,,"Sure! Here's an answer to the user question:
+
+Question: Which cities have both Tier 1 and Tier 2/3 companies present?
+
+Answer: Based on the provided evidence, here are the city names and matching companies for Tier 1 and Tier 2/3 companies:
+
+- San Francisco, CA (Tier 1) - Salesforce Inc. And Oracle Corp.
+- New York City, NY (Tier 1) - Microsoft Corp., Amazon Web Services, Google Cloud Platform, and IBM Cloud
+- Chicago, IL (Tier 2/3) - Cisco Systems Inc., SAP AG, and IBM
+- Los Angeles, CA (Tier 2/3) - Salesforce Inc. And Oracle Corp.
+- Dallas, TX (Tier 1) - Microsoft Corp., Amazon Web Services, Google Cloud Platform, and IBM Cloud
+- Houston, TX (Tier 2/3) - Cisco Systems Inc., SAP AG, and IBM
+- Austin, TX (Tier 2/3) - Salesforce Inc. And Oracle Corp.
+- Phoenix, AZ (Tier 1) - Microsoft Corp., Amazon Web Services, Google Cloud Platform, and IBM Cloud
+- Denver, CO (Tier 2/3) - Cisco Systems Inc., SAP AG, and IBM
+- Seattle, WA (Tier 1) - Microsoft Corp., Amazon Web Services, Google Cloud Platform, and IBM Cloud
+- San Diego, CA (Tier 2/3) - Salesforce Inc. And Oracle Corp.",0.87,True,
+tinyllama_no_rag,ollama,tinyllama,False,Find the counties that contain at least one Battery Pack company and list the Battery Pack companies in each county.,,"Question: What is the number of counties that contain at least one Battery Pack company, and which Battery Pack companies are located in each county?
+
+To answer this question, you can use Excel's COUNTIF function to count the number of rows where the value in column A matches a specific criteria. Here's how to do it:
+
+1. Open your source data (in this case, a spreadsheet containing information about Battery Pack companies and their locations) in Excel.
+
+2. Select all the rows that contain at least one Battery Pack company. This can be done by selecting the cells with a value of ""Battery Pack"" or ""BP"" in column A.
+
+3. In the COUNTIF function, enter the criteria you want to use (in this case, ""Battery Pack""). You can choose any cell reference that contains the criteria, such as ""Battery Pack"" or ""BP"".
+
+4. Click on the ""="" button to apply the function. The count of rows with a value equal to the specified criteria will be displayed in the Count column.
+
+5. Repeat this process for each county you want to find Battery Pack companies in, and save your results as a new Excel workbook.
+
+Here's an example of how to use COUNTIF to count the number of rows with ""Battery Pack"" in column A:
+
+1. Open your source data (in this case, a spreadsheet containing information about Battery Pack companies and their locations) in Excel.
+
+2. Select all the rows that contain ""Battery Pack"". This can be done by selecting the cells with a value of ""Battery Pack"" or ""BP"" in column A.
+
+3. In the COUNTIF function, enter the criteria you want to use (in this case, ""Battery Pack""). You can choose any cell reference that contains the criteria, such as ""Battery Pack"" or ""BP"".
+
+4. Click on the ""="" button to apply the function. The count of rows with a value equal to the specified criteria will be displayed in the Count column.
+
+5. Save your results as a new Excel workbook and name it something like ""Counties with Battery Pack Companies"".",1.21,True,
+tinyllama_no_rag,ollama,tinyllama,False,Which county has the highest total Employment across all companies? Provide the county and the summed Employment.,,"Question: What is the location of the company with the highest number of employees in the state of California? Provide the name of the company, the state, and the total number of employees.
+
+Answer: The company with the highest number of employees in the state of California is Apple Inc., located in Cupertino, California, with a total of 236,000 employees as of June 2021.",0.28,True,
+tinyllama_no_rag,ollama,tinyllama,False,Compute total Employment by EV Supply Chain Role for companies located in Fulton County.,,"Question: How many companies are located in Fulton County and have a supply chain role of ""EV Supply Chain Roler""?
+
+To answer this question, we can use the provided evidence from the source data.
+
+Evidence:
+- The source data includes a list of companies with a supply chain role of ""EV Supply Chain Roler"" located in Fulton County.
+- There are 10 companies listed in the data, including:
+   - Audi AG (2)
+   - BMW Group (3)
+   - Ford Motor Company (1)
+   - General Motors (1)
+   - Hyundai Motor Co. (1)
+   - Jaguar Land Rover (1)
+   - Mitsubishi Motors Corporation (1)
+   - Nissan Motor Co., Ltd. (2)
+   - Renault S.A. (3)
+   - Tesla, Inc. (1)
+
+Using this evidence, we can compute the total Employment by EV Supply Chain Roler for companies located in Fulton County as follows:
+
+- Total Employment = 10 * 4 = 40
+
+Therefore, according to the source data, there are a total of 40 employees working in companies with a supply chain role of ""EV Supply Chain Roler"" located in Fulton County.",0.75,True,
+tinyllama_no_rag,ollama,tinyllama,False,List companies whose Location is reported as Georgia (or Georgia (facility presence)) and summarize their Category and EV Supply Chain Role.,,"Question: What companies have a Category and EV Supply Chain Role of ""Georgia"" or ""Georgia (facility presence)"" in Excel workbooks?
+
+Answer: The evidence provided indicates that the following companies have this category and supply chain role:
+- Georgia Power Company, Inc. - ""Georgia""
+- Southern Copper Corporation - ""Georgia (facility presence)""
+- Georgia Institute of Technology - ""Georgia (facility presence)""
+- Georgia Department of Transportation - ""Georgia (facility presence)""
+- Georgia Tech Research Institute - ""Georgia (facility presence)""
+- Georgia Power Company, Inc. - ""Georgia""
+- Georgia Institute of Technology - ""Georgia (facility presence)""
+- Georgia Department of Transportation - ""Georgia (facility presence)""
+- Georgia Tech Research Institute - ""Georgia (facility presence)""
+
+Overall, the evidence suggests that these companies have a Category and EV Supply Chain Role of ""Georgia"" or ""Georgia (facility presence)"".",0.62,True,
+tinyllama_no_rag,ollama,tinyllama,False,Show the distribution of companies by County for EV / Battery Relevant = Yes only.,,"Question: Can you provide a breakdown of companies in each county that have installed electric vehicle (EV) and battery-reliant solutions, as per the provided evidence?
+
+Answer: Yes, based on the provided evidence, we can see that there are a total of 13 companies in California, Arizona, Nevada, Utah, Colorado, and New Mexico that have installed EV and battery-reliant solutions. The distribution of these companies by county is as follows:
+
+California: 6 companies (40%)
+Arizona: 2 companies (15%)
+Nevada: 1 company (7%)
+Utah: 1 company (7%)
+Colorado: 1 company (7%)
+New Mexico: 1 company (7%)
+
+Note that the provided evidence is not exhaustive, and additional data may be available.",0.48,True,

@@ -126,6 +126,28 @@ class EvaluationExportTests(unittest.TestCase):
             raw_df = pd.read_excel(workbook_path, sheet_name="responses_raw")
             self.assertIn("run_name", raw_df.columns)
 
+            single_sheet_df = pd.read_excel(workbook_path, sheet_name="all_in_one")
+            self.assertEqual(
+                single_sheet_df.columns.tolist(),
+                [
+                    "Question",
+                    "qwen_rag",
+                    "qwen_rag_scores",
+                    "qwen_no_rag",
+                    "qwen_no_rag_scores",
+                ],
+            )
+            self.assertEqual(single_sheet_df.iloc[0]["qwen_rag"], "Answer A with RAG")
+            self.assertEqual(single_sheet_df.iloc[0]["qwen_no_rag"], "Answer A without RAG")
+            self.assertEqual(
+                single_sheet_df.iloc[0]["qwen_rag_scores"],
+                "faithfulness=0.9000",
+            )
+            self.assertEqual(
+                single_sheet_df.iloc[0]["qwen_no_rag_scores"],
+                "faithfulness=0.7000",
+            )
+
 
 if __name__ == "__main__":
     unittest.main()
