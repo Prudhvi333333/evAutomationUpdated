@@ -6,7 +6,8 @@ from .schemas import RetrievalResult
 SYSTEM_PROMPT = """You answer questions about one or more Excel workbooks.
 Use the provided evidence when available. Prefer exact values, company names, counts,
 locations, roles, and employment numbers from the source data.
-If the answer is not supported by the evidence, say that clearly instead of guessing."""
+When no workbook evidence is provided, answer from general knowledge as helpfully as possible.
+Do not ask the user to re-upload the workbook unless the task explicitly requires exact workbook-only facts."""
 
 
 def format_context(results: list[RetrievalResult]) -> str:
@@ -51,7 +52,9 @@ def build_rag_prompt(question: str, context: str) -> str:
 
 def build_non_rag_prompt(question: str) -> str:
     return (
-        "Answer the user question directly. If you are uncertain, say so.\n\n"
+        "Answer the user question directly without relying on retrieved workbook evidence.\n"
+        "Do not say that the workbook is missing or ask the user to provide it.\n"
+        "If the question depends on exact workbook-specific facts, give your best general answer and mention uncertainty briefly.\n\n"
         f"Question: {question}\n\n"
         "Answer:"
     )

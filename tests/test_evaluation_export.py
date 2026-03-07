@@ -76,17 +76,22 @@ class EvaluationExportTests(unittest.TestCase):
                 "What is B?": [],
             }
             references = {"What is A?": "Ref A", "What is B?": "Ref B"}
+            reference_sources = {"What is A?": "golden", "What is B?": "generated"}
             ragas_per_run = pd.DataFrame(
                 [
                     {
                         "run_name": "qwen_rag",
                         "question": "What is A?",
+                        "answer_accuracy": 0.95,
                         "faithfulness": 0.9,
+                        "response_groundedness": 0.85,
                     },
                     {
                         "run_name": "qwen_no_rag",
                         "question": "What is A?",
+                        "answer_accuracy": 0.8,
                         "faithfulness": 0.7,
+                        "response_groundedness": 0.6,
                     },
                 ]
             )
@@ -96,6 +101,7 @@ class EvaluationExportTests(unittest.TestCase):
                 responses=responses,
                 retrievals=retrievals,
                 references=references,
+                reference_sources=reference_sources,
                 ragas_per_run=ragas_per_run,
                 ragas_summary=None,
             )
@@ -105,10 +111,16 @@ class EvaluationExportTests(unittest.TestCase):
                 df.columns.tolist(),
                 [
                     "Question",
+                    "reference_answer",
+                    "reference_source",
                     "qwen_rag",
                     "qwen_no_rag",
+                    "qwen_rag_answer_accuracy",
                     "qwen_rag_faithfulness",
+                    "qwen_rag_response_groundedness",
+                    "qwen_no_rag_answer_accuracy",
                     "qwen_no_rag_faithfulness",
+                    "qwen_no_rag_response_groundedness",
                     "qwen_rag_latency_seconds",
                     "qwen_no_rag_latency_seconds",
                     "qwen_rag_prompt_tokens_estimate",
@@ -116,10 +128,16 @@ class EvaluationExportTests(unittest.TestCase):
                 ],
             )
             self.assertEqual(df.iloc[0]["Question"], "What is A?")
+            self.assertEqual(df.iloc[0]["reference_answer"], "Ref A")
+            self.assertEqual(df.iloc[0]["reference_source"], "golden")
             self.assertEqual(df.iloc[0]["qwen_rag"], "Answer A with RAG")
             self.assertEqual(df.iloc[0]["qwen_no_rag"], "Answer A without RAG")
+            self.assertAlmostEqual(df.iloc[0]["qwen_rag_answer_accuracy"], 0.95)
             self.assertAlmostEqual(df.iloc[0]["qwen_rag_faithfulness"], 0.9)
+            self.assertAlmostEqual(df.iloc[0]["qwen_rag_response_groundedness"], 0.85)
+            self.assertAlmostEqual(df.iloc[0]["qwen_no_rag_answer_accuracy"], 0.8)
             self.assertAlmostEqual(df.iloc[0]["qwen_no_rag_faithfulness"], 0.7)
+            self.assertAlmostEqual(df.iloc[0]["qwen_no_rag_response_groundedness"], 0.6)
             self.assertAlmostEqual(df.iloc[0]["qwen_rag_latency_seconds"], 1.1)
             self.assertEqual(df.iloc[0]["qwen_no_rag_prompt_tokens_estimate"], 77)
 
@@ -131,22 +149,28 @@ class EvaluationExportTests(unittest.TestCase):
                 single_sheet_df.columns.tolist(),
                 [
                     "Question",
+                    "reference_answer",
+                    "reference_source",
                     "qwen_rag",
-                    "qwen_rag_scores",
+                    "qwen_rag_answer_accuracy",
+                    "qwen_rag_faithfulness",
+                    "qwen_rag_response_groundedness",
                     "qwen_no_rag",
-                    "qwen_no_rag_scores",
+                    "qwen_no_rag_answer_accuracy",
+                    "qwen_no_rag_faithfulness",
+                    "qwen_no_rag_response_groundedness",
                 ],
             )
+            self.assertEqual(single_sheet_df.iloc[0]["reference_answer"], "Ref A")
+            self.assertEqual(single_sheet_df.iloc[0]["reference_source"], "golden")
             self.assertEqual(single_sheet_df.iloc[0]["qwen_rag"], "Answer A with RAG")
             self.assertEqual(single_sheet_df.iloc[0]["qwen_no_rag"], "Answer A without RAG")
-            self.assertEqual(
-                single_sheet_df.iloc[0]["qwen_rag_scores"],
-                "faithfulness=0.9000",
-            )
-            self.assertEqual(
-                single_sheet_df.iloc[0]["qwen_no_rag_scores"],
-                "faithfulness=0.7000",
-            )
+            self.assertAlmostEqual(single_sheet_df.iloc[0]["qwen_rag_answer_accuracy"], 0.95)
+            self.assertAlmostEqual(single_sheet_df.iloc[0]["qwen_rag_faithfulness"], 0.9)
+            self.assertAlmostEqual(single_sheet_df.iloc[0]["qwen_rag_response_groundedness"], 0.85)
+            self.assertAlmostEqual(single_sheet_df.iloc[0]["qwen_no_rag_answer_accuracy"], 0.8)
+            self.assertAlmostEqual(single_sheet_df.iloc[0]["qwen_no_rag_faithfulness"], 0.7)
+            self.assertAlmostEqual(single_sheet_df.iloc[0]["qwen_no_rag_response_groundedness"], 0.6)
 
 
 if __name__ == "__main__":

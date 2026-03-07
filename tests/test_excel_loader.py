@@ -4,7 +4,11 @@ import unittest
 
 import pandas as pd
 
-from src.ev_llm_compare.excel_loader import load_questions, load_workbook
+from src.ev_llm_compare.excel_loader import (
+    load_questions,
+    load_reference_answers,
+    load_workbook,
+)
 
 
 class ExcelLoaderTests(unittest.TestCase):
@@ -32,6 +36,18 @@ class ExcelLoaderTests(unittest.TestCase):
             )
             questions = load_questions(path)
             self.assertEqual(questions, ["What is A?", "What is B?"])
+
+    def test_load_reference_answers_reads_golden_answer_column(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            path = Path(tmp_dir) / "golden.xlsx"
+            pd.DataFrame(
+                {
+                    "Question": ["What is A?", "What is B?"],
+                    "Golden_Answer": ["Ref A", "Ref B"],
+                }
+            ).to_excel(path, index=False)
+            references = load_reference_answers(path)
+            self.assertEqual(references, {"What is A?": "Ref A", "What is B?": "Ref B"})
 
 
 if __name__ == "__main__":

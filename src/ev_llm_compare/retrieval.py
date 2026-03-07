@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from dataclasses import dataclass
 import hashlib
 import math
 from pathlib import Path
@@ -10,17 +11,68 @@ from typing import Any
 
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, PointStruct, VectorParams
-from sentence_transformers import SentenceTransformer
+from sentence_transformers import CrossEncoder, SentenceTransformer
 
 from .chunking import tokenize
 from .schemas import Chunk, RetrievalResult
 from .settings import RetrievalSettings
 
 NORMALIZE_PATTERN = re.compile(r"[^a-z0-9]+")
+QUERY_STOPWORDS = {
+    "a",
+    "all",
+    "an",
+    "and",
+    "are",
+    "as",
+    "by",
+    "for",
+    "from",
+    "group",
+    "how",
+    "in",
+    "is",
+    "list",
+    "me",
+    "of",
+    "show",
+    "the",
+    "them",
+    "what",
+    "which",
+    "with",
+}
 
 
 def normalize_text(value: str) -> str:
     return NORMALIZE_PATTERN.sub(" ", value.lower()).strip()
+
+
+def build_collection_fingerprint(chunks: list[Chunk], embedding_model: str) -> str:
+    digest = hashlib.sha1()
+    digest.update(embedding_model.encode("utf-8"))
+    digest.update(f"|{len(chunks)}|".encode("utf-8"))
+    for chunk in chunks:
+        digest.update(chunk.chunk_id.encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(chunk.text.encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(str(chunk.metadata.get("row_key", "")).encode("utf-8"))
+        digest.update(b"\0")
+    return digest.hexdigest()[:12]
+
+
+@dataclass(slots=True)
+class QueryPlan:
+    question: str
+    normalized_question: str
+    intent: str
+    dense_queries: list[str]
+    matched_categories: list[str]
+    matched_companies: list[str]
+    matched_role_terms: list[str]
+    group_by_role: bool
+    prefer_structured: bool
 
 
 class HybridRetriever:
@@ -29,6 +81,8 @@ class HybridRetriever:
         self.settings = settings
         self.qdrant_path = qdrant_path
         self._temp_dir: tempfile.TemporaryDirectory[str] | None = None
+        self._reranker: CrossEncoder | None = None
+        self._reranker_failed = False
         self.embedding_model = SentenceTransformer(settings.embedding_model)
         self.chunk_map = {chunk.chunk_id: chunk for chunk in chunks}
         self.idf = self._build_idf(chunks)
@@ -50,29 +104,15 @@ class HybridRetriever:
             self._temp_dir = None
 
     def retrieve(self, question: str) -> list[RetrievalResult]:
-        structured_results = self._structured_matches(question)
-        if structured_results:
-            return structured_results[: self.settings.final_top_k]
-
-        query_vector = self.embedding_model.encode(question).tolist()
-        dense_results = self.client.query_points(
-            collection_name=self.collection_name,
-            query=query_vector,
-            limit=self.settings.dense_top_k,
-        ).points
-
-        dense_rank = {
-            point.id: rank
-            for rank, point in enumerate(dense_results, start=1)
-        }
-        lexical_rank = self._rank_lexically(question)
+        query_plan = self._plan_query(question)
+        structured_results = self._structured_matches(query_plan)
+        dense_rank, dense_scores = self._rank_dense(query_plan.dense_queries)
+        lexical_rank, lexical_scores = self._rank_lexically(query_plan.dense_queries)
 
         candidate_ids = set(dense_rank) | set(lexical_rank)
         retrieved: list[RetrievalResult] = []
         for chunk_id in candidate_ids:
             chunk = self.chunk_map[str(chunk_id)]
-            dense_score = self._dense_score(str(chunk_id), dense_results)
-            lexical_score = self._lexical_score(question, chunk)
             final_score = self._fusion_score(str(chunk_id), dense_rank, lexical_rank)
             final_score += self._metadata_boost(question, chunk.metadata)
             retrieved.append(
@@ -80,19 +120,20 @@ class HybridRetriever:
                     chunk_id=str(chunk_id),
                     text=chunk.text,
                     metadata=chunk.metadata,
-                    dense_score=round(dense_score, 5),
-                    lexical_score=round(lexical_score, 5),
+                    dense_score=round(dense_scores.get(str(chunk_id), 0.0), 5),
+                    lexical_score=round(lexical_scores.get(str(chunk_id), 0.0), 5),
                     final_score=round(final_score, 5),
                 )
             )
-
         retrieved.sort(key=lambda item: item.final_score, reverse=True)
-
-        deduped = self._dedupe_rows(retrieved)
-        return deduped[: self.settings.final_top_k]
+        reranked = self._rerank_candidates(question, retrieved)
+        return self._select_context_results(query_plan, structured_results, reranked)
 
     def _index_chunks(self) -> None:
         self.qdrant_path.mkdir(parents=True, exist_ok=True)
+        if self._collection_is_current():
+            return
+
         embeddings = self.embedding_model.encode(
             [chunk.text for chunk in self.chunks],
             batch_size=self.settings.batch_size,
@@ -120,6 +161,14 @@ class HybridRetriever:
         for start in range(0, len(points), self.settings.batch_size):
             batch = points[start : start + self.settings.batch_size]
             self.client.upsert(collection_name=self.collection_name, points=batch)
+
+    def _collection_is_current(self) -> bool:
+        try:
+            self.client.get_collection(self.collection_name)
+            count = self.client.count(collection_name=self.collection_name, exact=True).count
+            return count == len(self.chunks)
+        except Exception:
+            return False
 
     def _build_idf(self, chunks: list[Chunk]) -> dict[str, float]:
         document_frequency: defaultdict[str, int] = defaultdict(int)
@@ -176,17 +225,93 @@ class HybridRetriever:
                     terms.add(candidate)
         return sorted(terms, key=len, reverse=True)
 
-    def _rank_lexically(self, question: str) -> dict[str, int]:
+    def _plan_query(self, question: str) -> QueryPlan:
+        normalized_question = normalize_text(question)
+        matched_categories = [
+            category
+            for category in self.known_categories
+            if normalize_text(category) and normalize_text(category) in normalized_question
+        ]
+        matched_companies = [
+            company
+            for company in self.known_companies
+            if normalize_text(company) and normalize_text(company) in normalized_question
+        ]
+        matched_role_terms = [
+            term
+            for term in self.role_terms
+            if term and term in normalized_question
+        ]
+        if any(term in normalized_question for term in {"define", "definition", "meaning", "methodology"}):
+            intent = "definition"
+        elif any(term in normalized_question for term in {"compare", "difference", "versus", "vs"}):
+            intent = "comparison"
+        elif any(term in normalized_question for term in {"count", "how many", "list", "show all", "group"}):
+            intent = "aggregation"
+        else:
+            intent = "fact"
+
+        dense_queries = [question]
+        focused_terms = [
+            token
+            for token in normalized_question.split()
+            if token not in QUERY_STOPWORDS
+        ]
+        if focused_terms:
+            dense_queries.append(" ".join(focused_terms[:12]))
+        filters = matched_companies + matched_categories + matched_role_terms
+        if filters:
+            dense_queries.append(" | ".join(dict.fromkeys(filters)))
+
+        return QueryPlan(
+            question=question,
+            normalized_question=normalized_question,
+            intent=intent,
+            dense_queries=list(dict.fromkeys(query for query in dense_queries if query.strip())),
+            matched_categories=matched_categories,
+            matched_companies=matched_companies,
+            matched_role_terms=matched_role_terms,
+            group_by_role="group" in normalized_question and "ev supply chain role" in normalized_question,
+            prefer_structured=bool(filters) and intent in {"aggregation", "comparison", "fact"},
+        )
+
+    def _rank_dense(self, dense_queries: list[str]) -> tuple[dict[str, int], dict[str, float]]:
+        rank_scores: defaultdict[str, float] = defaultdict(float)
+        raw_scores: dict[str, float] = {}
+        for query in dense_queries:
+            query_vector = self.embedding_model.encode(query).tolist()
+            dense_results = self.client.query_points(
+                collection_name=self.collection_name,
+                query=query_vector,
+                limit=self.settings.dense_top_k,
+            ).points
+            for rank, point in enumerate(dense_results, start=1):
+                point_id = str(point.id)
+                rank_scores[point_id] += 1.0 / (self.settings.rrf_k + rank)
+                raw_scores[point_id] = max(raw_scores.get(point_id, 0.0), float(point.score))
+        dense_rank = {
+            chunk_id: rank
+            for rank, (chunk_id, _) in enumerate(
+                sorted(rank_scores.items(), key=lambda item: item[1], reverse=True)[: self.settings.dense_top_k],
+                start=1,
+            )
+        }
+        return dense_rank, raw_scores
+
+    def _rank_lexically(self, dense_queries: list[str]) -> tuple[dict[str, int], dict[str, float]]:
         scores: list[tuple[str, float]] = []
+        score_lookup: dict[str, float] = {}
         for chunk in self.chunks:
-            score = self._lexical_score(question, chunk)
+            score = max(self._lexical_score(query, chunk) for query in dense_queries)
             if score > 0:
                 scores.append((chunk.chunk_id, score))
+                score_lookup[chunk.chunk_id] = score
         scores.sort(key=lambda item: item[1], reverse=True)
-        return {
+        lexical_rank = {
             chunk_id: rank
             for rank, (chunk_id, _) in enumerate(scores[: self.settings.dense_top_k], start=1)
         }
+        return lexical_rank, score_lookup
 
     def _lexical_score(self, question: str, chunk: Chunk) -> float:
         query_tokens = tokenize(question)
@@ -202,12 +327,6 @@ class HybridRetriever:
         if "sheet_name" in chunk.metadata and str(chunk.metadata["sheet_name"]).lower() in question_lower:
             phrase_bonus += 0.5
         return base + phrase_bonus
-
-    def _dense_score(self, chunk_id: str, dense_results: list[Any]) -> float:
-        for point in dense_results:
-            if str(point.id) == chunk_id:
-                return float(point.score)
-        return 0.0
 
     def _fusion_score(
         self,
@@ -251,47 +370,26 @@ class HybridRetriever:
         if any(term in question_lower for term in {"oem", "hyundai", "kia", "rivian", "mercedes"}):
             if chunk_type == "supply_chain_theme":
                 boost += 0.015
+        if chunk_type == "note_reference" and any(term in question_lower for term in {"define", "definition", "methodology"}):
+            boost += 0.03
         return boost
 
-    def _structured_matches(self, question: str) -> list[RetrievalResult]:
-        question_norm = normalize_text(question)
-        matched_categories = [
-            category
-            for category in self.known_categories
-            if normalize_text(category) and normalize_text(category) in question_norm
-        ]
-        matched_companies = [
-            company
-            for company in self.known_companies
-            if normalize_text(company) and normalize_text(company) in question_norm
-        ]
-        matched_role_terms = [
-            term
-            for term in self.role_terms
-            if term and term in question_norm
-        ]
-
-        if not matched_categories and not matched_companies and not matched_role_terms:
+    def _structured_matches(self, query_plan: QueryPlan) -> list[RetrievalResult]:
+        if not query_plan.prefer_structured:
             return []
 
         matched_rows = [
             record
             for record in self.row_records.values()
-            if self._row_matches_filters(record, matched_categories, matched_companies, matched_role_terms)
+            if self._row_matches_filters(record, query_plan)
         ]
         if not matched_rows:
             return []
 
         results: list[RetrievalResult] = [
             RetrievalResult(
-                chunk_id=f"structured-summary::{hashlib.sha1(question_norm.encode('utf-8')).hexdigest()[:12]}",
-                text=self._build_structured_summary(
-                    question=question,
-                    matched_rows=matched_rows,
-                    matched_categories=matched_categories,
-                    matched_companies=matched_companies,
-                    matched_role_terms=matched_role_terms,
-                ),
+                chunk_id=f"structured-summary::{hashlib.sha1(query_plan.normalized_question.encode('utf-8')).hexdigest()[:12]}",
+                text=self._build_structured_summary(query_plan, matched_rows),
                 metadata={
                     "chunk_type": "structured_match_summary",
                     "company": "",
@@ -304,82 +402,75 @@ class HybridRetriever:
             )
         ]
 
-        if len(matched_rows) <= max(6, self.settings.final_top_k - 2):
-            for row in matched_rows:
-                results.append(
-                    RetrievalResult(
-                        chunk_id=f"structured-row::{row['row_key']}",
-                        text=row["row_summary"],
-                        metadata={
-                            "chunk_type": "structured_row_match",
-                            "company": row["company"],
-                            "source_file": row["source_file"],
-                            "sheet_name": row["sheet_name"],
-                            "row_number": row["row_number"],
-                        },
-                        dense_score=0.99,
-                        lexical_score=0.99,
-                        final_score=0.99,
-                    )
+        row_limit = min(self.settings.structured_summary_limit, max(2, self.settings.final_top_k - 2))
+        for row in matched_rows[:row_limit]:
+            results.append(
+                RetrievalResult(
+                    chunk_id=f"structured-row::{row['row_key']}",
+                    text=row["row_summary"],
+                    metadata={
+                        "chunk_type": "structured_row_match",
+                        "company": row["company"],
+                        "source_file": row["source_file"],
+                        "sheet_name": row["sheet_name"],
+                        "row_number": row["row_number"],
+                        "row_key": row["row_key"],
+                    },
+                    dense_score=0.99,
+                    lexical_score=0.99,
+                    final_score=0.99,
                 )
+            )
         return results
 
-    def _row_matches_filters(
-        self,
-        row: dict[str, str],
-        matched_categories: list[str],
-        matched_companies: list[str],
-        matched_role_terms: list[str],
-    ) -> bool:
+    def _row_matches_filters(self, row: dict[str, str], query_plan: QueryPlan) -> bool:
         row_category = normalize_text(row.get("category", ""))
         row_company = normalize_text(row.get("company", ""))
         row_role = normalize_text(row.get("ev_supply_chain_role", ""))
         row_product = normalize_text(row.get("product_service", ""))
 
-        if matched_categories and row_category not in {normalize_text(value) for value in matched_categories}:
-            return False
-        if matched_companies and row_company not in {normalize_text(value) for value in matched_companies}:
-            return False
-        if matched_role_terms and not any(
+        if query_plan.matched_categories:
+            category_filters = {normalize_text(value) for value in query_plan.matched_categories}
+            if row_category not in category_filters:
+                return False
+        if query_plan.matched_companies:
+            company_filters = {normalize_text(value) for value in query_plan.matched_companies}
+            if row_company not in company_filters:
+                return False
+        if query_plan.matched_role_terms and not any(
             term in row_role or term in row_product
-            for term in matched_role_terms
+            for term in query_plan.matched_role_terms
         ):
             return False
         return True
 
-    def _build_structured_summary(
-        self,
-        question: str,
-        matched_rows: list[dict[str, str]],
-        matched_categories: list[str],
-        matched_companies: list[str],
-        matched_role_terms: list[str],
-    ) -> str:
-        lines = ["Structured workbook matches from exact row filters:"]
+    def _build_structured_summary(self, query_plan: QueryPlan, matched_rows: list[dict[str, str]]) -> str:
+        lines = ["Structured workbook matches from exact metadata filters:"]
         applied_filters: list[str] = []
-        if matched_categories:
-            applied_filters.append(f"category in {matched_categories}")
-        if matched_companies:
-            applied_filters.append(f"company in {matched_companies}")
-        if matched_role_terms:
-            applied_filters.append(f"role terms in {matched_role_terms}")
+        if query_plan.matched_categories:
+            applied_filters.append(f"category in {query_plan.matched_categories}")
+        if query_plan.matched_companies:
+            applied_filters.append(f"company in {query_plan.matched_companies}")
+        if query_plan.matched_role_terms:
+            applied_filters.append(f"role terms in {query_plan.matched_role_terms}")
         lines.append(f"Applied filters: {', '.join(applied_filters)}")
         lines.append(f"Matched rows: {len(matched_rows)}")
 
-        group_by_role = "group" in question.lower() and "ev supply chain role" in question.lower()
-        if len(matched_rows) > 12 or group_by_role:
+        if len(matched_rows) > 12 or query_plan.group_by_role:
             grouped: defaultdict[str, list[str]] = defaultdict(list)
             for row in matched_rows:
                 grouped[row.get("ev_supply_chain_role") or "Unspecified"].append(row.get("company") or "Unknown")
             lines.append("Grouped by EV Supply Chain Role:")
             for role in sorted(grouped):
-                lines.append(f"- {role}:")
-                for company in sorted(grouped[role]):
-                    lines.append(f"  - {company}")
+                companies = sorted(dict.fromkeys(grouped[role]))
+                preview = companies[: self.settings.structured_summary_limit]
+                lines.append(f"- {role}: {', '.join(preview)}")
+                if len(companies) > len(preview):
+                    lines.append(f"  + {len(companies) - len(preview)} more companies")
             return "\n".join(lines)
 
         lines.append("Detailed rows:")
-        for row in matched_rows:
+        for row in matched_rows[: self.settings.structured_summary_limit]:
             lines.append(
                 "- "
                 + " | ".join(
@@ -392,39 +483,122 @@ class HybridRetriever:
                         f"Location: {row.get('location', '')}",
                         f"Employment: {row.get('employment', '')}",
                     ]
-                    if value.split(": ", 1)[1]
+                    if value.split(': ', 1)[1]
                 )
+            )
+        if len(matched_rows) > self.settings.structured_summary_limit:
+            lines.append(
+                f"Additional matched rows omitted: {len(matched_rows) - self.settings.structured_summary_limit}"
             )
         return "\n".join(lines)
 
-    def _dedupe_rows(self, results: list[RetrievalResult]) -> list[RetrievalResult]:
-        deduped: list[RetrievalResult] = []
-        seen_rows: set[str] = set()
-        for result in results:
-            row_key = str(result.metadata.get("row_key", "")).strip()
-            if row_key:
-                if row_key in seen_rows:
-                    continue
-                seen_rows.add(row_key)
-                row_summary = str(result.metadata.get("row_summary", "")).strip()
-                if row_summary:
-                    result = RetrievalResult(
-                        chunk_id=result.chunk_id,
-                        text=row_summary,
-                        metadata=result.metadata,
-                        dense_score=result.dense_score,
-                        lexical_score=result.lexical_score,
-                        final_score=result.final_score,
-                    )
-            deduped.append(result)
-        return deduped
+    def _rerank_candidates(
+        self,
+        question: str,
+        candidates: list[RetrievalResult],
+    ) -> list[RetrievalResult]:
+        if not self.settings.reranker_enabled or len(candidates) < 2:
+            return candidates
 
+        reranker = self._load_reranker()
+        if reranker is None:
+            return candidates
+
+        rerank_candidates = candidates[: self.settings.reranker_top_k]
+        try:
+            scores = reranker.predict(
+                [(question, candidate.text) for candidate in rerank_candidates],
+                show_progress_bar=False,
+            )
+        except Exception:
+            self._reranker_failed = True
+            return candidates
+
+        rerank_order = sorted(
+            range(len(rerank_candidates)),
+            key=lambda index: float(scores[index]),
+            reverse=True,
+        )
+        rerank_bonus = {
+            rerank_candidates[index].chunk_id: self.settings.reranker_weight / (self.settings.rrf_k + rank)
+            for rank, index in enumerate(rerank_order, start=1)
+        }
+        reranked: list[RetrievalResult] = []
+        for candidate in candidates:
+            reranked.append(
+                RetrievalResult(
+                    chunk_id=candidate.chunk_id,
+                    text=candidate.text,
+                    metadata=candidate.metadata,
+                    dense_score=candidate.dense_score,
+                    lexical_score=candidate.lexical_score,
+                    final_score=round(candidate.final_score + rerank_bonus.get(candidate.chunk_id, 0.0), 5),
+                )
+            )
+        reranked.sort(key=lambda item: item.final_score, reverse=True)
+        return reranked
+
+    def _load_reranker(self) -> CrossEncoder | None:
+        if self._reranker_failed:
+            return None
+        if self._reranker is not None:
+            return self._reranker
+        try:
+            self._reranker = CrossEncoder(self.settings.reranker_model)
+        except Exception:
+            self._reranker_failed = True
+            return None
+        return self._reranker
+
+    def _select_context_results(
+        self,
+        query_plan: QueryPlan,
+        structured_results: list[RetrievalResult],
+        candidates: list[RetrievalResult],
+    ) -> list[RetrievalResult]:
+        ordered_candidates = sorted(
+            candidates,
+            key=lambda item: (self._context_priority(item, query_plan), item.final_score),
+            reverse=True,
+        )
+
+        selected: list[RetrievalResult] = []
+        seen_keys: set[str] = set()
+        company_counts: defaultdict[str, int] = defaultdict(int)
+
+        for result in structured_results[:1]:
+            selected.append(result)
+            seen_keys.add(result.chunk_id)
+
+        for result in structured_results[1:] + ordered_candidates:
+            unique_key = str(result.metadata.get("row_key", "")).strip() or result.chunk_id
+            if unique_key in seen_keys:
+                continue
+            company = str(result.metadata.get("company", "")).strip()
+            if company and company_counts[company] >= self.settings.max_chunks_per_company:
+                continue
+            selected.append(result)
+            seen_keys.add(unique_key)
+            if company:
+                company_counts[company] += 1
+            if len(selected) >= self.settings.final_top_k:
+                break
+        return selected
+
+    def _context_priority(self, result: RetrievalResult, query_plan: QueryPlan) -> float:
+        chunk_type = str(result.metadata.get("chunk_type", ""))
+        if chunk_type == "structured_match_summary":
+            return 3.0
+        if query_plan.intent == "definition" and chunk_type == "note_reference":
+            return 2.5
+        if chunk_type in {"structured_row_match", "company_profile", "row_full"}:
+            return 1.5
+        if chunk_type == "note_reference":
+            return 1.0
+        return 0.0
 
     def _collection_name(self, chunks: list[Chunk], embedding_model: str) -> str:
-        digest = hashlib.sha1(
-            f"{embedding_model}|{len(chunks)}|{chunks[0].chunk_id if chunks else 'empty'}".encode("utf-8")
-        ).hexdigest()[:12]
-        return f"ev_compare_{digest}"
+        return f"ev_compare_{build_collection_fingerprint(chunks, embedding_model)}"
 
     def _create_client(self, qdrant_path: Path) -> QdrantClient:
         try:

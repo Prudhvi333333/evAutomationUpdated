@@ -2,16 +2,21 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from dotenv import load_dotenv
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    def load_dotenv() -> bool:
+        return False
 
 from .chunking import ExcelChunkBuilder
 from .evaluation import (
     build_reference_answers,
+    export_metrics_workbook,
     export_response_sets,
     export_results,
     run_ragas,
 )
-from .excel_loader import load_questions, load_workbook
+from .excel_loader import load_questions, load_reference_answers, load_workbook
 from .models import create_client, safe_generate
 from .prompts import build_non_rag_prompt, build_rag_prompt, format_context
 from .retrieval import HybridRetriever
@@ -35,6 +40,11 @@ class ComparisonRunner:
         selected_run_names: list[str] | None = None,
         output_dir: str | None = None,
         response_output_dir: str | None = None,
+        single_sheet_only: bool = False,
+        export_response_files: bool = True,
+        golden_workbook: str | None = None,
+        golden_sheet: str | None = None,
+        write_checkpoint: bool = False,
     ) -> Path:
         active_models = self._select_models(selected_run_names)
         if output_dir is not None:
@@ -104,31 +114,65 @@ class ComparisonRunner:
 
             ragas_per_run = None
             ragas_summary = None
+            references = {question: "" for question in questions}
+            reference_sources = {question: "missing" for question in questions}
+            golden_path = self._resolve_reference_workbook(golden_workbook)
+            if golden_path is not None:
+                self._log(f"Loading golden answers workbook: {golden_path}")
+                golden_references = load_reference_answers(golden_path, sheet_name=golden_sheet)
+                matched_count = 0
+                for question in questions:
+                    answer = golden_references.get(question, "")
+                    if answer:
+                        references[question] = answer
+                        reference_sources[question] = "golden"
+                        matched_count += 1
+                self._log(
+                    f"Matched {matched_count}/{len(questions)} questions to golden answers"
+                )
             if skip_ragas:
                 self._log("Skipping reference generation and RAGAS evaluation")
-                references = {question: "" for question in questions}
             else:
-                self._log("Generating reference answers for evaluation")
-                judge_spec = ModelSpec(
-                    run_name="ragas_judge",
-                    provider=self.config.ragas_judge_provider,
-                    model_name=self.config.ragas_judge_model,
-                    rag_enabled=False,
-                )
-                judge_client = create_client(judge_spec, self.config.runtime)
-                references = build_reference_answers(questions, retrievals, judge_client)
-                checkpoint_path = export_results(
-                    output_dir=self.config.runtime.output_dir,
-                    responses=responses,
-                    retrievals=retrievals,
-                    references=references,
-                    ragas_per_run=None,
-                    ragas_summary=None,
-                    filename_prefix="comparison_checkpoint",
-                )
-                self._log(f"Checkpoint workbook written to {checkpoint_path}")
-                self._log("Running RAGAS evaluation")
                 try:
+                    missing_reference_questions = [
+                        question for question in questions if not references.get(question)
+                    ]
+                    if missing_reference_questions:
+                        self._log(
+                            "Generating fallback reference answers for "
+                            f"{len(missing_reference_questions)} questions not covered by golden answers"
+                        )
+                        judge_spec = ModelSpec(
+                            run_name="ragas_judge",
+                            provider=self.config.ragas_judge_provider,
+                            model_name=self.config.ragas_judge_model,
+                            rag_enabled=False,
+                        )
+                        judge_client = create_client(judge_spec, self.config.runtime)
+                        generated_references = build_reference_answers(
+                            missing_reference_questions,
+                            retrievals,
+                            judge_client,
+                        )
+                        for question, answer in generated_references.items():
+                            references[question] = answer
+                            reference_sources[question] = "generated"
+                    else:
+                        self._log("Using golden answers for answer_accuracy evaluation")
+                    if write_checkpoint:
+                        checkpoint_path = export_results(
+                            output_dir=self.config.runtime.output_dir,
+                            responses=responses,
+                            retrievals=retrievals,
+                            references=references,
+                            reference_sources=reference_sources,
+                            ragas_per_run=None,
+                            ragas_summary=None,
+                            filename_prefix="comparison_checkpoint",
+                            single_sheet_only=single_sheet_only,
+                        )
+                        self._log(f"Checkpoint workbook written to {checkpoint_path}")
+                    self._log("Running RAGAS evaluation")
                     ragas_per_run, ragas_summary = run_ragas(
                         responses=responses,
                         reference_answers=references,
@@ -136,16 +180,25 @@ class ComparisonRunner:
                         judge_model=self.config.ragas_judge_model,
                         embedding_provider=self.config.ragas_embedding_provider,
                         embedding_model=self.config.ragas_embedding_model,
+                        timeout=self.config.ragas_timeout,
+                        max_retries=self.config.ragas_max_retries,
+                        max_wait=self.config.ragas_max_wait,
+                        max_workers=self.config.ragas_max_workers,
                     )
                 except Exception as exc:
-                    self._log(f"RAGAS evaluation failed: {exc}. Continuing without RAGAS sheets.")
+                    self._log(
+                        "Reference generation or RAGAS evaluation failed: "
+                        f"{exc}. Continuing without RAGAS sheets."
+                    )
 
-            if response_output_dir:
+            if export_response_files and response_output_dir:
                 response_dir_path = export_response_sets(
                     output_dir=Path(response_output_dir),
                     responses=responses,
                     references=references,
+                    reference_sources=reference_sources,
                     ragas_per_run=ragas_per_run,
+                    ragas_summary=ragas_summary,
                 )
                 self._log(f"Per-run response files written to {response_dir_path}")
 
@@ -155,9 +208,20 @@ class ComparisonRunner:
                 responses=responses,
                 retrievals=retrievals,
                 references=references,
+                reference_sources=reference_sources,
                 ragas_per_run=ragas_per_run,
                 ragas_summary=ragas_summary,
+                single_sheet_only=single_sheet_only,
             )
+            metrics_path = None
+            if not single_sheet_only:
+                metrics_path = export_metrics_workbook(
+                    output_dir=self.config.runtime.output_dir,
+                    ragas_per_run=ragas_per_run,
+                    ragas_summary=ragas_summary,
+                )
+                if metrics_path is not None:
+                    self._log(f"Metrics workbook written to {metrics_path}")
             self._log(f"Done. Report written to {output_path}")
             return output_path
         finally:
@@ -178,3 +242,18 @@ class ComparisonRunner:
             missing_display = ", ".join(missing)
             raise ValueError(f"Unknown run name(s): {missing_display}. Available runs: {available}")
         return selected
+
+    def _resolve_reference_workbook(self, golden_workbook: str | None) -> Path | None:
+        if golden_workbook:
+            path = Path(golden_workbook).expanduser().resolve()
+            if not path.exists():
+                raise FileNotFoundError(f"Golden answers workbook not found: {path}")
+            return path
+
+        for candidate in (
+            Path("artifacts/Golden_answers_updated.xlsx"),
+            Path("artifacts/Golden_answers.xlsx"),
+        ):
+            if candidate.exists():
+                return candidate.resolve()
+        return None

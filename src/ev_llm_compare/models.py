@@ -38,25 +38,42 @@ class OllamaClient(LLMClient):
 
 class GeminiClient(LLMClient):
     def __init__(self, model_name: str):
-        import google.generativeai as genai
+        from google import genai
 
         self.provider = "gemini"
         self.model_name = model_name
         api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
         if not api_key:
             raise RuntimeError("Set GEMINI_API_KEY or GOOGLE_API_KEY before using Gemini.")
-        genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel(model_name)
+        self.client = genai.Client(api_key=api_key)
 
     def generate(self, prompt: str, temperature: float, max_tokens: int) -> str:
-        response = self.model.generate_content(
-            f"{SYSTEM_PROMPT}\n\n{prompt}",
-            generation_config={
-                "temperature": temperature,
-                "max_output_tokens": max_tokens,
-            },
+        from google.genai import types
+
+        response = self.client.models.generate_content(
+            model=self.model_name,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                system_instruction=SYSTEM_PROMPT,
+                temperature=temperature,
+                max_output_tokens=max_tokens,
+                thinking_config=types.ThinkingConfig(thinking_budget=0),
+            ),
         )
-        return response.text.strip()
+        if getattr(response, "text", None):
+            return response.text.strip()
+
+        parts: list[str] = []
+        for candidate in getattr(response, "candidates", []) or []:
+            content = getattr(candidate, "content", None)
+            for part in getattr(content, "parts", []) or []:
+                text = getattr(part, "text", None)
+                if text:
+                    parts.append(text)
+        if parts:
+            return "\n".join(parts).strip()
+
+        raise RuntimeError("Gemini returned no text content.")
 
 
 def create_client(spec: ModelSpec, runtime: RuntimeSettings) -> LLMClient:

@@ -51,6 +51,31 @@ def build_parser() -> argparse.ArgumentParser:
         default="artifacts/correct_responses",
         help="Directory where per-run response files will be written.",
     )
+    parser.add_argument(
+        "--golden-workbook",
+        default=None,
+        help="Optional workbook containing human-curated golden answers for answer_accuracy.",
+    )
+    parser.add_argument(
+        "--golden-sheet",
+        default=None,
+        help="Optional sheet name for the golden answer workbook.",
+    )
+    parser.add_argument(
+        "--single-sheet-only",
+        action="store_true",
+        help="Write only the all_in_one sheet to the output workbook.",
+    )
+    parser.add_argument(
+        "--no-response-exports",
+        action="store_true",
+        help="Do not write per-run CSV/Markdown response files.",
+    )
+    parser.add_argument(
+        "--write-checkpoint",
+        action="store_true",
+        help="Write an intermediate checkpoint workbook before RAGAS evaluation.",
+    )
     return parser
 
 
@@ -71,6 +96,11 @@ def main() -> int:
         selected_run_names=args.run_names,
         output_dir=args.output_dir,
         response_output_dir=args.response_dir,
+        single_sheet_only=args.single_sheet_only,
+        export_response_files=not args.no_response_exports,
+        golden_workbook=args.golden_workbook,
+        golden_sheet=args.golden_sheet,
+        write_checkpoint=args.write_checkpoint,
     )
     print(f"Report written to {Path(report_path).resolve()}")
     return 0

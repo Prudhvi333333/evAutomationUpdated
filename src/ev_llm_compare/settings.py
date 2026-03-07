@@ -16,6 +16,12 @@ class RetrievalSettings:
     rrf_k: int = 60
     note_chunk_size: int = 1200
     note_chunk_overlap: int = 150
+    reranker_enabled: bool = True
+    reranker_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    reranker_top_k: int = 12
+    reranker_weight: float = 0.35
+    max_chunks_per_company: int = 2
+    structured_summary_limit: int = 8
 
 
 @dataclass(slots=True)
@@ -42,10 +48,14 @@ class AppConfig:
     retrieval: RetrievalSettings = field(default_factory=RetrievalSettings)
     runtime: RuntimeSettings = field(default_factory=RuntimeSettings)
     models: list[ModelSpec] = field(default_factory=list)
-    ragas_judge_provider: str = "gemini"
-    ragas_judge_model: str = "gemini-2.5-flash"
-    ragas_embedding_provider: str = "google"
-    ragas_embedding_model: str = "models/embedding-001"
+    ragas_judge_provider: str = "ollama"
+    ragas_judge_model: str = "mistral-small3.2:24b"
+    ragas_embedding_provider: str = "huggingface"
+    ragas_embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
+    ragas_timeout: int = 600
+    ragas_max_retries: int = 2
+    ragas_max_wait: int = 60
+    ragas_max_workers: int = 1
 
 
 def _env_flag(name: str, default: bool) -> bool:
@@ -72,18 +82,18 @@ def _build_models() -> list[ModelSpec]:
             enabled=_env_flag("ENABLE_QWEN_NO_RAG", True),
         ),
         ModelSpec(
-            run_name="tinyllama_rag",
+            run_name="gemma_rag",
             provider="ollama",
-            model_name=os.getenv("TINYLLAMA_MODEL", "tinyllama"),
+            model_name=os.getenv("GEMMA_MODEL", "gemma3:12b"),
             rag_enabled=True,
-            enabled=_env_flag("ENABLE_TINYLLAMA_RAG", True),
+            enabled=_env_flag("ENABLE_GEMMA_RAG", True),
         ),
         ModelSpec(
-            run_name="tinyllama_no_rag",
+            run_name="gemma_no_rag",
             provider="ollama",
-            model_name=os.getenv("TINYLLAMA_MODEL", "tinyllama"),
+            model_name=os.getenv("GEMMA_MODEL", "gemma3:12b"),
             rag_enabled=False,
-            enabled=_env_flag("ENABLE_TINYLLAMA_NO_RAG", True),
+            enabled=_env_flag("ENABLE_GEMMA_NO_RAG", True),
         ),
         ModelSpec(
             run_name="gemini_rag",
@@ -114,6 +124,32 @@ def load_config() -> AppConfig:
         "EMBEDDING_MODEL",
         config.retrieval.embedding_model,
     )
+    config.retrieval.reranker_enabled = _env_flag(
+        "RERANKER_ENABLED",
+        config.retrieval.reranker_enabled,
+    )
+    config.retrieval.reranker_model = os.getenv(
+        "RERANKER_MODEL",
+        config.retrieval.reranker_model,
+    )
+    config.retrieval.reranker_top_k = int(
+        os.getenv("RERANKER_TOP_K", str(config.retrieval.reranker_top_k))
+    )
+    config.retrieval.reranker_weight = float(
+        os.getenv("RERANKER_WEIGHT", str(config.retrieval.reranker_weight))
+    )
+    config.retrieval.max_chunks_per_company = int(
+        os.getenv(
+            "MAX_CHUNKS_PER_COMPANY",
+            str(config.retrieval.max_chunks_per_company),
+        )
+    )
+    config.retrieval.structured_summary_limit = int(
+        os.getenv(
+            "STRUCTURED_SUMMARY_LIMIT",
+            str(config.retrieval.structured_summary_limit),
+        )
+    )
     config.runtime.ollama_base_url = os.getenv(
         "OLLAMA_BASE_URL",
         config.runtime.ollama_base_url,
@@ -139,5 +175,15 @@ def load_config() -> AppConfig:
     config.ragas_embedding_model = os.getenv(
         "RAGAS_EMBEDDING_MODEL",
         config.ragas_embedding_model,
+    )
+    config.ragas_timeout = int(os.getenv("RAGAS_TIMEOUT", str(config.ragas_timeout)))
+    config.ragas_max_retries = int(
+        os.getenv("RAGAS_MAX_RETRIES", str(config.ragas_max_retries))
+    )
+    config.ragas_max_wait = int(
+        os.getenv("RAGAS_MAX_WAIT", str(config.ragas_max_wait))
+    )
+    config.ragas_max_workers = int(
+        os.getenv("RAGAS_MAX_WORKERS", str(config.ragas_max_workers))
     )
     return config
