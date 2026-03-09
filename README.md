@@ -42,7 +42,7 @@ export OLLAMA_BASE_URL=http://localhost:11434
 export QWEN_MODEL=qwen2.5:14b
 export GEMMA_MODEL=gemma3:12b
 export RAGAS_JUDGE_PROVIDER=ollama
-export RAGAS_JUDGE_MODEL=mistral-small3.2:24b
+export RAGAS_JUDGE_MODEL=llama3.1:8b
 export RAGAS_EMBEDDING_PROVIDER=huggingface
 export RAGAS_EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
 ```
@@ -52,7 +52,7 @@ Make sure the local Ollama models are pulled:
 ```bash
 ollama pull qwen2.5:14b
 ollama pull gemma3:12b
-ollama pull mistral-small3.2:24b
+ollama pull llama3.1:8b
 ```
 
 ## Run

@@ -22,6 +22,12 @@ class RetrievalSettings:
     reranker_weight: float = 0.35
     max_chunks_per_company: int = 2
     structured_summary_limit: int = 8
+    structured_exhaustive_limit: int = 80
+    compact_context_enabled: bool = True
+    generation_context_result_limit: int = 5
+    generation_context_char_budget: int = 4200
+    ragas_context_result_limit: int = 4
+    ragas_context_char_budget: int = 2600
 
 
 @dataclass(slots=True)
@@ -49,7 +55,7 @@ class AppConfig:
     runtime: RuntimeSettings = field(default_factory=RuntimeSettings)
     models: list[ModelSpec] = field(default_factory=list)
     ragas_judge_provider: str = "ollama"
-    ragas_judge_model: str = "mistral-small3.2:24b"
+    ragas_judge_model: str = "llama3.1:8b"
     ragas_embedding_provider: str = "huggingface"
     ragas_embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     ragas_timeout: int = 600
@@ -148,6 +154,40 @@ def load_config() -> AppConfig:
         os.getenv(
             "STRUCTURED_SUMMARY_LIMIT",
             str(config.retrieval.structured_summary_limit),
+        )
+    )
+    config.retrieval.structured_exhaustive_limit = int(
+        os.getenv(
+            "STRUCTURED_EXHAUSTIVE_LIMIT",
+            str(config.retrieval.structured_exhaustive_limit),
+        )
+    )
+    config.retrieval.compact_context_enabled = _env_flag(
+        "COMPACT_CONTEXT_ENABLED",
+        config.retrieval.compact_context_enabled,
+    )
+    config.retrieval.generation_context_result_limit = int(
+        os.getenv(
+            "GENERATION_CONTEXT_RESULT_LIMIT",
+            str(config.retrieval.generation_context_result_limit),
+        )
+    )
+    config.retrieval.generation_context_char_budget = int(
+        os.getenv(
+            "GENERATION_CONTEXT_CHAR_BUDGET",
+            str(config.retrieval.generation_context_char_budget),
+        )
+    )
+    config.retrieval.ragas_context_result_limit = int(
+        os.getenv(
+            "RAGAS_CONTEXT_RESULT_LIMIT",
+            str(config.retrieval.ragas_context_result_limit),
+        )
+    )
+    config.retrieval.ragas_context_char_budget = int(
+        os.getenv(
+            "RAGAS_CONTEXT_CHAR_BUDGET",
+            str(config.retrieval.ragas_context_char_budget),
         )
     )
     config.runtime.ollama_base_url = os.getenv(

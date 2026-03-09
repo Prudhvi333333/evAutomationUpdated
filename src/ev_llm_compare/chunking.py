@@ -56,10 +56,14 @@ class ExcelChunkBuilder:
                 "row_summary": row_summary,
                 "company": company,
                 "category": row.values.get("Category", ""),
+                "industry_group": row.values.get("Industry Group", ""),
                 "ev_supply_chain_role": row.values.get("EV Supply Chain Role", ""),
                 "product_service": row.values.get("Product / Service", ""),
                 "primary_oems": row.values.get("Primary OEMs", ""),
                 "location": row.values.get("Location", ""),
+                "primary_facility_type": row.values.get("Primary Facility Type", ""),
+                "supplier_or_affiliation_type": row.values.get("Supplier or Affiliation Type", ""),
+                "classification_method": row.values.get("Classification Method", ""),
                 "employment": row.values.get("Employment", ""),
                 "ev_battery_relevant": row.values.get("EV / Battery Relevant", ""),
                 "chunk_type": chunk_type,
@@ -124,12 +128,16 @@ class ExcelChunkBuilder:
         summary_fields = [
             "Company",
             "Category",
+            "Industry Group",
             "EV Supply Chain Role",
             "Primary OEMs",
             "Product / Service",
             "Location",
+            "Primary Facility Type",
             "Employment",
             "EV / Battery Relevant",
+            "Supplier or Affiliation Type",
+            "Classification Method",
         ]
         available = [column for column in summary_fields if row.values.get(column)]
         return " | ".join(f"{column}: {row.values[column]}" for column in available)

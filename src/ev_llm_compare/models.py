@@ -11,7 +11,13 @@ class LLMClient:
     provider: str
     model_name: str
 
-    def generate(self, prompt: str, temperature: float, max_tokens: int) -> str:
+    def generate(
+        self,
+        prompt: str,
+        temperature: float,
+        max_tokens: int,
+        system_prompt: str | None = None,
+    ) -> str:
         raise NotImplementedError
 
 
@@ -24,10 +30,17 @@ class OllamaClient(LLMClient):
         self.base_url = base_url
         self.client = ollama.Client(host=base_url)
 
-    def generate(self, prompt: str, temperature: float, max_tokens: int) -> str:
+    def generate(
+        self,
+        prompt: str,
+        temperature: float,
+        max_tokens: int,
+        system_prompt: str | None = None,
+    ) -> str:
+        effective_system_prompt = system_prompt or SYSTEM_PROMPT
         response = self.client.generate(
             model=self.model_name,
-            prompt=f"{SYSTEM_PROMPT}\n\n{prompt}",
+            prompt=f"{effective_system_prompt}\n\n{prompt}",
             options={
                 "temperature": temperature,
                 "num_predict": max_tokens,
@@ -47,14 +60,21 @@ class GeminiClient(LLMClient):
             raise RuntimeError("Set GEMINI_API_KEY or GOOGLE_API_KEY before using Gemini.")
         self.client = genai.Client(api_key=api_key)
 
-    def generate(self, prompt: str, temperature: float, max_tokens: int) -> str:
+    def generate(
+        self,
+        prompt: str,
+        temperature: float,
+        max_tokens: int,
+        system_prompt: str | None = None,
+    ) -> str:
         from google.genai import types
 
+        effective_system_prompt = system_prompt or SYSTEM_PROMPT
         response = self.client.models.generate_content(
             model=self.model_name,
             contents=prompt,
             config=types.GenerateContentConfig(
-                system_instruction=SYSTEM_PROMPT,
+                system_instruction=effective_system_prompt,
                 temperature=temperature,
                 max_output_tokens=max_tokens,
                 thinking_config=types.ThinkingConfig(thinking_budget=0),
@@ -84,10 +104,21 @@ def create_client(spec: ModelSpec, runtime: RuntimeSettings) -> LLMClient:
     raise ValueError(f"Unsupported provider: {spec.provider}")
 
 
-def safe_generate(client: LLMClient, prompt: str, temperature: float, max_tokens: int) -> tuple[str, float, bool, str | None]:
+def safe_generate(
+    client: LLMClient,
+    prompt: str,
+    temperature: float,
+    max_tokens: int,
+    system_prompt: str | None = None,
+) -> tuple[str, float, bool, str | None]:
     start = time.perf_counter()
     try:
-        answer = client.generate(prompt, temperature=temperature, max_tokens=max_tokens)
+        answer = client.generate(
+            prompt,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            system_prompt=system_prompt,
+        )
         return answer, round(time.perf_counter() - start, 2), True, None
     except Exception as exc:
         return f"ERROR: {exc}", round(time.perf_counter() - start, 2), False, str(exc)

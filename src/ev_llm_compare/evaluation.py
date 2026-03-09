@@ -1,36 +1,558 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from dataclasses import dataclass
 import os
 from pathlib import Path
+import re
 from typing import Any
 import warnings
 
 import pandas as pd
 
 from .models import LLMClient, safe_generate
-from .prompts import build_reference_prompt, format_context
+from .prompts import build_reference_prompt, compact_context_segments, format_context
 from .schemas import ModelResponse
 
-RAGAS_METRIC_NAMES = [
+REPORT_METRIC_NAMES = [
     "answer_accuracy",
     "faithfulness",
     "response_groundedness",
+    "grounded_claim_ratio",
+    "unsupported_claim_ratio",
+    "contradicted_claim_ratio",
+    "ragas_answer_accuracy",
+    "ragas_faithfulness",
+    "ragas_response_groundedness",
 ]
+
+RAGAS_OUTPUT_METRICS = [
+    "ragas_answer_accuracy",
+    "ragas_faithfulness",
+    "ragas_response_groundedness",
+]
+
+FIELD_ALIASES = {
+    "company": "company",
+    "category": "category",
+    "industry group": "industry_group",
+    "ev supply chain role": "ev_supply_chain_role",
+    "product / service": "product_service",
+    "product service": "product_service",
+    "primary oems": "primary_oems",
+    "primary oem": "primary_oems",
+    "location": "location",
+    "primary facility type": "primary_facility_type",
+    "employment": "employment",
+    "ev / battery relevant": "ev_battery_relevant",
+    "ev battery relevant": "ev_battery_relevant",
+    "supplier or affiliation type": "supplier_or_affiliation_type",
+    "classification method": "classification_method",
+}
+
+STOPWORD_TOKENS = {
+    "a",
+    "an",
+    "and",
+    "are",
+    "as",
+    "at",
+    "be",
+    "by",
+    "for",
+    "from",
+    "how",
+    "if",
+    "in",
+    "is",
+    "it",
+    "of",
+    "on",
+    "or",
+    "that",
+    "the",
+    "their",
+    "there",
+    "these",
+    "this",
+    "to",
+    "with",
+}
+
+STRUCTURED_MISSING_PATTERNS = (
+    "without specific workbook evidence",
+    "without access to the workbook",
+    "without access to the excel workbook",
+    "without access to the relevant workbook data",
+    "without the workbook",
+    "without specific workbook data",
+    "please provide the excel workbook",
+    "i cannot answer this question",
+    "i am unable to answer this question",
+    "i do not have access",
+    "exact dataset answer is unknown",
+    "general approach",
+    "you would need to refer",
+    "if you have access to the workbook",
+    "cannot provide a definitive list",
+    "can t provide a definitive list",
+    "can t give you exact",
+    "cannot give you exact",
+    "filter your dataset",
+    "countif",
+    "pivot table",
+)
+
+NEGATIVE_PATTERNS = (
+    "there are no companies",
+    "there are no matching companies",
+    "no companies",
+    "no matching companies",
+    "no entries",
+    "none",
+    "not possible to provide",
+    "does not contain any companies",
+)
+
+
+@dataclass(frozen=True, slots=True)
+class StructuredClaim:
+    kind: str
+    subject: str = ""
+    field: str = ""
+    label: str = ""
+    value: str = ""
+    weight: float = 1.0
 
 
 def build_reference_answers(
     questions: list[str],
     retrievals: dict[str, list[Any]],
     judge_client: LLMClient,
+    context_result_limit: int = 5,
+    context_char_budget: int = 4200,
+    compact_context: bool = True,
 ) -> dict[str, str]:
     references: dict[str, str] = {}
     for question in questions:
-        context = format_context(retrievals[question])
+        context = format_context(
+            retrievals[question],
+            question=question,
+            max_results=context_result_limit,
+            max_chars=context_char_budget,
+            compact=compact_context,
+        )
         prompt = build_reference_prompt(question, context)
         answer, _, success, _ = safe_generate(judge_client, prompt, temperature=0.0, max_tokens=500)
         references[question] = answer if success else "Reference generation failed."
     return references
+
+
+def _normalize_text(value: str) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", value.lower()).strip()
+
+
+def _normalize_value(value: str) -> str:
+    cleaned = value.replace("\u2011", "-").replace("\u2013", "-").replace("\u2014", "-")
+    return re.sub(r"\s+", " ", cleaned).strip()
+
+
+def _normalize_label(value: str) -> str:
+    return _normalize_text(re.sub(r"\[\d+\]", "", value))
+
+
+def _claim_key(claim: StructuredClaim) -> tuple[str, str, str, str, str]:
+    return (claim.kind, claim.subject, claim.field, claim.label, claim.value)
+
+
+def _add_claim(
+    claims: dict[tuple[str, str, str, str, str], StructuredClaim],
+    claim: StructuredClaim,
+) -> None:
+    claims[_claim_key(claim)] = claim
+
+
+def _strip_markup(text: str) -> str:
+    cleaned = text.replace("**", " ").replace("`", " ")
+    cleaned = re.sub(r"^[\-\*\u2022]+\s*", "", cleaned, flags=re.MULTILINE)
+    cleaned = re.sub(r"\s+", " ", cleaned)
+    return cleaned.strip()
+
+
+def _canonical_field_name(label: str) -> str | None:
+    normalized = _normalize_text(label)
+    return FIELD_ALIASES.get(normalized)
+
+
+def _split_candidate_segments(text: str) -> list[str]:
+    cleaned = text.replace("\r", "\n")
+    cleaned = re.sub(r"\n{2,}", "\n", cleaned)
+    cleaned = re.sub(r"\s+\|\s+", " | ", cleaned)
+    prepared = re.sub(r"(?m)^\s*[\-\*\u2022]\s*", "", cleaned)
+    prepared = re.sub(
+        r"(?<!^)\s+(?=Company:\s*[A-Z0-9])",
+        "\n",
+        prepared,
+    )
+    prepared = re.sub(
+        r"(?<!^)\s+(?=[A-Z0-9][A-Za-z0-9&().,'/\- ]{1,90}\s+\|\s+"
+        r"(?:Category|Location|Primary OEMs|Primary Facility Type|Employment|EV Supply Chain Role):)",
+        "\n",
+        prepared,
+    )
+    prepared = re.sub(
+        r"(?<!^)\s+(?=[A-Z0-9][A-Za-z0-9&().,'/\- ]{1,90}\s+->)",
+        "\n",
+        prepared,
+    )
+    segments = [segment.strip() for segment in prepared.split("\n") if segment.strip()]
+    if segments:
+        return segments
+    return [prepared.strip()] if prepared.strip() else []
+
+
+def _split_group_items(value: str) -> list[str]:
+    if ";" in value:
+        items = value.split(";")
+    else:
+        items = re.split(r",\s+(?=[A-Z0-9])", value)
+    return [item.strip(" -") for item in items if item.strip(" -")]
+
+
+def _extract_structured_claims(question: str, text: str) -> dict[tuple[str, str, str, str, str], StructuredClaim]:
+    claims: dict[tuple[str, str, str, str, str], StructuredClaim] = {}
+    if not text or not text.strip():
+        return claims
+
+    normalized_question = _normalize_text(question)
+    stripped = _strip_markup(text)
+    lowered = _normalize_text(stripped)
+
+    if any(pattern in lowered for pattern in NEGATIVE_PATTERNS):
+        _add_claim(claims, StructuredClaim(kind="negative", value="no_matches", weight=1.5))
+
+    for segment in _split_candidate_segments(stripped):
+        segment = segment.strip()
+        if not segment:
+            continue
+
+        if " | " in segment or "->" in segment:
+            _extract_record_claims(segment, claims)
+            continue
+
+        label_matches = list(
+            re.finditer(
+                r"([A-Z][A-Za-z0-9 /()&+\-\.]{1,80}?)(?: \[\d+\])?:\s*",
+                segment,
+            )
+        )
+        if label_matches:
+            parsed_group = False
+            for index, match in enumerate(label_matches):
+                label = match.group(1).strip()
+                label_field = _canonical_field_name(label)
+                if label_field:
+                    continue
+                start = match.end()
+                end = label_matches[index + 1].start() if index + 1 < len(label_matches) else len(segment)
+                value = segment[start:end].strip(" ;")
+                if not value:
+                    continue
+                parsed_group = True
+                normalized_label = _normalize_label(label)
+                numeric_value = re.sub(r"[^0-9]", "", value)
+                if numeric_value and re.sub(r"[\d,\s]", "", value) == "":
+                    _add_claim(
+                        claims,
+                        StructuredClaim(
+                            kind="count",
+                            label=normalized_label,
+                            value=numeric_value,
+                            weight=2.0,
+                        ),
+                    )
+                    continue
+                for item in _split_group_items(value):
+                    company, category = _extract_company_with_optional_category(item)
+                    normalized_company = _normalize_text(company or item)
+                    if not normalized_company:
+                        continue
+                    _add_claim(
+                        claims,
+                        StructuredClaim(
+                            kind="group_item",
+                            label=normalized_label,
+                            value=normalized_company,
+                            weight=1.25,
+                        ),
+                    )
+                    if category:
+                        _add_claim(
+                            claims,
+                            StructuredClaim(
+                                kind="group_item_category",
+                                label=normalized_label,
+                                subject=normalized_company,
+                                value=_normalize_text(category),
+                                weight=1.35,
+                            ),
+                        )
+            if parsed_group:
+                continue
+
+        if (
+            any(term in normalized_question for term in {"identify the set", "represented", "union"})
+            and ";" in segment
+        ):
+            for item in _split_group_items(segment):
+                normalized_item = _normalize_text(item)
+                if normalized_item:
+                    _add_claim(
+                        claims,
+                        StructuredClaim(kind="set_item", value=normalized_item, weight=1.0),
+                    )
+
+    return claims
+
+
+def _extract_record_claims(
+    segment: str,
+    claims: dict[tuple[str, str, str, str, str], StructuredClaim],
+) -> None:
+    normalized_segment = _normalize_value(segment)
+    if "->" in normalized_segment and "|" not in normalized_segment:
+        subject_raw, remainder = normalized_segment.split("->", 1)
+        subject = _normalize_text(subject_raw)
+        if subject:
+            _add_claim(claims, StructuredClaim(kind="entity", subject=subject, weight=0.5))
+        if ":" in remainder:
+            field_label, value = remainder.split(":", 1)
+            field_name = _canonical_field_name(field_label)
+            if field_name and subject:
+                _add_claim(
+                    claims,
+                    StructuredClaim(
+                        kind="field",
+                        subject=subject,
+                        field=field_name,
+                        value=_normalize_text(value),
+                        weight=1.5,
+                    ),
+                )
+        return
+
+    parts = [part.strip(" -") for part in normalized_segment.split("|") if part.strip(" -")]
+    if not parts:
+        return
+
+    subject = ""
+    first_part = parts[0]
+    if ":" not in first_part:
+        subject = _normalize_text(first_part)
+        _add_claim(claims, StructuredClaim(kind="entity", subject=subject, weight=0.5))
+        parts = parts[1:]
+    elif _canonical_field_name(first_part.split(":", 1)[0]) == "company":
+        subject = _normalize_text(first_part.split(":", 1)[1])
+        _add_claim(claims, StructuredClaim(kind="entity", subject=subject, weight=0.5))
+        parts = parts[1:]
+
+    for part in parts:
+        if ":" not in part:
+            continue
+        field_label, value = part.split(":", 1)
+        field_name = _canonical_field_name(field_label)
+        if field_name == "company" and not subject:
+            subject = _normalize_text(value)
+            _add_claim(claims, StructuredClaim(kind="entity", subject=subject, weight=0.5))
+            continue
+        if not field_name or not subject:
+            continue
+        normalized_value = _normalize_text(value)
+        if not normalized_value:
+            continue
+        _add_claim(
+            claims,
+            StructuredClaim(
+                kind="field",
+                subject=subject,
+                field=field_name,
+                value=normalized_value,
+                weight=1.5,
+            ),
+        )
+
+
+def _extract_company_with_optional_category(item: str) -> tuple[str, str]:
+    match = re.match(r"(.+?)\s*\(([^)]+)\)\s*$", item.strip())
+    if not match:
+        return item.strip(), ""
+    company, category = match.groups()
+    return company.strip(), category.strip()
+
+
+def _weighted_f1(
+    gold_claims: dict[tuple[str, str, str, str, str], StructuredClaim],
+    predicted_claims: dict[tuple[str, str, str, str, str], StructuredClaim],
+) -> float:
+    if not gold_claims and not predicted_claims:
+        return 1.0
+    if not gold_claims or not predicted_claims:
+        return 0.0
+
+    matched_weight = sum(
+        min(gold_claims[key].weight, predicted_claims[key].weight)
+        for key in set(gold_claims) & set(predicted_claims)
+    )
+    gold_weight = sum(claim.weight for claim in gold_claims.values())
+    predicted_weight = sum(claim.weight for claim in predicted_claims.values())
+    if gold_weight <= 0 or predicted_weight <= 0:
+        return 0.0
+    precision = matched_weight / predicted_weight
+    recall = matched_weight / gold_weight
+    if precision + recall == 0:
+        return 0.0
+    return 2 * precision * recall / (precision + recall)
+
+
+def _tokenize_for_scoring(text: str) -> set[str]:
+    tokens = re.findall(r"[a-z0-9]+", _normalize_text(text))
+    return {
+        token
+        for token in tokens
+        if token not in STOPWORD_TOKENS and (token.isdigit() or len(token) >= 3)
+    }
+
+
+def _token_f1(reference_text: str, answer_text: str) -> float:
+    reference_tokens = _tokenize_for_scoring(reference_text)
+    answer_tokens = _tokenize_for_scoring(answer_text)
+    if not reference_tokens or not answer_tokens:
+        return 0.0
+    overlap = len(reference_tokens & answer_tokens)
+    precision = overlap / len(answer_tokens)
+    recall = overlap / len(reference_tokens)
+    if precision + recall == 0:
+        return 0.0
+    return 2 * precision * recall / (precision + recall)
+
+
+def _looks_like_structured_question(question: str, reference_answer: str) -> bool:
+    normalized_question = _normalize_text(question)
+    normalized_reference = _normalize_text(reference_answer)
+    if "|" in reference_answer or "->" in reference_answer or "[" in reference_answer:
+        return True
+    if any(term in normalized_question for term in {"count", "group", "list", "show all", "map", "provide"}):
+        return True
+    if any(term in normalized_reference for term in {"category", "location", "employment", "primary oems"}):
+        return True
+    return False
+
+
+def _is_missing_dataset_answer(answer: str) -> bool:
+    normalized = _normalize_text(answer)
+    return any(pattern in normalized for pattern in STRUCTURED_MISSING_PATTERNS)
+
+
+def _score_answer_accuracy(question: str, answer: str, reference_answer: str) -> float | None:
+    if not reference_answer:
+        return None
+
+    normalized_question = _normalize_text(question)
+    gold_claims = _extract_structured_claims(question, reference_answer)
+    answer_claims = _extract_structured_claims(question, answer)
+    structured_question = _looks_like_structured_question(question, reference_answer)
+
+    if structured_question and _is_missing_dataset_answer(answer):
+        return 0.0
+
+    deterministic_count_question = any(
+        term in normalized_question
+        for term in {
+            "for each category",
+            "count how many",
+            "how many",
+        }
+    )
+
+    if deterministic_count_question and gold_claims:
+        return round(_weighted_f1(gold_claims, answer_claims), 4)
+
+    if structured_question:
+        if any(claim.kind == "negative" for claim in answer_claims.values()) and reference_answer.strip():
+            return 0.0
+        return round(_token_f1(reference_answer, answer), 4)
+
+    return None
+
+
+def _claim_family_key(claim: StructuredClaim) -> tuple[str, str, str]:
+    if claim.kind == "field":
+        return (claim.kind, claim.subject, claim.field)
+    if claim.kind == "count":
+        return (claim.kind, claim.label, "")
+    if claim.kind in {"group_item", "group_item_category"}:
+        return (claim.kind, claim.label, claim.subject)
+    return (claim.kind, claim.subject or claim.label or claim.value, "")
+
+
+def _derive_grounding_metrics(
+    question: str,
+    answer: str,
+    retrieved_contexts: list[str],
+) -> dict[str, float | None]:
+    response_claims = list(_extract_structured_claims(question, answer).values())
+    context_claim_lookup = _extract_structured_claims(question, "\n".join(retrieved_contexts))
+    context_claims = list(context_claim_lookup.values())
+
+    if not response_claims:
+        return {
+            "faithfulness": None,
+            "response_groundedness": None,
+            "grounded_claim_ratio": None,
+            "unsupported_claim_ratio": None,
+            "contradicted_claim_ratio": None,
+        }
+
+    supported = 0
+    unsupported = 0
+    contradicted = 0
+    context_families: defaultdict[tuple[str, str, str], list[StructuredClaim]] = defaultdict(list)
+    for claim in context_claims:
+        context_families[_claim_family_key(claim)].append(claim)
+
+    for claim in response_claims:
+        key = _claim_key(claim)
+        if key in context_claim_lookup:
+            supported += 1
+            continue
+
+        family_matches = context_families.get(_claim_family_key(claim), [])
+        if claim.kind == "negative":
+            if context_claims:
+                contradicted += 1
+            else:
+                supported += 1
+            continue
+
+        if claim.kind in {"field", "count"} and family_matches:
+            contradicted += 1
+            continue
+
+        unsupported += 1
+
+    total = max(1, len(response_claims))
+    grounded_ratio = supported / total
+    unsupported_ratio = unsupported / total
+    contradicted_ratio = contradicted / total
+    faithfulness = max(0.0, 1.0 - contradicted_ratio)
+    response_groundedness = grounded_ratio
+    return {
+        "faithfulness": round(faithfulness, 4),
+        "response_groundedness": round(response_groundedness, 4),
+        "grounded_claim_ratio": round(grounded_ratio, 4),
+        "unsupported_claim_ratio": round(unsupported_ratio, 4),
+        "contradicted_claim_ratio": round(contradicted_ratio, 4),
+    }
 
 
 def run_ragas(
@@ -44,6 +566,9 @@ def run_ragas(
     max_retries: int = 2,
     max_wait: int = 60,
     max_workers: int = 1,
+    context_result_limit: int = 4,
+    context_char_budget: int = 2600,
+    compact_context: bool = True,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     with warnings.catch_warnings():
         warnings.filterwarnings(
@@ -81,10 +606,39 @@ def run_ragas(
 
     record_lookup: dict[tuple[str, str], dict[str, Any]] = {}
     for response in responses:
-        record_lookup[(response.run_name, response.question)] = {
+        base_record = {
             "run_name": response.run_name,
             "question": response.question,
-            **{metric_name: None for metric_name in RAGAS_METRIC_NAMES},
+            **{metric_name: None for metric_name in REPORT_METRIC_NAMES},
+        }
+        reference_answer = reference_answers.get(response.question, "")
+        if response.success:
+            trusted_accuracy = _score_answer_accuracy(
+                response.question,
+                response.answer,
+                reference_answer,
+            )
+            base_record["answer_accuracy"] = trusted_accuracy
+        if response.success and response.rag_enabled and response.retrieved_chunks:
+            retrieved_contexts = (
+                compact_context_segments(
+                    response.question,
+                    response.retrieved_chunks,
+                    max_results=context_result_limit,
+                    max_chars=context_char_budget,
+                )
+                if compact_context
+                else [chunk.text for chunk in response.retrieved_chunks]
+            )
+            base_record.update(
+                _derive_grounding_metrics(
+                    response.question,
+                    response.answer,
+                    retrieved_contexts,
+                )
+            )
+        record_lookup[(response.run_name, response.question)] = {
+            **base_record,
         }
     accuracy_keys: list[tuple[str, str]] = []
     accuracy_rows: list[dict[str, Any]] = []
@@ -104,12 +658,22 @@ def run_ragas(
                 }
             )
         if response.rag_enabled and response.retrieved_chunks:
+            retrieved_contexts = (
+                compact_context_segments(
+                    response.question,
+                    response.retrieved_chunks,
+                    max_results=context_result_limit,
+                    max_chars=context_char_budget,
+                )
+                if compact_context
+                else [chunk.text for chunk in response.retrieved_chunks]
+            )
             rag_keys.append((response.run_name, response.question))
             rag_rows.append(
                 {
                     "user_input": response.question,
                     "response": response.answer,
-                    "retrieved_contexts": [chunk.text for chunk in response.retrieved_chunks],
+                    "retrieved_contexts": retrieved_contexts,
                     "reference": reference_answer,
                 }
             )
@@ -125,7 +689,12 @@ def run_ragas(
             run_config=run_config,
             batch_size=min(len(accuracy_rows), max(1, max_workers * 4)),
         )
-        _merge_metric_rows(record_lookup, accuracy_keys, accuracy_results)
+        _merge_metric_rows(
+            record_lookup,
+            accuracy_keys,
+            accuracy_results,
+            {"answer_accuracy": "ragas_answer_accuracy"},
+        )
 
     if rag_rows:
         evaluator_embeddings = LangchainEmbeddingsWrapper(
@@ -144,7 +713,23 @@ def run_ragas(
             run_config=run_config,
             batch_size=min(len(rag_rows), max(1, max_workers * 4)),
         )
-        _merge_metric_rows(record_lookup, rag_keys, rag_metric_results)
+        _merge_metric_rows(
+            record_lookup,
+            rag_keys,
+            rag_metric_results,
+            {
+                "faithfulness": "ragas_faithfulness",
+                "response_groundedness": "ragas_response_groundedness",
+            },
+        )
+
+    for record in record_lookup.values():
+        if record.get("answer_accuracy") is None:
+            record["answer_accuracy"] = record.get("ragas_answer_accuracy")
+        if record.get("faithfulness") is None:
+            record["faithfulness"] = record.get("ragas_faithfulness")
+        if record.get("response_groundedness") is None:
+            record["response_groundedness"] = record.get("ragas_response_groundedness")
 
     per_run_records = [
         record_lookup[(response.run_name, response.question)]
@@ -153,15 +738,15 @@ def run_ragas(
 
     per_run_df = pd.DataFrame(
         per_run_records,
-        columns=["run_name", "question", *RAGAS_METRIC_NAMES],
+        columns=["run_name", "question", *REPORT_METRIC_NAMES],
     )
-    for metric_name in RAGAS_METRIC_NAMES:
+    for metric_name in REPORT_METRIC_NAMES:
         per_run_df[metric_name] = pd.to_numeric(per_run_df[metric_name], errors="coerce")
     summary_df = (
         per_run_df.groupby("run_name", dropna=False)
-        .agg({metric_name: "mean" for metric_name in RAGAS_METRIC_NAMES})
+        .agg({metric_name: "mean" for metric_name in REPORT_METRIC_NAMES})
         .reset_index()
-        .sort_values(by=RAGAS_METRIC_NAMES[0], ascending=False, na_position="last")
+        .sort_values(by=REPORT_METRIC_NAMES[0], ascending=False, na_position="last")
     )
     return per_run_df, summary_df
 
@@ -428,15 +1013,16 @@ def _merge_metric_rows(
     record_lookup: dict[tuple[str, str], dict[str, Any]],
     keys: list[tuple[str, str]],
     metric_rows: list[dict[str, Any]],
+    metric_name_map: dict[str, str],
 ) -> None:
     for index, key in enumerate(keys):
         if index >= len(metric_rows):
             continue
         metrics = metric_rows[index]
         record = record_lookup[key]
-        for metric_name in RAGAS_METRIC_NAMES:
-            if metric_name in metrics:
-                record[metric_name] = metrics.get(metric_name)
+        for source_name, target_name in metric_name_map.items():
+            if source_name in metrics:
+                record[target_name] = metrics.get(source_name)
 
 
 def _metric_lookup(
@@ -455,7 +1041,7 @@ def _response_metrics(
     metric_lookup: dict[tuple[str, str], dict[str, Any]],
 ) -> dict[str, Any]:
     metrics = metric_lookup.get((response.question, response.run_name), {})
-    return {metric_name: metrics.get(metric_name) for metric_name in RAGAS_METRIC_NAMES}
+    return {metric_name: metrics.get(metric_name) for metric_name in REPORT_METRIC_NAMES}
 
 
 def _build_comparison_sheet(
@@ -470,7 +1056,7 @@ def _build_comparison_sheet(
         for row in response_rows
     }
 
-    metric_names: list[str] = list(RAGAS_METRIC_NAMES)
+    metric_names: list[str] = list(REPORT_METRIC_NAMES)
     metric_lookup: dict[tuple[str, str], dict[str, Any]] = {}
     if ragas_per_run is not None and not ragas_per_run.empty:
         metric_lookup = _metric_lookup(ragas_per_run)
@@ -521,7 +1107,7 @@ def _build_single_sheet_report(
         for row in response_rows
     }
 
-    metric_names: list[str] = list(RAGAS_METRIC_NAMES)
+    metric_names: list[str] = list(REPORT_METRIC_NAMES)
     metric_lookup: dict[tuple[str, str], dict[str, Any]] = {}
     if ragas_per_run is not None and not ragas_per_run.empty:
         metric_lookup = _metric_lookup(ragas_per_run)

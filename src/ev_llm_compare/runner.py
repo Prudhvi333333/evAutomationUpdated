@@ -18,7 +18,13 @@ from .evaluation import (
 )
 from .excel_loader import load_questions, load_reference_answers, load_workbook
 from .models import create_client, safe_generate
-from .prompts import build_non_rag_prompt, build_rag_prompt, format_context
+from .prompts import (
+    NON_RAG_SYSTEM_PROMPT,
+    SYSTEM_PROMPT,
+    build_non_rag_prompt,
+    build_rag_prompt,
+    format_context,
+)
 from .retrieval import HybridRetriever
 from .schemas import ModelResponse
 from .settings import AppConfig, ModelSpec
@@ -86,7 +92,16 @@ class ComparisonRunner:
                     )
                     question_retrieval = retrievals[question]
                     prompt = (
-                        build_rag_prompt(question, format_context(question_retrieval))
+                        build_rag_prompt(
+                            question,
+                            format_context(
+                                question_retrieval,
+                                question=question,
+                                max_results=self.config.retrieval.generation_context_result_limit,
+                                max_chars=self.config.retrieval.generation_context_char_budget,
+                                compact=self.config.retrieval.compact_context_enabled,
+                            ),
+                        )
                         if spec.rag_enabled
                         else build_non_rag_prompt(question)
                     )
@@ -95,6 +110,7 @@ class ComparisonRunner:
                         prompt,
                         temperature=spec.temperature,
                         max_tokens=spec.max_tokens,
+                        system_prompt=SYSTEM_PROMPT if spec.rag_enabled else NON_RAG_SYSTEM_PROMPT,
                     )
                     responses.append(
                         ModelResponse(
@@ -153,6 +169,9 @@ class ComparisonRunner:
                             missing_reference_questions,
                             retrievals,
                             judge_client,
+                            context_result_limit=self.config.retrieval.generation_context_result_limit,
+                            context_char_budget=self.config.retrieval.generation_context_char_budget,
+                            compact_context=self.config.retrieval.compact_context_enabled,
                         )
                         for question, answer in generated_references.items():
                             references[question] = answer
@@ -184,6 +203,9 @@ class ComparisonRunner:
                         max_retries=self.config.ragas_max_retries,
                         max_wait=self.config.ragas_max_wait,
                         max_workers=self.config.ragas_max_workers,
+                        context_result_limit=self.config.retrieval.ragas_context_result_limit,
+                        context_char_budget=self.config.retrieval.ragas_context_char_budget,
+                        compact_context=self.config.retrieval.compact_context_enabled,
                     )
                 except Exception as exc:
                     self._log(
