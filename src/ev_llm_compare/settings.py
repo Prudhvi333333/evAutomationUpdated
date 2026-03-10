@@ -55,7 +55,7 @@ class AppConfig:
     runtime: RuntimeSettings = field(default_factory=RuntimeSettings)
     models: list[ModelSpec] = field(default_factory=list)
     ragas_judge_provider: str = "ollama"
-    ragas_judge_model: str = "llama3.1:8b"
+    ragas_judge_model: str = "mistral-small3.2:24b"
     ragas_embedding_provider: str = "huggingface"
     ragas_embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     ragas_timeout: int = 600
