@@ -147,7 +147,7 @@ class ComparisonRunner:
                     f"Matched {matched_count}/{len(questions)} questions to golden answers"
                 )
             if skip_ragas:
-                self._log("Skipping reference generation and RAGAS evaluation")
+                self._log("Skipping reference generation and evaluation metrics")
             else:
                 try:
                     missing_reference_questions = [
@@ -191,7 +191,7 @@ class ComparisonRunner:
                             single_sheet_only=single_sheet_only,
                         )
                         self._log(f"Checkpoint workbook written to {checkpoint_path}")
-                    self._log("Running RAGAS evaluation")
+                    self._log("Running evaluation metrics")
                     ragas_per_run, ragas_summary = run_ragas(
                         responses=responses,
                         reference_answers=references,
@@ -209,8 +209,8 @@ class ComparisonRunner:
                     )
                 except Exception as exc:
                     self._log(
-                        "Reference generation or RAGAS evaluation failed: "
-                        f"{exc}. Continuing without RAGAS sheets."
+                        "Reference generation or evaluation failed: "
+                        f"{exc}. Continuing without metric sheets."
                     )
 
             if export_response_files and response_output_dir:

@@ -1,18 +1,16 @@
 from __future__ import annotations
 
-from collections import defaultdict
-from dataclasses import dataclass
 import os
 from pathlib import Path
 import re
 from typing import Any
-import warnings
 
 import pandas as pd
 
-from .models import LLMClient, safe_generate
+from .models import LLMClient, create_client, safe_generate
 from .prompts import build_reference_prompt, compact_context_segments, format_context
 from .schemas import ModelResponse
+from .settings import ModelSpec, RuntimeSettings
 
 REPORT_METRIC_NAMES = [
     "answer_accuracy",
@@ -21,108 +19,16 @@ REPORT_METRIC_NAMES = [
     "grounded_claim_ratio",
     "unsupported_claim_ratio",
     "contradicted_claim_ratio",
-    "ragas_answer_accuracy",
-    "ragas_faithfulness",
-    "ragas_response_groundedness",
 ]
 
-RAGAS_OUTPUT_METRICS = [
-    "ragas_answer_accuracy",
-    "ragas_faithfulness",
-    "ragas_response_groundedness",
-]
-
-FIELD_ALIASES = {
-    "company": "company",
-    "category": "category",
-    "industry group": "industry_group",
-    "ev supply chain role": "ev_supply_chain_role",
-    "product / service": "product_service",
-    "product service": "product_service",
-    "primary oems": "primary_oems",
-    "primary oem": "primary_oems",
-    "location": "location",
-    "primary facility type": "primary_facility_type",
-    "employment": "employment",
-    "ev / battery relevant": "ev_battery_relevant",
-    "ev battery relevant": "ev_battery_relevant",
-    "supplier or affiliation type": "supplier_or_affiliation_type",
-    "classification method": "classification_method",
-}
-
-STOPWORD_TOKENS = {
-    "a",
-    "an",
-    "and",
-    "are",
-    "as",
-    "at",
-    "be",
-    "by",
-    "for",
-    "from",
-    "how",
-    "if",
-    "in",
-    "is",
-    "it",
-    "of",
-    "on",
-    "or",
-    "that",
-    "the",
-    "their",
-    "there",
-    "these",
-    "this",
-    "to",
-    "with",
-}
-
-STRUCTURED_MISSING_PATTERNS = (
-    "without specific workbook evidence",
-    "without access to the workbook",
-    "without access to the excel workbook",
-    "without access to the relevant workbook data",
-    "without the workbook",
-    "without specific workbook data",
-    "please provide the excel workbook",
-    "i cannot answer this question",
-    "i am unable to answer this question",
-    "i do not have access",
-    "exact dataset answer is unknown",
-    "general approach",
-    "you would need to refer",
-    "if you have access to the workbook",
-    "cannot provide a definitive list",
-    "can t provide a definitive list",
-    "can t give you exact",
-    "cannot give you exact",
-    "filter your dataset",
-    "countif",
-    "pivot table",
-)
-
-NEGATIVE_PATTERNS = (
-    "there are no companies",
-    "there are no matching companies",
-    "no companies",
-    "no matching companies",
-    "no entries",
-    "none",
-    "not possible to provide",
-    "does not contain any companies",
-)
-
-
-@dataclass(frozen=True, slots=True)
-class StructuredClaim:
-    kind: str
-    subject: str = ""
-    field: str = ""
-    label: str = ""
-    value: str = ""
-    weight: float = 1.0
+LLM_JUDGE_ALLOWED_SCORES = (0.0, 0.25, 0.5, 0.75, 1.0)
+LLM_JUDGE_SYSTEM_PROMPT = """You are a strict evaluation judge for workbook question answering.
+Return only one line in the form SCORE=<value>.
+Allowed values are exactly: 0, 0.25, 0.5, 0.75, 1.
+Do not add explanation, JSON, markdown, or extra text."""
+LLM_JUDGE_PACKET_SYSTEM_PROMPT = """You are a strict evaluation judge for workbook question answering.
+Return only the requested metric lines with no explanation, JSON, markdown, or extra text.
+Allowed values are exactly: 0, 0.25, 0.5, 0.75, 1."""
 
 
 def build_reference_answers(
@@ -148,411 +54,151 @@ def build_reference_answers(
     return references
 
 
-def _normalize_text(value: str) -> str:
-    return re.sub(r"[^a-z0-9]+", " ", value.lower()).strip()
-
-
-def _normalize_value(value: str) -> str:
-    cleaned = value.replace("\u2011", "-").replace("\u2013", "-").replace("\u2014", "-")
-    return re.sub(r"\s+", " ", cleaned).strip()
-
-
-def _normalize_label(value: str) -> str:
-    return _normalize_text(re.sub(r"\[\d+\]", "", value))
-
-
-def _claim_key(claim: StructuredClaim) -> tuple[str, str, str, str, str]:
-    return (claim.kind, claim.subject, claim.field, claim.label, claim.value)
-
-
-def _add_claim(
-    claims: dict[tuple[str, str, str, str, str], StructuredClaim],
-    claim: StructuredClaim,
-) -> None:
-    claims[_claim_key(claim)] = claim
-
-
-def _strip_markup(text: str) -> str:
-    cleaned = text.replace("**", " ").replace("`", " ")
-    cleaned = re.sub(r"^[\-\*\u2022]+\s*", "", cleaned, flags=re.MULTILINE)
-    cleaned = re.sub(r"\s+", " ", cleaned)
-    return cleaned.strip()
-
-
-def _canonical_field_name(label: str) -> str | None:
-    normalized = _normalize_text(label)
-    return FIELD_ALIASES.get(normalized)
-
-
-def _split_candidate_segments(text: str) -> list[str]:
-    cleaned = text.replace("\r", "\n")
-    cleaned = re.sub(r"\n{2,}", "\n", cleaned)
-    cleaned = re.sub(r"\s+\|\s+", " | ", cleaned)
-    prepared = re.sub(r"(?m)^\s*[\-\*\u2022]\s*", "", cleaned)
-    prepared = re.sub(
-        r"(?<!^)\s+(?=Company:\s*[A-Z0-9])",
-        "\n",
-        prepared,
+def _make_judge_client(provider: str, model: str) -> LLMClient:
+    runtime = RuntimeSettings()
+    runtime.ollama_base_url = os.getenv("OLLAMA_BASE_URL", runtime.ollama_base_url)
+    spec = ModelSpec(
+        run_name="llm_judge",
+        provider=provider,
+        model_name=model,
+        rag_enabled=False,
     )
-    prepared = re.sub(
-        r"(?<!^)\s+(?=[A-Z0-9][A-Za-z0-9&().,'/\- ]{1,90}\s+\|\s+"
-        r"(?:Category|Location|Primary OEMs|Primary Facility Type|Employment|EV Supply Chain Role):)",
-        "\n",
-        prepared,
-    )
-    prepared = re.sub(
-        r"(?<!^)\s+(?=[A-Z0-9][A-Za-z0-9&().,'/\- ]{1,90}\s+->)",
-        "\n",
-        prepared,
-    )
-    segments = [segment.strip() for segment in prepared.split("\n") if segment.strip()]
-    if segments:
-        return segments
-    return [prepared.strip()] if prepared.strip() else []
+    return create_client(spec, runtime)
 
 
-def _split_group_items(value: str) -> list[str]:
-    if ";" in value:
-        items = value.split(";")
-    else:
-        items = re.split(r",\s+(?=[A-Z0-9])", value)
-    return [item.strip(" -") for item in items if item.strip(" -")]
-
-
-def _extract_structured_claims(question: str, text: str) -> dict[tuple[str, str, str, str, str], StructuredClaim]:
-    claims: dict[tuple[str, str, str, str, str], StructuredClaim] = {}
-    if not text or not text.strip():
-        return claims
-
-    normalized_question = _normalize_text(question)
-    stripped = _strip_markup(text)
-    lowered = _normalize_text(stripped)
-
-    if any(pattern in lowered for pattern in NEGATIVE_PATTERNS):
-        _add_claim(claims, StructuredClaim(kind="negative", value="no_matches", weight=1.5))
-
-    for segment in _split_candidate_segments(stripped):
-        segment = segment.strip()
-        if not segment:
-            continue
-
-        if " | " in segment or "->" in segment:
-            _extract_record_claims(segment, claims)
-            continue
-
-        label_matches = list(
-            re.finditer(
-                r"([A-Z][A-Za-z0-9 /()&+\-\.]{1,80}?)(?: \[\d+\])?:\s*",
-                segment,
-            )
-        )
-        if label_matches:
-            parsed_group = False
-            for index, match in enumerate(label_matches):
-                label = match.group(1).strip()
-                label_field = _canonical_field_name(label)
-                if label_field:
-                    continue
-                start = match.end()
-                end = label_matches[index + 1].start() if index + 1 < len(label_matches) else len(segment)
-                value = segment[start:end].strip(" ;")
-                if not value:
-                    continue
-                parsed_group = True
-                normalized_label = _normalize_label(label)
-                numeric_value = re.sub(r"[^0-9]", "", value)
-                if numeric_value and re.sub(r"[\d,\s]", "", value) == "":
-                    _add_claim(
-                        claims,
-                        StructuredClaim(
-                            kind="count",
-                            label=normalized_label,
-                            value=numeric_value,
-                            weight=2.0,
-                        ),
-                    )
-                    continue
-                for item in _split_group_items(value):
-                    company, category = _extract_company_with_optional_category(item)
-                    normalized_company = _normalize_text(company or item)
-                    if not normalized_company:
-                        continue
-                    _add_claim(
-                        claims,
-                        StructuredClaim(
-                            kind="group_item",
-                            label=normalized_label,
-                            value=normalized_company,
-                            weight=1.25,
-                        ),
-                    )
-                    if category:
-                        _add_claim(
-                            claims,
-                            StructuredClaim(
-                                kind="group_item_category",
-                                label=normalized_label,
-                                subject=normalized_company,
-                                value=_normalize_text(category),
-                                weight=1.35,
-                            ),
-                        )
-            if parsed_group:
-                continue
-
-        if (
-            any(term in normalized_question for term in {"identify the set", "represented", "union"})
-            and ";" in segment
-        ):
-            for item in _split_group_items(segment):
-                normalized_item = _normalize_text(item)
-                if normalized_item:
-                    _add_claim(
-                        claims,
-                        StructuredClaim(kind="set_item", value=normalized_item, weight=1.0),
-                    )
-
-    return claims
-
-
-def _extract_record_claims(
-    segment: str,
-    claims: dict[tuple[str, str, str, str, str], StructuredClaim],
-) -> None:
-    normalized_segment = _normalize_value(segment)
-    if "->" in normalized_segment and "|" not in normalized_segment:
-        subject_raw, remainder = normalized_segment.split("->", 1)
-        subject = _normalize_text(subject_raw)
-        if subject:
-            _add_claim(claims, StructuredClaim(kind="entity", subject=subject, weight=0.5))
-        if ":" in remainder:
-            field_label, value = remainder.split(":", 1)
-            field_name = _canonical_field_name(field_label)
-            if field_name and subject:
-                _add_claim(
-                    claims,
-                    StructuredClaim(
-                        kind="field",
-                        subject=subject,
-                        field=field_name,
-                        value=_normalize_text(value),
-                        weight=1.5,
-                    ),
-                )
-        return
-
-    parts = [part.strip(" -") for part in normalized_segment.split("|") if part.strip(" -")]
-    if not parts:
-        return
-
-    subject = ""
-    first_part = parts[0]
-    if ":" not in first_part:
-        subject = _normalize_text(first_part)
-        _add_claim(claims, StructuredClaim(kind="entity", subject=subject, weight=0.5))
-        parts = parts[1:]
-    elif _canonical_field_name(first_part.split(":", 1)[0]) == "company":
-        subject = _normalize_text(first_part.split(":", 1)[1])
-        _add_claim(claims, StructuredClaim(kind="entity", subject=subject, weight=0.5))
-        parts = parts[1:]
-
-    for part in parts:
-        if ":" not in part:
-            continue
-        field_label, value = part.split(":", 1)
-        field_name = _canonical_field_name(field_label)
-        if field_name == "company" and not subject:
-            subject = _normalize_text(value)
-            _add_claim(claims, StructuredClaim(kind="entity", subject=subject, weight=0.5))
-            continue
-        if not field_name or not subject:
-            continue
-        normalized_value = _normalize_text(value)
-        if not normalized_value:
-            continue
-        _add_claim(
-            claims,
-            StructuredClaim(
-                kind="field",
-                subject=subject,
-                field=field_name,
-                value=normalized_value,
-                weight=1.5,
-            ),
-        )
-
-
-def _extract_company_with_optional_category(item: str) -> tuple[str, str]:
-    match = re.match(r"(.+?)\s*\(([^)]+)\)\s*$", item.strip())
-    if not match:
-        return item.strip(), ""
-    company, category = match.groups()
-    return company.strip(), category.strip()
-
-
-def _weighted_f1(
-    gold_claims: dict[tuple[str, str, str, str, str], StructuredClaim],
-    predicted_claims: dict[tuple[str, str, str, str, str], StructuredClaim],
-) -> float:
-    if not gold_claims and not predicted_claims:
-        return 1.0
-    if not gold_claims or not predicted_claims:
-        return 0.0
-
-    matched_weight = sum(
-        min(gold_claims[key].weight, predicted_claims[key].weight)
-        for key in set(gold_claims) & set(predicted_claims)
-    )
-    gold_weight = sum(claim.weight for claim in gold_claims.values())
-    predicted_weight = sum(claim.weight for claim in predicted_claims.values())
-    if gold_weight <= 0 or predicted_weight <= 0:
-        return 0.0
-    precision = matched_weight / predicted_weight
-    recall = matched_weight / gold_weight
-    if precision + recall == 0:
-        return 0.0
-    return 2 * precision * recall / (precision + recall)
-
-
-def _tokenize_for_scoring(text: str) -> set[str]:
-    tokens = re.findall(r"[a-z0-9]+", _normalize_text(text))
-    return {
-        token
-        for token in tokens
-        if token not in STOPWORD_TOKENS and (token.isdigit() or len(token) >= 3)
-    }
-
-
-def _token_f1(reference_text: str, answer_text: str) -> float:
-    reference_tokens = _tokenize_for_scoring(reference_text)
-    answer_tokens = _tokenize_for_scoring(answer_text)
-    if not reference_tokens or not answer_tokens:
-        return 0.0
-    overlap = len(reference_tokens & answer_tokens)
-    precision = overlap / len(answer_tokens)
-    recall = overlap / len(reference_tokens)
-    if precision + recall == 0:
-        return 0.0
-    return 2 * precision * recall / (precision + recall)
-
-
-def _looks_like_structured_question(question: str, reference_answer: str) -> bool:
-    normalized_question = _normalize_text(question)
-    normalized_reference = _normalize_text(reference_answer)
-    if "|" in reference_answer or "->" in reference_answer or "[" in reference_answer:
-        return True
-    if any(term in normalized_question for term in {"count", "group", "list", "show all", "map", "provide"}):
-        return True
-    if any(term in normalized_reference for term in {"category", "location", "employment", "primary oems"}):
-        return True
-    return False
-
-
-def _is_missing_dataset_answer(answer: str) -> bool:
-    normalized = _normalize_text(answer)
-    return any(pattern in normalized for pattern in STRUCTURED_MISSING_PATTERNS)
-
-
-def _score_answer_accuracy(question: str, answer: str, reference_answer: str) -> float | None:
-    if not reference_answer:
-        return None
-
-    normalized_question = _normalize_text(question)
-    gold_claims = _extract_structured_claims(question, reference_answer)
-    answer_claims = _extract_structured_claims(question, answer)
-    structured_question = _looks_like_structured_question(question, reference_answer)
-
-    if structured_question and _is_missing_dataset_answer(answer):
-        return 0.0
-
-    deterministic_count_question = any(
-        term in normalized_question
-        for term in {
-            "for each category",
-            "count how many",
-            "how many",
-        }
+def _llm_judge_prompt_answer_accuracy(
+    question: str,
+    answer: str,
+    reference_answer: str,
+) -> str:
+    return (
+        "Task: score how well the candidate answer matches the reference answer for a workbook question.\n"
+        "Scoring rubric:\n"
+        "- 1: fully correct, all major requested facts present, no material errors.\n"
+        "- 0.75: mostly correct, only minor omissions or formatting differences.\n"
+        "- 0.5: partially correct, mixed correct and missing facts.\n"
+        "- 0.25: vaguely related but largely incomplete or non-answer.\n"
+        "- 0: wrong, contradictory, or fails to answer the workbook question.\n"
+        "For list, grouped, and count questions, missing requested items is a major error.\n\n"
+        f"Question:\n{question}\n\n"
+        f"Reference answer:\n{reference_answer}\n\n"
+        f"Candidate answer:\n{answer}\n\n"
+        "Return exactly one line: SCORE=<0|0.25|0.5|0.75|1>"
     )
 
-    if deterministic_count_question and gold_claims:
-        return round(_weighted_f1(gold_claims, answer_claims), 4)
 
-    if structured_question:
-        if any(claim.kind == "negative" for claim in answer_claims.values()) and reference_answer.strip():
-            return 0.0
-        return round(_token_f1(reference_answer, answer), 4)
-
-    return None
-
-
-def _claim_family_key(claim: StructuredClaim) -> tuple[str, str, str]:
-    if claim.kind == "field":
-        return (claim.kind, claim.subject, claim.field)
-    if claim.kind == "count":
-        return (claim.kind, claim.label, "")
-    if claim.kind in {"group_item", "group_item_category"}:
-        return (claim.kind, claim.label, claim.subject)
-    return (claim.kind, claim.subject or claim.label or claim.value, "")
-
-
-def _derive_grounding_metrics(
+def _llm_judge_prompt_grounding_packet(
     question: str,
     answer: str,
     retrieved_contexts: list[str],
-) -> dict[str, float | None]:
-    response_claims = list(_extract_structured_claims(question, answer).values())
-    context_claim_lookup = _extract_structured_claims(question, "\n".join(retrieved_contexts))
-    context_claims = list(context_claim_lookup.values())
+) -> str:
+    context = "\n\n".join(retrieved_contexts)
+    return (
+        "Task: evaluate the candidate answer against the retrieved workbook evidence.\n"
+        "Use only these discrete values: 0, 0.25, 0.5, 0.75, 1.\n"
+        "Definitions:\n"
+        "- FAITHFULNESS: how free the answer is from claims contradicted by evidence.\n"
+        "- RESPONSE_GROUNDEDNESS: how much of the answer is grounded in evidence.\n"
+        "- GROUNDED_CLAIM_RATIO: fraction of substantive claims supported by evidence.\n"
+        "- UNSUPPORTED_CLAIM_RATIO: fraction of substantive claims not supported by evidence.\n"
+        "- CONTRADICTED_CLAIM_RATIO: fraction of substantive claims contradicted by evidence.\n"
+        "Consistency rules:\n"
+        "- RESPONSE_GROUNDEDNESS should usually match GROUNDED_CLAIM_RATIO.\n"
+        "- Higher CONTRADICTED_CLAIM_RATIO should lower FAITHFULNESS.\n"
+        "- GROUNDED_CLAIM_RATIO, UNSUPPORTED_CLAIM_RATIO, and CONTRADICTED_CLAIM_RATIO should approximately sum to 1.\n\n"
+        f"Question:\n{question}\n\n"
+        f"Retrieved evidence:\n{context}\n\n"
+        f"Candidate answer:\n{answer}\n\n"
+        "Return exactly these five lines:\n"
+        "FAITHFULNESS=<0|0.25|0.5|0.75|1>\n"
+        "RESPONSE_GROUNDEDNESS=<0|0.25|0.5|0.75|1>\n"
+        "GROUNDED_CLAIM_RATIO=<0|0.25|0.5|0.75|1>\n"
+        "UNSUPPORTED_CLAIM_RATIO=<0|0.25|0.5|0.75|1>\n"
+        "CONTRADICTED_CLAIM_RATIO=<0|0.25|0.5|0.75|1>"
+    )
 
-    if not response_claims:
-        return {
-            "faithfulness": None,
-            "response_groundedness": None,
-            "grounded_claim_ratio": None,
-            "unsupported_claim_ratio": None,
-            "contradicted_claim_ratio": None,
-        }
 
-    supported = 0
-    unsupported = 0
-    contradicted = 0
-    context_families: defaultdict[tuple[str, str, str], list[StructuredClaim]] = defaultdict(list)
-    for claim in context_claims:
-        context_families[_claim_family_key(claim)].append(claim)
+def _parse_llm_judge_score(raw_text: str) -> float | None:
+    if not raw_text:
+        return None
+    match = re.search(r"(?<![\d.])(0(?:\.25|\.5|\.75)?|1(?:\.0)?)\b", raw_text)
+    if not match:
+        return None
+    try:
+        score = float(match.group(1))
+    except ValueError:
+        return None
+    if score in LLM_JUDGE_ALLOWED_SCORES:
+        return score
+    return None
 
-    for claim in response_claims:
-        key = _claim_key(claim)
-        if key in context_claim_lookup:
-            supported += 1
-            continue
 
-        family_matches = context_families.get(_claim_family_key(claim), [])
-        if claim.kind == "negative":
-            if context_claims:
-                contradicted += 1
-            else:
-                supported += 1
-            continue
-
-        if claim.kind in {"field", "count"} and family_matches:
-            contradicted += 1
-            continue
-
-        unsupported += 1
-
-    total = max(1, len(response_claims))
-    grounded_ratio = supported / total
-    unsupported_ratio = unsupported / total
-    contradicted_ratio = contradicted / total
-    faithfulness = max(0.0, 1.0 - contradicted_ratio)
-    response_groundedness = grounded_ratio
-    return {
-        "faithfulness": round(faithfulness, 4),
-        "response_groundedness": round(response_groundedness, 4),
-        "grounded_claim_ratio": round(grounded_ratio, 4),
-        "unsupported_claim_ratio": round(unsupported_ratio, 4),
-        "contradicted_claim_ratio": round(contradicted_ratio, 4),
+def _parse_llm_judge_packet(raw_text: str) -> dict[str, float] | None:
+    if not raw_text:
+        return None
+    metric_map = {
+        "FAITHFULNESS": "faithfulness",
+        "RESPONSE_GROUNDEDNESS": "response_groundedness",
+        "GROUNDED_CLAIM_RATIO": "grounded_claim_ratio",
+        "UNSUPPORTED_CLAIM_RATIO": "unsupported_claim_ratio",
+        "CONTRADICTED_CLAIM_RATIO": "contradicted_claim_ratio",
     }
+    parsed: dict[str, float] = {}
+    for label, metric_name in metric_map.items():
+        match = re.search(
+            rf"{label}\s*=\s*(0(?:\.25|\.5|\.75)?|1(?:\.0)?)\b",
+            raw_text,
+            flags=re.IGNORECASE,
+        )
+        if not match:
+            return None
+        score = float(match.group(1))
+        if score not in LLM_JUDGE_ALLOWED_SCORES:
+            return None
+        parsed[metric_name] = score
+    return parsed
+
+
+def _llm_judge_metric(
+    judge_client: LLMClient,
+    prompt: str,
+    retries: int = 2,
+) -> float | None:
+    for _ in range(max(1, retries + 1)):
+        answer, _, success, _ = safe_generate(
+            judge_client,
+            prompt,
+            temperature=0.0,
+            max_tokens=12,
+            system_prompt=LLM_JUDGE_SYSTEM_PROMPT,
+        )
+        if not success:
+            continue
+        parsed = _parse_llm_judge_score(answer)
+        if parsed is not None:
+            return parsed
+    return None
+
+
+def _llm_judge_grounding_packet(
+    judge_client: LLMClient,
+    prompt: str,
+    retries: int = 2,
+) -> dict[str, float] | None:
+    for _ in range(max(1, retries + 1)):
+        answer, _, success, _ = safe_generate(
+            judge_client,
+            prompt,
+            temperature=0.0,
+            max_tokens=80,
+            system_prompt=LLM_JUDGE_PACKET_SYSTEM_PROMPT,
+        )
+        if not success:
+            continue
+        parsed = _parse_llm_judge_packet(answer)
+        if parsed is not None:
+            return parsed
+    return None
 
 
 def run_ragas(
@@ -570,39 +216,7 @@ def run_ragas(
     context_char_budget: int = 2600,
     compact_context: bool = True,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    with warnings.catch_warnings():
-        warnings.filterwarnings(
-            "ignore",
-            message=".*google\\.generativeai.*",
-            category=FutureWarning,
-        )
-        warnings.filterwarnings(
-            "ignore",
-            category=FutureWarning,
-            module=r"instructor\.providers\.gemini\.client",
-        )
-        warnings.filterwarnings(
-            "ignore",
-            message=".*HuggingFaceEmbeddings.*deprecated.*",
-        )
-        warnings.filterwarnings(
-            "ignore",
-            message="Importing .* from 'ragas\\.metrics' is deprecated.*",
-            category=DeprecationWarning,
-        )
-        from ragas import EvaluationDataset, evaluate
-        from ragas.embeddings import LangchainEmbeddingsWrapper
-        from ragas.llms import LangchainLLMWrapper
-        from ragas.metrics import AnswerAccuracy, Faithfulness, ResponseGroundedness
-        from ragas.run_config import RunConfig
-
-    evaluator_llm = LangchainLLMWrapper(_make_langchain_llm(judge_provider, judge_model))
-    run_config = RunConfig(
-        timeout=timeout,
-        max_retries=max_retries,
-        max_wait=max_wait,
-        max_workers=max_workers,
-    )
+    judge_client = _make_judge_client(judge_provider, judge_model)
 
     record_lookup: dict[tuple[str, str], dict[str, Any]] = {}
     for response in responses:
@@ -613,12 +227,15 @@ def run_ragas(
         }
         reference_answer = reference_answers.get(response.question, "")
         if response.success:
-            trusted_accuracy = _score_answer_accuracy(
-                response.question,
-                response.answer,
-                reference_answer,
-            )
-            base_record["answer_accuracy"] = trusted_accuracy
+            if reference_answer:
+                base_record["answer_accuracy"] = _llm_judge_metric(
+                    judge_client,
+                    _llm_judge_prompt_answer_accuracy(
+                        response.question,
+                        response.answer,
+                        reference_answer,
+                    ),
+                )
         if response.success and response.rag_enabled and response.retrieved_chunks:
             retrieved_contexts = (
                 compact_context_segments(
@@ -630,106 +247,19 @@ def run_ragas(
                 if compact_context
                 else [chunk.text for chunk in response.retrieved_chunks]
             )
-            base_record.update(
-                _derive_grounding_metrics(
+            grounding_packet = _llm_judge_grounding_packet(
+                judge_client,
+                _llm_judge_prompt_grounding_packet(
                     response.question,
                     response.answer,
                     retrieved_contexts,
-                )
+                ),
             )
+            if grounding_packet is not None:
+                base_record.update(grounding_packet)
         record_lookup[(response.run_name, response.question)] = {
             **base_record,
         }
-    accuracy_keys: list[tuple[str, str]] = []
-    accuracy_rows: list[dict[str, Any]] = []
-    rag_keys: list[tuple[str, str]] = []
-    rag_rows: list[dict[str, Any]] = []
-    for response in responses:
-        if not response.success:
-            continue
-        reference_answer = reference_answers.get(response.question, "")
-        if reference_answer:
-            accuracy_keys.append((response.run_name, response.question))
-            accuracy_rows.append(
-                {
-                    "user_input": response.question,
-                    "response": response.answer,
-                    "reference": reference_answer,
-                }
-            )
-        if response.rag_enabled and response.retrieved_chunks:
-            retrieved_contexts = (
-                compact_context_segments(
-                    response.question,
-                    response.retrieved_chunks,
-                    max_results=context_result_limit,
-                    max_chars=context_char_budget,
-                )
-                if compact_context
-                else [chunk.text for chunk in response.retrieved_chunks]
-            )
-            rag_keys.append((response.run_name, response.question))
-            rag_rows.append(
-                {
-                    "user_input": response.question,
-                    "response": response.answer,
-                    "retrieved_contexts": retrieved_contexts,
-                    "reference": reference_answer,
-                }
-            )
-
-    if accuracy_rows:
-        accuracy_results = _evaluate_ragas_batch(
-            evaluate=evaluate,
-            dataset_builder=EvaluationDataset,
-            dataset_rows=accuracy_rows,
-            metrics=[AnswerAccuracy(llm=evaluator_llm, name="answer_accuracy")],
-            llm=evaluator_llm,
-            embeddings=None,
-            run_config=run_config,
-            batch_size=min(len(accuracy_rows), max(1, max_workers * 4)),
-        )
-        _merge_metric_rows(
-            record_lookup,
-            accuracy_keys,
-            accuracy_results,
-            {"answer_accuracy": "ragas_answer_accuracy"},
-        )
-
-    if rag_rows:
-        evaluator_embeddings = LangchainEmbeddingsWrapper(
-            _make_langchain_embeddings(embedding_provider, embedding_model)
-        )
-        rag_metric_results = _evaluate_ragas_batch(
-            evaluate=evaluate,
-            dataset_builder=EvaluationDataset,
-            dataset_rows=rag_rows,
-            metrics=[
-                Faithfulness(llm=evaluator_llm, name="faithfulness"),
-                ResponseGroundedness(llm=evaluator_llm, name="response_groundedness"),
-            ],
-            llm=evaluator_llm,
-            embeddings=evaluator_embeddings,
-            run_config=run_config,
-            batch_size=min(len(rag_rows), max(1, max_workers * 4)),
-        )
-        _merge_metric_rows(
-            record_lookup,
-            rag_keys,
-            rag_metric_results,
-            {
-                "faithfulness": "ragas_faithfulness",
-                "response_groundedness": "ragas_response_groundedness",
-            },
-        )
-
-    for record in record_lookup.values():
-        if record.get("answer_accuracy") is None:
-            record["answer_accuracy"] = record.get("ragas_answer_accuracy")
-        if record.get("faithfulness") is None:
-            record["faithfulness"] = record.get("ragas_faithfulness")
-        if record.get("response_groundedness") is None:
-            record["response_groundedness"] = record.get("ragas_response_groundedness")
 
     per_run_records = [
         record_lookup[(response.run_name, response.question)]
@@ -822,9 +352,9 @@ def export_results(
                 ]
             ).to_excel(writer, sheet_name="references", index=False)
             if ragas_per_run is not None:
-                ragas_per_run.to_excel(writer, sheet_name="ragas_per_question", index=False)
+                ragas_per_run.to_excel(writer, sheet_name="metrics_per_question", index=False)
             if ragas_summary is not None:
-                ragas_summary.to_excel(writer, sheet_name="ragas_summary", index=False)
+                ragas_summary.to_excel(writer, sheet_name="metrics_summary", index=False)
 
     return workbook_path
 
@@ -843,9 +373,9 @@ def export_metrics_workbook(
     workbook_path = output_dir / f"{filename_prefix}_{timestamp}.xlsx"
     with pd.ExcelWriter(workbook_path, engine="openpyxl") as writer:
         if ragas_per_run is not None:
-            ragas_per_run.to_excel(writer, sheet_name="ragas_per_question", index=False)
+            ragas_per_run.to_excel(writer, sheet_name="metrics_per_question", index=False)
         if ragas_summary is not None:
-            ragas_summary.to_excel(writer, sheet_name="ragas_summary", index=False)
+            ragas_summary.to_excel(writer, sheet_name="metrics_summary", index=False)
     return workbook_path
 
 
@@ -891,9 +421,9 @@ def export_response_sets(
     if ragas_per_run is not None or ragas_summary is not None:
         with pd.ExcelWriter(run_dir / "all_runs_metrics.xlsx", engine="openpyxl") as writer:
             if ragas_per_run is not None:
-                ragas_per_run.to_excel(writer, sheet_name="ragas_per_question", index=False)
+                ragas_per_run.to_excel(writer, sheet_name="metrics_per_question", index=False)
             if ragas_summary is not None:
-                ragas_summary.to_excel(writer, sheet_name="ragas_summary", index=False)
+                ragas_summary.to_excel(writer, sheet_name="metrics_summary", index=False)
 
     for run_name, run_responses in grouped.items():
         rows = [
@@ -929,100 +459,6 @@ def export_response_sets(
         )
 
     return run_dir
-
-
-def _make_langchain_llm(provider: str, model: str):
-    if provider == "gemini":
-        from langchain_google_genai import ChatGoogleGenerativeAI
-
-        return ChatGoogleGenerativeAI(model=model, temperature=0.0)
-
-    if provider == "ollama":
-        from langchain_ollama import ChatOllama
-
-        return ChatOllama(
-            model=model,
-            temperature=0.0,
-            base_url=os.getenv("OLLAMA_BASE_URL"),
-        )
-
-    raise ValueError(f"Unsupported RAGAS judge provider: {provider}")
-
-
-def _make_langchain_embeddings(provider: str, model: str):
-    if provider == "google":
-        from langchain_google_genai import GoogleGenerativeAIEmbeddings
-
-        return GoogleGenerativeAIEmbeddings(model=model)
-
-    if provider == "huggingface":
-        try:
-            from langchain_huggingface import HuggingFaceEmbeddings
-        except ImportError:
-            from langchain_community.embeddings import HuggingFaceEmbeddings
-
-        return HuggingFaceEmbeddings(model_name=model)
-
-    raise ValueError(f"Unsupported RAGAS embedding provider: {provider}")
-
-
-def _result_to_rows(result: Any) -> list[dict[str, Any]]:
-    if hasattr(result, "to_pandas"):
-        frame = result.to_pandas()
-        return frame.to_dict(orient="records")
-    if hasattr(result, "scores"):
-        scores = getattr(result, "scores")
-        if isinstance(scores, list):
-            return [dict(item) for item in scores]
-        if isinstance(scores, dict):
-            return [dict(scores)]
-    if isinstance(result, dict):
-        return [result]
-    return []
-
-
-def _evaluate_ragas_batch(
-    evaluate: Any,
-    dataset_builder: Any,
-    dataset_rows: list[dict[str, Any]],
-    metrics: list[Any],
-    llm: Any,
-    embeddings: Any,
-    run_config: Any,
-    batch_size: int,
-) -> list[dict[str, Any]]:
-    try:
-        result = evaluate(
-            dataset=dataset_builder.from_list(dataset_rows),
-            metrics=metrics,
-            llm=llm,
-            embeddings=embeddings,
-            run_config=run_config,
-            batch_size=max(1, batch_size),
-            raise_exceptions=False,
-            show_progress=False,
-            allow_nest_asyncio=False,
-        )
-        return _result_to_rows(result)
-    except Exception as exc:
-        print(f"[ev-llm-compare] RAGAS batch evaluation failed: {exc}", flush=True)
-        return []
-
-
-def _merge_metric_rows(
-    record_lookup: dict[tuple[str, str], dict[str, Any]],
-    keys: list[tuple[str, str]],
-    metric_rows: list[dict[str, Any]],
-    metric_name_map: dict[str, str],
-) -> None:
-    for index, key in enumerate(keys):
-        if index >= len(metric_rows):
-            continue
-        metrics = metric_rows[index]
-        record = record_lookup[key]
-        for source_name, target_name in metric_name_map.items():
-            if source_name in metrics:
-                record[target_name] = metrics.get(source_name)
 
 
 def _metric_lookup(
