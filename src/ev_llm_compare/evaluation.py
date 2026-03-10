@@ -21,14 +21,13 @@ REPORT_METRIC_NAMES = [
     "contradicted_claim_ratio",
 ]
 
-LLM_JUDGE_ALLOWED_SCORES = (0.0, 0.25, 0.5, 0.75, 1.0)
 LLM_JUDGE_SYSTEM_PROMPT = """You are a strict evaluation judge for workbook question answering.
 Return only one line in the form SCORE=<value>.
-Allowed values are exactly: 0, 0.25, 0.5, 0.75, 1.
+Use a continuous score from 0.00 to 1.00 with exactly two decimal places.
 Do not add explanation, JSON, markdown, or extra text."""
 LLM_JUDGE_PACKET_SYSTEM_PROMPT = """You are a strict evaluation judge for workbook question answering.
 Return only the requested metric lines with no explanation, JSON, markdown, or extra text.
-Allowed values are exactly: 0, 0.25, 0.5, 0.75, 1."""
+Use continuous scores from 0.00 to 1.00 with exactly two decimal places."""
 
 
 def build_reference_answers(
@@ -74,16 +73,18 @@ def _llm_judge_prompt_answer_accuracy(
     return (
         "Task: score how well the candidate answer matches the reference answer for a workbook question.\n"
         "Scoring rubric:\n"
-        "- 1: fully correct, all major requested facts present, no material errors.\n"
-        "- 0.75: mostly correct, only minor omissions or formatting differences.\n"
-        "- 0.5: partially correct, mixed correct and missing facts.\n"
-        "- 0.25: vaguely related but largely incomplete or non-answer.\n"
-        "- 0: wrong, contradictory, or fails to answer the workbook question.\n"
-        "For list, grouped, and count questions, missing requested items is a major error.\n\n"
+        "- 1.00 means fully correct, all major requested facts present, no material errors.\n"
+        "- Use the full continuous range 0.00 to 1.00; do not restrict yourself to quarter-step buckets.\n"
+        "- Prefer precise decimals like 0.13, 0.42, 0.68, or 0.91 when appropriate.\n"
+        "- For list, grouped, and count questions, score by factual coverage and precision.\n"
+        "- Missing requested items should reduce the score proportionally.\n"
+        "- Wrong extra entities or wrong numbers should reduce the score.\n"
+        "- If the answer explicitly says it lacks the workbook/dataset, gives a general method, or gives generic industry examples instead of the requested workbook answer, score 0.00.\n"
+        "- If the answer is largely a non-answer or refusal, score 0.00.\n\n"
         f"Question:\n{question}\n\n"
         f"Reference answer:\n{reference_answer}\n\n"
         f"Candidate answer:\n{answer}\n\n"
-        "Return exactly one line: SCORE=<0|0.25|0.5|0.75|1>"
+        "Return exactly one line: SCORE=<0.00-1.00>"
     )
 
 
@@ -95,7 +96,7 @@ def _llm_judge_prompt_grounding_packet(
     context = "\n\n".join(retrieved_contexts)
     return (
         "Task: evaluate the candidate answer against the retrieved workbook evidence.\n"
-        "Use only these discrete values: 0, 0.25, 0.5, 0.75, 1.\n"
+        "Use continuous scores from 0.00 to 1.00 with exactly two decimal places.\n"
         "Definitions:\n"
         "- FAITHFULNESS: how free the answer is from claims contradicted by evidence.\n"
         "- RESPONSE_GROUNDEDNESS: how much of the answer is grounded in evidence.\n"
@@ -103,6 +104,7 @@ def _llm_judge_prompt_grounding_packet(
         "- UNSUPPORTED_CLAIM_RATIO: fraction of substantive claims not supported by evidence.\n"
         "- CONTRADICTED_CLAIM_RATIO: fraction of substantive claims contradicted by evidence.\n"
         "Consistency rules:\n"
+        "- Prefer precise decimals like 0.18, 0.37, 0.64, or 0.92 when appropriate.\n"
         "- RESPONSE_GROUNDEDNESS should usually match GROUNDED_CLAIM_RATIO.\n"
         "- Higher CONTRADICTED_CLAIM_RATIO should lower FAITHFULNESS.\n"
         "- GROUNDED_CLAIM_RATIO, UNSUPPORTED_CLAIM_RATIO, and CONTRADICTED_CLAIM_RATIO should approximately sum to 1.\n\n"
@@ -110,27 +112,27 @@ def _llm_judge_prompt_grounding_packet(
         f"Retrieved evidence:\n{context}\n\n"
         f"Candidate answer:\n{answer}\n\n"
         "Return exactly these five lines:\n"
-        "FAITHFULNESS=<0|0.25|0.5|0.75|1>\n"
-        "RESPONSE_GROUNDEDNESS=<0|0.25|0.5|0.75|1>\n"
-        "GROUNDED_CLAIM_RATIO=<0|0.25|0.5|0.75|1>\n"
-        "UNSUPPORTED_CLAIM_RATIO=<0|0.25|0.5|0.75|1>\n"
-        "CONTRADICTED_CLAIM_RATIO=<0|0.25|0.5|0.75|1>"
+        "FAITHFULNESS=<0.00-1.00>\n"
+        "RESPONSE_GROUNDEDNESS=<0.00-1.00>\n"
+        "GROUNDED_CLAIM_RATIO=<0.00-1.00>\n"
+        "UNSUPPORTED_CLAIM_RATIO=<0.00-1.00>\n"
+        "CONTRADICTED_CLAIM_RATIO=<0.00-1.00>"
     )
 
 
 def _parse_llm_judge_score(raw_text: str) -> float | None:
     if not raw_text:
         return None
-    match = re.search(r"(?<![\d.])(0(?:\.25|\.5|\.75)?|1(?:\.0)?)\b", raw_text)
+    match = re.search(r"(?<![\d.])(0(?:\.\d+)?|1(?:\.0+)?)\b", raw_text)
     if not match:
         return None
     try:
         score = float(match.group(1))
     except ValueError:
         return None
-    if score in LLM_JUDGE_ALLOWED_SCORES:
-        return score
-    return None
+    if not (0.0 <= score <= 1.0):
+        return None
+    return round(score, 4)
 
 
 def _parse_llm_judge_packet(raw_text: str) -> dict[str, float] | None:
@@ -146,16 +148,16 @@ def _parse_llm_judge_packet(raw_text: str) -> dict[str, float] | None:
     parsed: dict[str, float] = {}
     for label, metric_name in metric_map.items():
         match = re.search(
-            rf"{label}\s*=\s*(0(?:\.25|\.5|\.75)?|1(?:\.0)?)\b",
+            rf"{label}\s*=\s*(0(?:\.\d+)?|1(?:\.0+)?)\b",
             raw_text,
             flags=re.IGNORECASE,
         )
         if not match:
             return None
         score = float(match.group(1))
-        if score not in LLM_JUDGE_ALLOWED_SCORES:
+        if not (0.0 <= score <= 1.0):
             return None
-        parsed[metric_name] = score
+        parsed[metric_name] = round(score, 4)
     return parsed
 
 
