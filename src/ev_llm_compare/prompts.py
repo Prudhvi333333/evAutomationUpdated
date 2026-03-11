@@ -52,9 +52,13 @@ def compact_context_segments(
         if remaining < 180:
             break
         if index == 1 and _chunk_type(result) == "structured_match_summary":
+            if len(selected) == 1:
+                summary_budget = remaining
+            else:
+                summary_budget = min(remaining, reserved_summary_budget)
             block = _render_structured_summary(
                 result,
-                min(remaining, reserved_summary_budget),
+                summary_budget,
                 index=index,
             )
         else:
@@ -173,6 +177,11 @@ def _select_compact_results(
     max_results: int,
 ) -> list[RetrievalResult]:
     analytic_question = _is_analytic_question(normalized_question)
+    grouped_listing_question = (
+        "ev supply chain role" in normalized_question
+        and "group" in normalized_question
+        and any(term in normalized_question for term in {"show all", "list all", "provide all"})
+    )
     definition_question = any(
         term in normalized_question for term in {"methodology", "define", "definition", "meaning"}
     )
@@ -181,7 +190,11 @@ def _select_compact_results(
         (result for result in results if _chunk_type(result) == "structured_match_summary"),
         None,
     )
-    if analytic_question and summary_result and _summary_is_self_sufficient(summary_result.text):
+    if (
+        (analytic_question or grouped_listing_question)
+        and summary_result
+        and _summary_is_self_sufficient(summary_result.text)
+    ):
         result_limit = 1
     elif analytic_question and has_structured_summary:
         result_limit = min(max_results, 3)
@@ -365,6 +378,9 @@ def _is_analytic_question(normalized_question: str) -> bool:
             "at least one company",
             "matching companies",
             "list all companies",
+            "show all",
+            "group by",
+            "group them by",
         }
     )
 
@@ -388,5 +404,6 @@ def _summary_is_self_sufficient(summary_text: str) -> bool:
             "primary facility type matches",
             "employment-ranked companies",
             "linked companies:",
+            "grouped by ev supply chain role",
         }
     )

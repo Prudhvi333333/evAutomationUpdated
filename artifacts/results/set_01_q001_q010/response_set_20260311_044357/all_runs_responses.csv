@@ -1,0 +1,521 @@
+run_name,provider,model_name,rag_enabled,question,reference_answer,reference_source,answer,latency_seconds,success,error_message,answer_accuracy,faithfulness,response_groundedness,grounded_claim_ratio,unsupported_claim_ratio,contradicted_claim_ratio
+qwen_rag,ollama,qwen2.5:14b,True,"Show all companies categorized as Tier 1 and Tier 1/2, and group them by EV Supply Chain Role.","Battery Cell [2]: Hitachi Astemo Americas Inc. (Tier 1/2); Honda Development & Manufacturing (Tier 1/2) Battery Pack [4]: F&P Georgia Manufacturing (Tier 1/2); Hollingsworth & Vose Co. (Tier 1/2); Hyundai Motor Group (Tier 1/2); IMMI (Tier 1/2) Charging Infrastructure [1]: Morgan Corp. (Tier 1) General Automotive [78]: Fouts Brothers Fire Equipment (Tier 1/2); Hitachi Astemo (Tier 1/2); Hwashin (Tier 1/2); Hyundai & LG Energy Solution (LGES) (Tier 1/2); Hyundai Industrial Co. (Tier 1/2); Hyundai MOBIS (Georgia) (Tier 1/2); Hyundai Transys Georgia Seating Systems (Tier 1/2); IMS Gear Georgia Inc. (Tier 1/2); Inalfa Roof Systems Inc. (Tier 1/2); JAC Products Inc. (Tier 1/2); JTEKT North America Corp. (Tier 1); Jefferson Southern Corp. (Tier 1/2); Jefferson Southern Corporation (Tier 1); Joon Georgia, Inc. (Tier 1); KTX America Corporation (Tier 1); Kautex Inc. (Tier 1); Kumho Tire USA Inc. (Tier 1); Kyungshin America Corp. (Tier 1); Lark United Manufacturing Inc. (Tier 1); Lear Corporation (Tier 1); Lehigh Technologies Inc. (Tier 1); Linde + Wiemann (Tier 1); Lund International Inc. (Tier 1); Lund International Inc./Ventshade Division (Tier 1); Lyle Industries Inc. (Tier 1); MAT Heavy Duty (Tier 1); Mack Trucks (Tier 1); Magna International (Tier 1); Mando America Corp. (Tier 1); Master Craft Engineering Inc. (Tier 1); Maxxis International USA (Tier 1); Mercedes-Benz USA LLC (Tier 1); Michelin Tread Technologies (Tier 1); Milliken & Co./Valway Plant (Tier 1); Mobis Alabama LLC (Tier 1); MollerTech LLC (Tier 1); Murata Electronics North America Inc. (Tier 1); NIFCO KTW America Corp. (Tier 1); NVH Korea (Tier 1); Neaton Rome Inc. (Tier 1); Nidec Elesys Americas Corp. (Tier 1); Nile Automotive (Tier 1); Nisshinbo Automotive Manufacturing Inc. (Tier 1); Nivel Parts & Manufacturing Co. LLC (Tier 1); Novelis Inc. (Tier 1); OTR Wheel Engineering Inc. (Tier 1); Oneda Corp. (Tier 1); PAI Industries Inc. (Tier 1); PIOLAX Corp. (Tier 1); PPG Industries Inc. (Tier 1); Paccar (Tier 1); Pak-Lite Inc. (Tier 1); Panasonic Automotive Systems Co. (Tier 1); Panduit Corp. (Tier 1); Perkins Small Engines LLC (Tier 1); Peterson Spring (Tier 1); Piedmont Automotive Products Inc. (Tier 1); Pirelli Tire North America LLC (Tier 1); Porsche Cars North America Inc. (Tier 1); Propex Operating Co. LLC (Tier 1); QSR Inc. (Tier 1); Racemark International LLC (Tier 1); RealTruck (Tier 1); Rivian Automotive (Tier 1); Robert Bosch LLC (Tier 1); SAFT America Inc. (Tier 1); SHIROKI North America Inc (Tier 1); SKF USA Inc. (Tier 1); SRG Global Inc. (Tier 1); Sejong Georgia LLC (Tier 1); Seohan Auto USA (Tier 1); Seoyon E-HWA (Tier 1); Seoyon E-Hwa Interior Systems (Tier 1); Sewon America Inc. (Tier 1); Solvay Specialty Polymers USA LLC (Tier 1); Southern Switches Corp. (Tier 1); Stryten Energy (Tier 1); Suhner Manufacturing Corp. (Tier 1) Materials [4]: PHA Body Systems LLC (Tier 1); Panasonic Automotive Systems Co. (Tier 1); SK Battery America (Tier 1); Sumitomo Electric Wiring Systems (Tier 1) Thermal Management [3]: Hyundai Transys Georgia Powertrain (Tier 1/2); Novelis Inc. (Tier 1); Peerless-Winsmith Inc. (Tier 1)",golden,"Grouped by EV Supply Chain Role:
+- Battery Cell: 2 companies
+  - Hitachi Astemo Americas Inc.
+  - Honda Development & Manufacturing
+- Battery Pack: 5 companies
+  - F&P Georgia Manufacturing
+  - Hollingsworth & Vose Co.
+  - Hyundai Motor Group
+  - IMMI
+  - Morgan Corp. (Charging Infrastructure)
+- Charging Infrastructure: 1 company
+  - Morgan Corp.
+- General Automotive: 68 companies
+  - Fouts Brothers Fire Equipment
+  - Hitachi Astemo
+  - Hwashin
+  - Hyundai & LG Energy Solution (LGES)
+  - Hyundai Industrial Co.
+  - Hyundai MOBIS (Georgia)
+  - Hyundai Transys Georgia Seating Systems
+  - IMS Gear Georgia Inc.
+  - Inalfa Roof Systems Inc.
+  - JAC Products Inc.
+  - JTEKT North America Corp.
+  - Jefferson Southern Corp.
+  - Jefferson Southern Corporation
+  - Joon Georgia, Inc.
+  - KTX America Corporation
+  - Kautex Inc.
+  - Kumho Tire USA Inc.
+  - Kyungshin America Corp.
+  - Lark United Manufacturing Inc.
+  - Lear Corporation
+  - Lehigh Technologies Inc.
+  - Linde + Wiemann
+  - Lund International Inc.
+  - Lund International Inc./Ventshade Division
+  - Lyle Industries Inc.
+  - MAT Heavy Duty
+  - Mack Trucks
+  - Magna International
+  - Mando America Corp.
+  - Master Craft Engineering Inc.
+  - Maxxis International USA
+  - Mercedes-Benz USA LLC
+  - Michelin Tread Technologies
+  - Milliken & Co./Valway Plant
+  - Mobis Alabama LLC
+  - MollerTech LLC
+  - Murata Electronics North America Inc.
+  - NIFCO KTW America Corp.
+  - NVH Korea
+  - Neaton Rome Inc.
+  - Nidec Elesys Americas Corp.
+  - Nile Automotive
+  - Nisshinbo Automotive Manufacturing Inc.
+  - Nivel Parts & Manufacturing Co. LLC
+  - Novelis Inc.
+  - OTR Wheel Engineering Inc.
+  - Oneda Corp.
+  - PAI Industries Inc.
+  - PIOLAX Corp.
+  - PPG Industries Inc.
+  - Paccar
+  - Pak-Lite Inc.
+  - Panasonic Automotive Systems Co.
+  - Panduit Corp.
+  - Perkins Small Engines LLC
+  - Peterson Spring
+  - Piedmont Automotive Products Inc.
+  - Pirelli Tire North America LLC
+  - Porsche Cars North America Inc.
+  - Propex Operating Co. LLC
+  - QSR Inc.
+  - Racemark International LLC
+  - RealTruck
+  - Rivian Automotive
+  - Robert Bosch LLC
+  - SAFT America Inc.
+  - SHIROKI North America Inc
+  - SKF USA Inc.
+  - SRG Global Inc.
+  - Sejong Georgia LLC
+  - Seohan Auto USA
+  - Seoyon E-HWA
+  - Seoyon E-Hwa Interior Systems
+  - Sewon America Inc.
+  - Solvay Specialty Polymers USA LLC
+  - Southern Switches Corp.
+  - Stryten Energy
+  - Suhner Manufacturing Corp.
+- Materials: 3 companies
+  - PHA Body Systems LLC
+  - Panasonic Automotive Systems Co.
+  - SK Battery America
+  - Sumitomo Electric Wiring Systems
+- Thermal Management: 2 companies
+  - Hyundai Transys Georgia Powertrain
+  - Novelis Inc.
+  - Peerless-Winsmith Inc.",17.16,True,,0.88,0.98,0.98,0.98,0.02,0.0
+qwen_rag,ollama,qwen2.5:14b,True,"List the companies involved in Battery Pack activities and include their Category, Location, Product / Service, and Employment.","F&P Georgia Manufacturing | Category: Tier 1/2 | Location: Toccoa, Stephens County | Product / Service: Lithium-ion battery recycler and raw materials provider | Employment: 104 Hollingsworth & Vose Co. | Category: Tier 1/2 | Location: Bainbridge, Decatur County | Product / Service: Lithium-ion battery materials | Employment: 400 Hyundai Motor Group | Category: Tier 1/2 | Location: McDonough, Henry County | Product / Service: Battery parts for electric vehicles | Employment: 164 IMMI | Category: Tier 1/2 | Location: Jefferson, Jackson County | Product / Service: Battery electrolyte | Employment: 100",golden,"- Company: F&P Georgia Manufacturing | Category: Tier 1/2 | Location: Toccoa, Stephens County | Employment: 104 | Product / Service: Lithium-ion battery recycler and raw materials provider
+- Company: Hollingsworth & Vose Co. | Category: Tier 1/2 | Location: Bainbridge, Decatur County | Employment: 400 | Product / Service: Lithium-ion battery materials
+- Company: Hyundai Motor Group | Category: Tier 1/2 | Location: McDonough, Henry County | Employment: 164 | Product / Service: Battery parts for electric vehicles
+- Company: IMMI | Category: Tier 1/2 | Location: Jefferson, Jackson County | Employment: 100 | Product / Service: Battery electrolyte",3.38,True,,1.0,1.0,1.0,1.0,0.0,0.0
+qwen_rag,ollama,qwen2.5:14b,True,"Which companies are classified under Battery Cell, and which Primary OEMs are they linked to?",Hitachi Astemo Americas Inc. -> Primary OEMs: Hyundai Kia Honda Development & Manufacturing -> Primary OEMs: Hyundai Kia,golden,"Battery Cell:
+- Hitachi Astemo Americas Inc. | Primary OEMs: Hyundai Kia
+- Honda Development & Manufacturing | Primary OEMs: Hyundai Kia",0.94,True,,0.5,1.0,1.0,1.0,0.0,0.0
+qwen_rag,ollama,qwen2.5:14b,True,"Map the companies whose EV Supply Chain Role is Thermal Management, including their Location and Primary Facility Type.","Freudenberg-NOK | Location: Carnesville, Franklin County | Primary Facility Type: Manufacturing Plant Hyundai Transys Georgia Powertrain | Location: Dublin, Laurens County | Primary Facility Type: Manufacturing Plant Novelis Inc. | Location: Lawrenceville, Gwinnett County | Primary Facility Type: Manufacturing Plant Peerless-Winsmith Inc. | Location: Statesboro, Bulloch County | Primary Facility Type: Manufacturing Plant",golden,"- Company: Freudenberg-NOK | EV Supply Chain Role: Thermal Management | Location: Carnesville, Franklin County | Primary Facility Type: Manufacturing Plant
+- Company: Hyundai Transys Georgia Powertrain | EV Supply Chain Role: Thermal Management | Location: Dublin, Laurens County | Primary Facility Type: Manufacturing Plant
+- Company: Novelis Inc. | EV Supply Chain Role: Thermal Management | Location: Lawrenceville, Gwinnett County | Primary Facility Type: Manufacturing Plant
+- Company: Peerless-Winsmith Inc. | EV Supply Chain Role: Thermal Management | Location: Statesboro, Bulloch County | Primary Facility Type: Manufacturing Plant",2.77,True,,1.0,0.8,0.8,0.8,0.2,0.0
+qwen_rag,ollama,qwen2.5:14b,True,"Which companies are tagged as Power Electronics, and what Product / Service do they provide?","GSC Steel Stamping LLC | Product / Service: Deep grove ball bearings Toyota Industries Electric Systems North 255 DC-to-DC converters Jackson America, Inc.*",golden,"3 companies are tagged as Power Electronics:
+
+- GSC Steel Stamping LLC | Product / Service: Deep grove ball bearings Toyota Industries Electric Systems North 255 DC-to-DC converters Jackson America, Inc.*
+- Yazaki North America | Product / Service: Automotive supplier division (mobility solutions: ADAS, powertrain, electronics)
+- ZF Gainesville LLC | Product / Service: Automotive supplier footprint (electrification, thermal, powertrain, ADAS components)",2.15,True,,0.67,1.0,1.0,1.0,0.0,0.0
+qwen_rag,ollama,qwen2.5:14b,True,Show all Vehicle Assembly entities and summarize their Primary OEMs and Employment.,"Kia Georgia Inc. | Primary OEMs: Club Car LLC | Employment: 777 Superior Essex Inc. | Primary OEMs: Hyundai Motor Group | Employment: 8,100 Suzuki Manufacturing of America Corp. | Primary OEMs: Rivian Automotive | Employment: 7,500 TCI Powder Coatings | Primary OEMs: Kia Georgia Inc. | Employment: 3,000 TDK Components USA Inc. | Primary OEMs: Mercedes-Benz USA LLC | Employment: 1,000 TE Connectivity | Primary OEMs: Blue Bird Corp. | Employment: 1,900 Teklas USA | Primary OEMs: Yamaha Motor Manufacturing Corp. | Employment: 1,800 Textron Specialized Vehicles | Primary OEMs: Textron Specialized Vehicles | Employment: 1,100 Thermal Ceramics Inc. | Primary OEMs: SK Battery America | Employment: 3,000 Thomson Plastics Inc. | Primary OEMs: Archer Aviation Inc. | Employment: 1,000",golden,"Vehicle Assembly entities and their Primary OEMs and Employment:
+
+- Kia Georgia Inc. | Primary OEMs: Club Car LLC | Employment: 777
+- TCI Powder Coatings | Primary OEMs: Kia Georgia Inc. | Employment: 3000
+- TE Connectivity | Primary OEMs: Blue Bird Corp. | Employment: 1900
+- Textron Specialized Vehicles | Primary OEMs: Textron Specialized Vehicles | Employment: 1100",2.21,True,,0.38,1.0,0.4,0.4,0.6,0.0
+qwen_rag,ollama,qwen2.5:14b,True,List all companies with EV / Battery Relevant = Yes and provide their EV Supply Chain Role and Category.,"Duckyang | EV Supply Chain Role: General Automotive | Category: Tier 2/3 Enchem America Inc. | EV Supply Chain Role: General Automotive | Category: Tier 2/3 F&P Georgia Manufacturing | EV Supply Chain Role: Battery Pack | Category: Tier 1/2 GSC Steel Stamping LLC | EV Supply Chain Role: Power Electronics | Category: Tier 2/3 Hitachi Astemo Americas Inc. | EV Supply Chain Role: Battery Cell | Category: Tier 1/2 Hollingsworth & Vose Co. | EV Supply Chain Role: Battery Pack | Category: Tier 1/2 Honda Development & Manufacturing | EV Supply Chain Role: Battery Cell | Category: Tier 1/2 Hyundai Motor Group | EV Supply Chain Role: Battery Pack | Category: Tier 1/2 Hyundai Transys Georgia Powertrain | EV Supply Chain Role: Thermal Management | Category: Tier 1/2 IMMI | EV Supply Chain Role: Battery Pack | Category: Tier 1/2 Kia Georgia Inc. | EV Supply Chain Role: Vehicle Assembly | Category: OEM Racemark International LLC | EV Supply Chain Role: General Automotive | Category: Tier 1 Superior Essex Inc. | EV Supply Chain Role: Vehicle Assembly | Category: OEM Suzuki Manufacturing of America Corp. | EV Supply Chain Role: Vehicle Assembly | Category: OEM TI Fluid Systems | EV Supply Chain Role: Vehicle safety systems OEM (EV + ICE) | Category: OEM TI Fluid Systems | EV Supply Chain Role: OEM corporate footprint influencing EV strategy | Category: OEM (Footprint) TN Americas Holding Inc. | EV Supply Chain Role: OEM parent group footprint (EV + HD electrification) | Category: OEM (Footprint) Thermal Ceramics Inc. | EV Supply Chain Role: Vehicle Assembly | Category: OEM Thomson Plastics Inc. | EV Supply Chain Role: Vehicle Assembly | Category: OEM Tie Down Engineering | EV Supply Chain Role: OEM corporate and engineering footprint (electrification) | Category: OEM (Footprint) Toyota Industries Group (TACG-TICA) | EV Supply Chain Role: OEM parent group footprint (electric truck strategy) | Category: OEM (Footprint) Trenton Pressing | EV Supply Chain Role: OEM corporate footprint and supplier integration | Category: OEM (Footprint) Trenton Pressing Inc. | EV Supply Chain Role: Machined components supporting EV and ICE vehicles | Category: OEM Supply Chain Valeo | EV Supply Chain Role: Tier 1 automotive components | Category: OEM Supply Chain Vanguard National Trailer Corp. | EV Supply Chain Role: Body and chassis components for EV and ICE OEMs | Category: OEM Supply Chain Vernay | EV Supply Chain Role: Stamped and welded assemblies for OEMs | Category: OEM Supply Chain Vista Metals Corp. | EV Supply Chain Role: EV and ICE component manufacturing | Category: OEM Supply Chain Voestalpine Automotive Body Parts Inc. | EV Supply Chain Role: EV and ICE powertrain and HVAC components | Category: OEM Supply Chain Volvo Cars USA | EV Supply Chain Role: Plastic components for EV and ICE vehicles | Category: OEM Supply Chain Volvo Group North America | EV Supply Chain Role: Stamped metal components for OEMs | Category: OEM Supply Chain WIKA USA | EV Supply Chain Role: HV and LV wiring harnesses for EVs and ICE vehicles | Category: OEM Supply Chain Wabash National Corp. | EV Supply Chain Role: Interior and exterior plastic parts | Category: OEM Supply Chain Wheelabrator Group Inc. | EV Supply Chain Role: Interior trim and textile components | Category: OEM Supply Chain Woodbridge Foam Corp. | EV Supply Chain Role: EV wiring harnesses and power distribution | Category: OEM Supply Chain Woory Industrial Co. | EV Supply Chain Role: High‑voltage EV connectors and electronics | Category: OEM Supply Chain YKK USA Inc. | EV Supply Chain Role: EV sensors, braking, and control systems | Category: OEM Footprint Yachiyo Manufacturing of America LLC | EV Supply Chain Role: EV electrical distribution and interior systems | Category: OEM Supply Chain Yamaha Motor Manufacturing Corp. | EV Supply Chain Role: Advanced electrical architecture for EVs | Category: OEM Supply Chain Yazaki North America | EV Supply Chain Role: Power electronics, sensors, and EV systems | Category: OEM Footprint ZF Gainesville LLC | EV Supply Chain Role: EV body, powertrain, and thermal components | Category: OEM Supply Chain ZF Gainesville LLC | EV Supply Chain Role: EV thermal management and power electronics | Category: OEM Supply Chain ZF Gainesville LLC | EV Supply Chain Role: EV thermal systems and electronics | Category: OEM Footprint",golden,"**General Automotive**
+- Duckyang | Category: Tier 2/3
+- Enchem America Inc. | Category: Tier 2/3
+
+**Battery Pack**
+- F&P Georgia Manufacturing | Category: Tier 1/2
+- Hollingsworth & Vose Co. | Category: Tier 1/2
+- IMMI | Category: Tier 1/2
+- Hyundai Transys Georgia Powertrain | Category: Tier 1/2
+
+**Battery Cell**
+- Hitachi Astemo Americas Inc. | Category: Tier 1/2
+- Honda Development & Manufacturing | Category: Tier 1/2
+
+**Vehicle Assembly**
+- Kia Georgia Inc. | Category: OEM
+- Superior Essex Inc. | Category: OEM
+- Suzuki Manufacturing of America Corp. | Category: OEM
+- Thermal Ceramics Inc. | Category: OEM
+- Thomson Plastics Inc. | Category: OEM
+
+**OEM (Footprint)**
+- TI Fluid Systems | EV Supply Chain Role: Vehicle safety systems OEM (EV + ICE) | Category: OEM
+- TI Fluid Systems | EV Supply Chain Role: OEM corporate footprint influencing EV strategy | Category: OEM (Footprint)
+- Tie Down Engineering | EV Supply Chain Role: OEM corporate and engineering footprint (electrification) | Category: OEM (Footprint)
+- TN Americas Holding Inc. | EV Supply Chain Role: OEM parent group footprint (EV + HD electrification) | Category: OEM (Footprint)
+- Toyota Industries Group (TACG-TICA) | EV Supply Chain Role: OEM parent group footprint (electric truck strategy) | Category: OEM (Footprint)
+- Trenton Pressing Inc. | EV Supply Chain Role: OEM corporate footprint and supplier integration | Category: OEM (Footprint)
+
+**OEM Supply Chain**
+- Valeo | EV Supply Chain Role: Tier 1 automotive components | Category: OEM Supply Chain
+- Vanguard National Trailer Corp. | EV Supply Chain Role: Body and chassis components for EV and ICE OEMs | Category: OEM Supply Chain
+- Vernay | EV Supply Chain Role: Stamped and welded assemblies for OEMs | Category: OEM Supply Chain
+- Vista Metals Corp. | EV Supply Chain Role: EV and ICE component manufacturing | Category: OEM Supply Chain
+- Voestalpine Automotive Body Parts Inc. | EV Supply Chain Role: EV and ICE powertrain and HVAC components | Category: OEM Supply Chain
+- Volvo Cars USA | EV Supply Chain Role: Plastic components for EV and ICE vehicles | Category: OEM Supply Chain
+- Volvo Group North America | EV Supply Chain Role: Stamped metal components for OEMs | Category: OEM Supply Chain
+- Wabash National Corp. | EV Supply Chain Role: Interior and exterior plastic parts | Category: OEM Supply Chain
+- Wheelabrator Group Inc. | EV Supply Chain Role: Interior trim and textile components | Category: OEM Supply Chain
+- WIKA USA | EV Supply Chain Role: HV and LV wiring harnesses for EVs and ICE vehicles | Category: OEM Supply Chain
+- Woodbridge Foam Corp. | EV Supply Chain Role: EV wiring harnesses and power distribution | Category: OEM Supply Chain
+- Woory Industrial Co. | EV Supply Chain Role: High-voltage EV connectors and electronics | Category: OEM Supply Chain
+
+**Power Electronics**
+- GSC Steel Stamping LLC | Category: Tier 2/3",13.55,True,,0.85,0.92,0.92,0.92,0.08,0.0
+qwen_rag,ollama,qwen2.5:14b,True,Which EV Supply Chain Roles have at least one company with EV / Battery Relevant = Yes? Provide the roles and the matching companies.,"Advanced electrical architecture for EVs: Yamaha Motor Manufacturing Corp. Battery Cell: Hitachi Astemo Americas Inc.; Honda Development & Manufacturing Battery Pack: F&P Georgia Manufacturing; Hollingsworth & Vose Co.; Hyundai Motor Group; IMMI Body and chassis components for EV and ICE OEMs: Vanguard National Trailer Corp. EV and ICE component manufacturing: Vista Metals Corp. EV and ICE powertrain and HVAC components: Voestalpine Automotive Body Parts Inc. EV body, powertrain, and thermal components: ZF Gainesville LLC EV electrical distribution and interior systems: Yachiyo Manufacturing of America LLC EV sensors, braking, and control systems: YKK USA Inc. EV thermal management and power electronics: ZF Gainesville LLC EV thermal systems and electronics: ZF Gainesville LLC EV wiring harnesses and power distribution: Woodbridge Foam Corp. General Automotive: Duckyang; Enchem America Inc.; Racemark International LLC HV and LV wiring harnesses for EVs and ICE vehicles: WIKA USA High‑voltage EV connectors and electronics: Woory Industrial Co. Interior and exterior plastic parts: Wabash National Corp. Interior trim and textile components: Wheelabrator Group Inc. Machined components supporting EV and ICE vehicles: Trenton Pressing Inc. OEM corporate and engineering footprint (electrification): Tie Down Engineering OEM corporate footprint and supplier integration: Trenton Pressing OEM corporate footprint influencing EV strategy: TI Fluid Systems OEM parent group footprint (EV + HD electrification): TN Americas Holding Inc. OEM parent group footprint (electric truck strategy): Toyota Industries Group (TACG-TICA) Plastic components for EV and ICE vehicles: Volvo Cars USA Power Electronics: GSC Steel Stamping LLC Power electronics, sensors, and EV systems: Yazaki North America Stamped and welded assemblies for OEMs: Vernay Stamped metal components for OEMs: Volvo Group North America Thermal Management: Hyundai Transys Georgia Powertrain Tier 1 automotive components: Valeo Vehicle Assembly: Kia Georgia Inc.; Superior Essex Inc.; Suzuki Manufacturing of America Corp.; Thermal Ceramics Inc.; Thomson Plastics Inc. Vehicle safety systems OEM (EV + ICE): TI Fluid Systems",golden,"- Advanced electrical architecture for EVs: Yamaha Motor Manufacturing Corp.
+- Battery Cell: Hitachi Astemo Americas Inc.; Honda Development & Manufacturing
+- Battery Pack: F&P Georgia Manufacturing; Hollingsworth & Vose Co.; Hyundai Motor Group; IMMI
+- EV body, powertrain, and thermal components: ZF Gainesville LLC
+- EV electrical distribution and interior systems: Yachiyo Manufacturing of America LLC
+- EV sensors, braking, and control systems: YKK USA Inc.
+- EV thermal management and power electronics: ZF Gainesville LLC
+- EV thermal systems and electronics: ZF Gainesville LLC
+- EV wiring harnesses and power distribution: Woodbridge Foam Corp.
+- HV and LV wiring harnesses for EVs and ICE vehicles: WIKA USA
+- High‑voltage EV connectors and electronics: Woory Industrial Co.
+- Power Electronics: GSC Steel Stamping LLC
+- Power electronics, sensors, and EV systems: Yazaki North America
+- Vehicle Assembly: Kia Georgia Inc.; Superior Essex Inc.; Suzuki Manufacturing of America Corp.; Thermal Ceramics Inc.; Thomson Plastics Inc.",4.65,True,,0.82,1.0,1.0,1.0,0.0,0.0
+qwen_rag,ollama,qwen2.5:14b,True,Identify the set of Industry Groups represented among Battery Pack and Battery Cell companies.,Battery Pack industry groups: Electronic and Other Electrical Equipment and Components; Primary Metal Industries Battery Cell industry groups: Electronic and Other Electrical Equipment and Components Union across both roles: Electronic and Other Electrical Equipment and Components; Primary Metal Industries,golden,Electronic and Other Electrical Equipment and Components; Primary Metal Industries (6),0.55,True,,0.75,1.0,1.0,1.0,0.0,0.0
+qwen_rag,ollama,qwen2.5:14b,True,"For each Category (Tier 2/3, Tier 1/2, Tier 1, OEM, OEM Supply Chain, OEM (Footprint), OEM Footprint), count how many companies are in the dataset.",Tier 2/3: 74 Tier 1/2: 18 Tier 1: 78 OEM: 12 OEM Supply Chain: 17 OEM (Footprint): 5 OEM Footprint: 3,golden,"- Tier 2/3: 74
+- Tier 1: 78
+- Tier 1/2: 18
+- OEM Supply Chain: 17
+- OEM: 12
+- OEM (Footprint): 5
+- OEM Footprint: 3",1.48,True,,0.86,1.0,1.0,1.0,0.0,0.0
+qwen_no_rag,ollama,qwen2.5:14b,False,"Show all companies categorized as Tier 1 and Tier 1/2, and group them by EV Supply Chain Role.","Battery Cell [2]: Hitachi Astemo Americas Inc. (Tier 1/2); Honda Development & Manufacturing (Tier 1/2) Battery Pack [4]: F&P Georgia Manufacturing (Tier 1/2); Hollingsworth & Vose Co. (Tier 1/2); Hyundai Motor Group (Tier 1/2); IMMI (Tier 1/2) Charging Infrastructure [1]: Morgan Corp. (Tier 1) General Automotive [78]: Fouts Brothers Fire Equipment (Tier 1/2); Hitachi Astemo (Tier 1/2); Hwashin (Tier 1/2); Hyundai & LG Energy Solution (LGES) (Tier 1/2); Hyundai Industrial Co. (Tier 1/2); Hyundai MOBIS (Georgia) (Tier 1/2); Hyundai Transys Georgia Seating Systems (Tier 1/2); IMS Gear Georgia Inc. (Tier 1/2); Inalfa Roof Systems Inc. (Tier 1/2); JAC Products Inc. (Tier 1/2); JTEKT North America Corp. (Tier 1); Jefferson Southern Corp. (Tier 1/2); Jefferson Southern Corporation (Tier 1); Joon Georgia, Inc. (Tier 1); KTX America Corporation (Tier 1); Kautex Inc. (Tier 1); Kumho Tire USA Inc. (Tier 1); Kyungshin America Corp. (Tier 1); Lark United Manufacturing Inc. (Tier 1); Lear Corporation (Tier 1); Lehigh Technologies Inc. (Tier 1); Linde + Wiemann (Tier 1); Lund International Inc. (Tier 1); Lund International Inc./Ventshade Division (Tier 1); Lyle Industries Inc. (Tier 1); MAT Heavy Duty (Tier 1); Mack Trucks (Tier 1); Magna International (Tier 1); Mando America Corp. (Tier 1); Master Craft Engineering Inc. (Tier 1); Maxxis International USA (Tier 1); Mercedes-Benz USA LLC (Tier 1); Michelin Tread Technologies (Tier 1); Milliken & Co./Valway Plant (Tier 1); Mobis Alabama LLC (Tier 1); MollerTech LLC (Tier 1); Murata Electronics North America Inc. (Tier 1); NIFCO KTW America Corp. (Tier 1); NVH Korea (Tier 1); Neaton Rome Inc. (Tier 1); Nidec Elesys Americas Corp. (Tier 1); Nile Automotive (Tier 1); Nisshinbo Automotive Manufacturing Inc. (Tier 1); Nivel Parts & Manufacturing Co. LLC (Tier 1); Novelis Inc. (Tier 1); OTR Wheel Engineering Inc. (Tier 1); Oneda Corp. (Tier 1); PAI Industries Inc. (Tier 1); PIOLAX Corp. (Tier 1); PPG Industries Inc. (Tier 1); Paccar (Tier 1); Pak-Lite Inc. (Tier 1); Panasonic Automotive Systems Co. (Tier 1); Panduit Corp. (Tier 1); Perkins Small Engines LLC (Tier 1); Peterson Spring (Tier 1); Piedmont Automotive Products Inc. (Tier 1); Pirelli Tire North America LLC (Tier 1); Porsche Cars North America Inc. (Tier 1); Propex Operating Co. LLC (Tier 1); QSR Inc. (Tier 1); Racemark International LLC (Tier 1); RealTruck (Tier 1); Rivian Automotive (Tier 1); Robert Bosch LLC (Tier 1); SAFT America Inc. (Tier 1); SHIROKI North America Inc (Tier 1); SKF USA Inc. (Tier 1); SRG Global Inc. (Tier 1); Sejong Georgia LLC (Tier 1); Seohan Auto USA (Tier 1); Seoyon E-HWA (Tier 1); Seoyon E-Hwa Interior Systems (Tier 1); Sewon America Inc. (Tier 1); Solvay Specialty Polymers USA LLC (Tier 1); Southern Switches Corp. (Tier 1); Stryten Energy (Tier 1); Suhner Manufacturing Corp. (Tier 1) Materials [4]: PHA Body Systems LLC (Tier 1); Panasonic Automotive Systems Co. (Tier 1); SK Battery America (Tier 1); Sumitomo Electric Wiring Systems (Tier 1) Thermal Management [3]: Hyundai Transys Georgia Powertrain (Tier 1/2); Novelis Inc. (Tier 1); Peerless-Winsmith Inc. (Tier 1)",golden,"To show all companies categorized as Tier 1 and Tier 1/2 and group them by their EV Supply Chain Role, you would typically filter a dataset for those specific tiers and then use a grouping function based on the EV Supply Chain Role. Without access to the exact dataset, I can't provide specific company names or roles, but generally, this involves:
+
+- Filtering companies with Tier 1 and Tier 1/2 categorizations.
+- Grouping these filtered results by their respective EV Supply Chain Roles.
+
+For a direct answer based on general knowledge, you would need to apply these steps using the relevant dataset.",2.43,True,,0.0,,,,,
+qwen_no_rag,ollama,qwen2.5:14b,False,"List the companies involved in Battery Pack activities and include their Category, Location, Product / Service, and Employment.","F&P Georgia Manufacturing | Category: Tier 1/2 | Location: Toccoa, Stephens County | Product / Service: Lithium-ion battery recycler and raw materials provider | Employment: 104 Hollingsworth & Vose Co. | Category: Tier 1/2 | Location: Bainbridge, Decatur County | Product / Service: Lithium-ion battery materials | Employment: 400 Hyundai Motor Group | Category: Tier 1/2 | Location: McDonough, Henry County | Product / Service: Battery parts for electric vehicles | Employment: 164 IMMI | Category: Tier 1/2 | Location: Jefferson, Jackson County | Product / Service: Battery electrolyte | Employment: 100",golden,"Here are some companies involved in battery pack activities along with their category, location, product/service, and employment details:
+
+1. **Tesla Inc.**
+   - **Category:** Automotive Manufacturer
+   - **Location:** Palo Alto, California, USA
+   - **Product/Service:** Electric vehicles (EVs), energy storage systems, solar products
+   - **Employment:** Over 90,000 employees
+
+2. **Panasonic Corporation**
+   - **Category:** Electronics and Consumer Products Manufacturer
+   - **Location:** Osaka, Japan
+   - **Product/Service:** Lithium-ion batteries for EVs, consumer electronics, industrial applications
+   - **Employment:** Approximately 315,000 employees
+
+3. **LG Energy Solution**
+   - **Category:** Battery Manufacturer
+   - **Location:** Seoul, South Korea
+   - **Product/Service:** Lithium-ion batteries for EVs and energy storage systems
+   - **Employment:** Over 24,000 employees
+
+4. **Contemporary Amperex Technology (CATL)**
+   - **Category:** Battery Manufacturer
+   - **Location:** Ningde, Fujian Province, China
+   - **Product/Service:** Lithium-ion batteries for EVs and energy storage systems
+   - **Employment:** Over 60,000 employees
+
+5. **Samsung SDI Co., Ltd.**
+   - **Category:** Electronics Manufacturer
+   - **Location:** Cheongju-si, North Chungcheong Province, South Korea
+   - **Product/Service:** Lithium-ion batteries for EVs and energy storage systems
+   - **Employment:** Over 40,000 employees
+
+6. **BYD Company Limited**
+   - **Category:** Automotive Manufacturer and Battery Supplier
+   - **Location:** Shenzhen, Guangdong Province, China
+   - **Product/Service:** Electric vehicles (EVs), battery packs for EVs, energy storage systems
+   - **Employment:** Over 300,000 employees
+
+These companies are major players in the battery pack industry and have significant market presence globally.",8.06,True,,0.0,,,,,
+qwen_no_rag,ollama,qwen2.5:14b,False,"Which companies are classified under Battery Cell, and which Primary OEMs are they linked to?",Hitachi Astemo Americas Inc. -> Primary OEMs: Hyundai Kia Honda Development & Manufacturing -> Primary OEMs: Hyundai Kia,golden,"Companies classified under battery cell manufacturing include well-known firms such as CATL (Contemporary Amperex Technology), LG Energy Solution, Panasonic, and Samsung SDI. These companies supply battery cells primarily to Original Equipment Manufacturers (OEMs) in the automotive industry. For example:
+
+- **CATL** is linked to OEMs like Tesla, Volkswagen, and BMW.
+- **LG Energy Solution** supplies batteries to General Motors, Hyundai-Kia, and Tesla.
+- **Panasonic** has a significant partnership with Tesla for battery cell production.
+- **Samsung SDI** works closely with Volkswagen and BMW.
+
+This information reflects general industry knowledge but may not capture all partnerships or the most recent developments.",2.63,True,,0.0,,,,,
+qwen_no_rag,ollama,qwen2.5:14b,False,"Map the companies whose EV Supply Chain Role is Thermal Management, including their Location and Primary Facility Type.","Freudenberg-NOK | Location: Carnesville, Franklin County | Primary Facility Type: Manufacturing Plant Hyundai Transys Georgia Powertrain | Location: Dublin, Laurens County | Primary Facility Type: Manufacturing Plant Novelis Inc. | Location: Lawrenceville, Gwinnett County | Primary Facility Type: Manufacturing Plant Peerless-Winsmith Inc. | Location: Statesboro, Bulloch County | Primary Facility Type: Manufacturing Plant",golden,"From general knowledge, here are some companies involved in thermal management for electric vehicle (EV) supply chains along with their locations and primary facility types:
+
+1. **3M Company** - United States; Primary Facility Type: Manufacturing (thermal management materials)
+2. **Allegion plc** - Ireland; Primary Facility Type: Manufacturing (cooling solutions)
+3. **BASF SE** - Germany; Primary Facility Type: Research & Development, Manufacturing (advanced thermal management systems)
+
+Please note that this list is not exhaustive and the specific details may vary based on more detailed industry reports or company-specific information.",2.3,True,,0.0,,,,,
+qwen_no_rag,ollama,qwen2.5:14b,False,"Which companies are tagged as Power Electronics, and what Product / Service do they provide?","GSC Steel Stamping LLC | Product / Service: Deep grove ball bearings Toyota Industries Electric Systems North 255 DC-to-DC converters Jackson America, Inc.*",golden,"Without specific dataset information, I can't name particular companies. Generally, companies tagged under Power Electronics might include firms like ABB, Siemens Energy, or Eaton. These companies typically offer products and services such as power generation equipment, electrical drives, energy management systems, and renewable energy solutions. For exact details about specific companies, you would need to refer to their official websites or industry reports.",1.54,True,,0.0,,,,,
+qwen_no_rag,ollama,qwen2.5:14b,False,Show all Vehicle Assembly entities and summarize their Primary OEMs and Employment.,"Kia Georgia Inc. | Primary OEMs: Club Car LLC | Employment: 777 Superior Essex Inc. | Primary OEMs: Hyundai Motor Group | Employment: 8,100 Suzuki Manufacturing of America Corp. | Primary OEMs: Rivian Automotive | Employment: 7,500 TCI Powder Coatings | Primary OEMs: Kia Georgia Inc. | Employment: 3,000 TDK Components USA Inc. | Primary OEMs: Mercedes-Benz USA LLC | Employment: 1,000 TE Connectivity | Primary OEMs: Blue Bird Corp. | Employment: 1,900 Teklas USA | Primary OEMs: Yamaha Motor Manufacturing Corp. | Employment: 1,800 Textron Specialized Vehicles | Primary OEMs: Textron Specialized Vehicles | Employment: 1,100 Thermal Ceramics Inc. | Primary OEMs: SK Battery America | Employment: 3,000 Thomson Plastics Inc. | Primary OEMs: Archer Aviation Inc. | Employment: 1,000",golden,"Vehicle assembly plants are typically operated by Original Equipment Manufacturers (OEMs) or under contract for various automotive companies. Here's a summary of some major vehicle assembly entities along with their primary OEMs and approximate employment figures:
+
+1. **Toyota Motor Manufacturing, Texas** - Primary OEM: Toyota; Employment: Approximately 4,500 employees.
+2. **Ford Rouge Complex (Michigan)** - Primary OEM: Ford; Employment: Approximately 6,000 employees.
+3. **Volkswagen Chattanooga Assembly Plant** - Primary OEM: Volkswagen; Employment: Approximately 8,000 employees.
+4. **General Motors Fort Wayne Assembly** - Primary OEM: General Motors; Employment: Approximately 5,700 employees.
+
+These figures are approximate and can vary based on current operations and economic conditions.",3.07,True,,0.0,,,,,
+qwen_no_rag,ollama,qwen2.5:14b,False,List all companies with EV / Battery Relevant = Yes and provide their EV Supply Chain Role and Category.,"Duckyang | EV Supply Chain Role: General Automotive | Category: Tier 2/3 Enchem America Inc. | EV Supply Chain Role: General Automotive | Category: Tier 2/3 F&P Georgia Manufacturing | EV Supply Chain Role: Battery Pack | Category: Tier 1/2 GSC Steel Stamping LLC | EV Supply Chain Role: Power Electronics | Category: Tier 2/3 Hitachi Astemo Americas Inc. | EV Supply Chain Role: Battery Cell | Category: Tier 1/2 Hollingsworth & Vose Co. | EV Supply Chain Role: Battery Pack | Category: Tier 1/2 Honda Development & Manufacturing | EV Supply Chain Role: Battery Cell | Category: Tier 1/2 Hyundai Motor Group | EV Supply Chain Role: Battery Pack | Category: Tier 1/2 Hyundai Transys Georgia Powertrain | EV Supply Chain Role: Thermal Management | Category: Tier 1/2 IMMI | EV Supply Chain Role: Battery Pack | Category: Tier 1/2 Kia Georgia Inc. | EV Supply Chain Role: Vehicle Assembly | Category: OEM Racemark International LLC | EV Supply Chain Role: General Automotive | Category: Tier 1 Superior Essex Inc. | EV Supply Chain Role: Vehicle Assembly | Category: OEM Suzuki Manufacturing of America Corp. | EV Supply Chain Role: Vehicle Assembly | Category: OEM TI Fluid Systems | EV Supply Chain Role: Vehicle safety systems OEM (EV + ICE) | Category: OEM TI Fluid Systems | EV Supply Chain Role: OEM corporate footprint influencing EV strategy | Category: OEM (Footprint) TN Americas Holding Inc. | EV Supply Chain Role: OEM parent group footprint (EV + HD electrification) | Category: OEM (Footprint) Thermal Ceramics Inc. | EV Supply Chain Role: Vehicle Assembly | Category: OEM Thomson Plastics Inc. | EV Supply Chain Role: Vehicle Assembly | Category: OEM Tie Down Engineering | EV Supply Chain Role: OEM corporate and engineering footprint (electrification) | Category: OEM (Footprint) Toyota Industries Group (TACG-TICA) | EV Supply Chain Role: OEM parent group footprint (electric truck strategy) | Category: OEM (Footprint) Trenton Pressing | EV Supply Chain Role: OEM corporate footprint and supplier integration | Category: OEM (Footprint) Trenton Pressing Inc. | EV Supply Chain Role: Machined components supporting EV and ICE vehicles | Category: OEM Supply Chain Valeo | EV Supply Chain Role: Tier 1 automotive components | Category: OEM Supply Chain Vanguard National Trailer Corp. | EV Supply Chain Role: Body and chassis components for EV and ICE OEMs | Category: OEM Supply Chain Vernay | EV Supply Chain Role: Stamped and welded assemblies for OEMs | Category: OEM Supply Chain Vista Metals Corp. | EV Supply Chain Role: EV and ICE component manufacturing | Category: OEM Supply Chain Voestalpine Automotive Body Parts Inc. | EV Supply Chain Role: EV and ICE powertrain and HVAC components | Category: OEM Supply Chain Volvo Cars USA | EV Supply Chain Role: Plastic components for EV and ICE vehicles | Category: OEM Supply Chain Volvo Group North America | EV Supply Chain Role: Stamped metal components for OEMs | Category: OEM Supply Chain WIKA USA | EV Supply Chain Role: HV and LV wiring harnesses for EVs and ICE vehicles | Category: OEM Supply Chain Wabash National Corp. | EV Supply Chain Role: Interior and exterior plastic parts | Category: OEM Supply Chain Wheelabrator Group Inc. | EV Supply Chain Role: Interior trim and textile components | Category: OEM Supply Chain Woodbridge Foam Corp. | EV Supply Chain Role: EV wiring harnesses and power distribution | Category: OEM Supply Chain Woory Industrial Co. | EV Supply Chain Role: High‑voltage EV connectors and electronics | Category: OEM Supply Chain YKK USA Inc. | EV Supply Chain Role: EV sensors, braking, and control systems | Category: OEM Footprint Yachiyo Manufacturing of America LLC | EV Supply Chain Role: EV electrical distribution and interior systems | Category: OEM Supply Chain Yamaha Motor Manufacturing Corp. | EV Supply Chain Role: Advanced electrical architecture for EVs | Category: OEM Supply Chain Yazaki North America | EV Supply Chain Role: Power electronics, sensors, and EV systems | Category: OEM Footprint ZF Gainesville LLC | EV Supply Chain Role: EV body, powertrain, and thermal components | Category: OEM Supply Chain ZF Gainesville LLC | EV Supply Chain Role: EV thermal management and power electronics | Category: OEM Supply Chain ZF Gainesville LLC | EV Supply Chain Role: EV thermal systems and electronics | Category: OEM Footprint",golden,"From general knowledge, here are some companies that have ""EV/Battery Relevant"" marked as yes along with their roles in the electric vehicle supply chain and their category:
+
+1. **Tesla Inc.**
+   - **Role:** Vehicle Manufacturer (Battery Production & Integration)
+   - **Category:** Automotive
+
+2. **LG Energy Solution Ltd.**
+   - **Role:** Battery Supplier
+   - **Category:** Components
+
+3. **Panasonic Corporation**
+   - **Role:** Battery Supplier, Technology Partner
+   - **Category:** Components
+
+4. **CATL (Contemporary Amperex Technology Co., Limited)**
+   - **Role:** Battery Supplier
+   - **Category:** Components
+
+5. **Samsung SDI Co., Ltd.**
+   - **Role:** Battery Supplier
+   - **Category:** Components
+
+6. **Northvolt AB**
+   - **Role:** Battery Manufacturer, Recycling Partner
+   - **Category:** Components
+
+7. **BYD Company Limited**
+   - **Role:** Vehicle Manufacturer (Battery Production & Integration)
+   - **Category:** Automotive
+
+8. **SK Innovation Co., Ltd.**
+   - **Role:** Battery Supplier
+   - **Category:** Components
+
+These companies play significant roles in the EV supply chain, particularly in battery technology and manufacturing.",4.79,True,,0.0,,,,,
+qwen_no_rag,ollama,qwen2.5:14b,False,Which EV Supply Chain Roles have at least one company with EV / Battery Relevant = Yes? Provide the roles and the matching companies.,"Advanced electrical architecture for EVs: Yamaha Motor Manufacturing Corp. Battery Cell: Hitachi Astemo Americas Inc.; Honda Development & Manufacturing Battery Pack: F&P Georgia Manufacturing; Hollingsworth & Vose Co.; Hyundai Motor Group; IMMI Body and chassis components for EV and ICE OEMs: Vanguard National Trailer Corp. EV and ICE component manufacturing: Vista Metals Corp. EV and ICE powertrain and HVAC components: Voestalpine Automotive Body Parts Inc. EV body, powertrain, and thermal components: ZF Gainesville LLC EV electrical distribution and interior systems: Yachiyo Manufacturing of America LLC EV sensors, braking, and control systems: YKK USA Inc. EV thermal management and power electronics: ZF Gainesville LLC EV thermal systems and electronics: ZF Gainesville LLC EV wiring harnesses and power distribution: Woodbridge Foam Corp. General Automotive: Duckyang; Enchem America Inc.; Racemark International LLC HV and LV wiring harnesses for EVs and ICE vehicles: WIKA USA High‑voltage EV connectors and electronics: Woory Industrial Co. Interior and exterior plastic parts: Wabash National Corp. Interior trim and textile components: Wheelabrator Group Inc. Machined components supporting EV and ICE vehicles: Trenton Pressing Inc. OEM corporate and engineering footprint (electrification): Tie Down Engineering OEM corporate footprint and supplier integration: Trenton Pressing OEM corporate footprint influencing EV strategy: TI Fluid Systems OEM parent group footprint (EV + HD electrification): TN Americas Holding Inc. OEM parent group footprint (electric truck strategy): Toyota Industries Group (TACG-TICA) Plastic components for EV and ICE vehicles: Volvo Cars USA Power Electronics: GSC Steel Stamping LLC Power electronics, sensors, and EV systems: Yazaki North America Stamped and welded assemblies for OEMs: Vernay Stamped metal components for OEMs: Volvo Group North America Thermal Management: Hyundai Transys Georgia Powertrain Tier 1 automotive components: Valeo Vehicle Assembly: Kia Georgia Inc.; Superior Essex Inc.; Suzuki Manufacturing of America Corp.; Thermal Ceramics Inc.; Thomson Plastics Inc. Vehicle safety systems OEM (EV + ICE): TI Fluid Systems",golden,"Based on general industry knowledge, several roles in the Electric Vehicle (EV) supply chain involve companies that are relevant to EVs or batteries. Here are some of those roles along with examples of companies:
+
+1. **Battery Manufacturers**: Companies like Panasonic, LG Energy Solution, and CATL.
+2. **Electric Motor Suppliers**: Companies such as Nidec Corporation and Lerad Motors.
+3. **Charging Infrastructure Providers**: Companies including ChargePoint and EVBox.
+4. **Automotive Battery Pack Assemblers**: Companies like Bosch and Continental AG.
+
+These companies are directly involved in the production, assembly, or provision of critical components for electric vehicles and batteries.",2.55,True,,0.0,,,,,
+qwen_no_rag,ollama,qwen2.5:14b,False,Identify the set of Industry Groups represented among Battery Pack and Battery Cell companies.,Battery Pack industry groups: Electronic and Other Electrical Equipment and Components; Primary Metal Industries Battery Cell industry groups: Electronic and Other Electrical Equipment and Components Union across both roles: Electronic and Other Electrical Equipment and Components; Primary Metal Industries,golden,"Battery pack and battery cell companies are typically found in the following industry groups:
+
+- Electrical Equipment
+- Automotive Parts & Components
+- Renewable Energy
+- Electronics
+- Industrial Machinery
+
+These companies often operate within or across these sectors depending on their specific focus and products.",1.12,True,,0.0,,,,,
+qwen_no_rag,ollama,qwen2.5:14b,False,"For each Category (Tier 2/3, Tier 1/2, Tier 1, OEM, OEM Supply Chain, OEM (Footprint), OEM Footprint), count how many companies are in the dataset.",Tier 2/3: 74 Tier 1/2: 18 Tier 1: 78 OEM: 12 OEM Supply Chain: 17 OEM (Footprint): 5 OEM Footprint: 3,golden,"To provide you with accurate counts for each category without specific data access, I would typically need to refer to a dataset. Since I don't have direct access to your dataset, here's what you can do:
+
+1. **Tier 2/3**: Count all companies listed under this category.
+2. **Tier 1/2**: Count all companies listed under this category.
+3. **Tier 1**: Count all companies listed under this category.
+4. **OEM**: Count all companies listed under this category.
+5. **OEM Supply Chain**: Count all companies listed under this category.
+6. **OEM (Footprint)**: Count all companies listed under this category.
+7. **OEM Footprint**: Count all companies listed under this category.
+
+To get the exact numbers, you would need to filter your dataset by each of these categories and count the entries for each one.",3.38,True,,0.0,,,,,
+gemma_rag,ollama,gemma3:12b,True,"Show all companies categorized as Tier 1 and Tier 1/2, and group them by EV Supply Chain Role.","Battery Cell [2]: Hitachi Astemo Americas Inc. (Tier 1/2); Honda Development & Manufacturing (Tier 1/2) Battery Pack [4]: F&P Georgia Manufacturing (Tier 1/2); Hollingsworth & Vose Co. (Tier 1/2); Hyundai Motor Group (Tier 1/2); IMMI (Tier 1/2) Charging Infrastructure [1]: Morgan Corp. (Tier 1) General Automotive [78]: Fouts Brothers Fire Equipment (Tier 1/2); Hitachi Astemo (Tier 1/2); Hwashin (Tier 1/2); Hyundai & LG Energy Solution (LGES) (Tier 1/2); Hyundai Industrial Co. (Tier 1/2); Hyundai MOBIS (Georgia) (Tier 1/2); Hyundai Transys Georgia Seating Systems (Tier 1/2); IMS Gear Georgia Inc. (Tier 1/2); Inalfa Roof Systems Inc. (Tier 1/2); JAC Products Inc. (Tier 1/2); JTEKT North America Corp. (Tier 1); Jefferson Southern Corp. (Tier 1/2); Jefferson Southern Corporation (Tier 1); Joon Georgia, Inc. (Tier 1); KTX America Corporation (Tier 1); Kautex Inc. (Tier 1); Kumho Tire USA Inc. (Tier 1); Kyungshin America Corp. (Tier 1); Lark United Manufacturing Inc. (Tier 1); Lear Corporation (Tier 1); Lehigh Technologies Inc. (Tier 1); Linde + Wiemann (Tier 1); Lund International Inc. (Tier 1); Lund International Inc./Ventshade Division (Tier 1); Lyle Industries Inc. (Tier 1); MAT Heavy Duty (Tier 1); Mack Trucks (Tier 1); Magna International (Tier 1); Mando America Corp. (Tier 1); Master Craft Engineering Inc. (Tier 1); Maxxis International USA (Tier 1); Mercedes-Benz USA LLC (Tier 1); Michelin Tread Technologies (Tier 1); Milliken & Co./Valway Plant (Tier 1); Mobis Alabama LLC (Tier 1); MollerTech LLC (Tier 1); Murata Electronics North America Inc. (Tier 1); NIFCO KTW America Corp. (Tier 1); NVH Korea (Tier 1); Neaton Rome Inc. (Tier 1); Nidec Elesys Americas Corp. (Tier 1); Nile Automotive (Tier 1); Nisshinbo Automotive Manufacturing Inc. (Tier 1); Nivel Parts & Manufacturing Co. LLC (Tier 1); Novelis Inc. (Tier 1); OTR Wheel Engineering Inc. (Tier 1); Oneda Corp. (Tier 1); PAI Industries Inc. (Tier 1); PIOLAX Corp. (Tier 1); PPG Industries Inc. (Tier 1); Paccar (Tier 1); Pak-Lite Inc. (Tier 1); Panasonic Automotive Systems Co. (Tier 1); Panduit Corp. (Tier 1); Perkins Small Engines LLC (Tier 1); Peterson Spring (Tier 1); Piedmont Automotive Products Inc. (Tier 1); Pirelli Tire North America LLC (Tier 1); Porsche Cars North America Inc. (Tier 1); Propex Operating Co. LLC (Tier 1); QSR Inc. (Tier 1); Racemark International LLC (Tier 1); RealTruck (Tier 1); Rivian Automotive (Tier 1); Robert Bosch LLC (Tier 1); SAFT America Inc. (Tier 1); SHIROKI North America Inc (Tier 1); SKF USA Inc. (Tier 1); SRG Global Inc. (Tier 1); Sejong Georgia LLC (Tier 1); Seohan Auto USA (Tier 1); Seoyon E-HWA (Tier 1); Seoyon E-Hwa Interior Systems (Tier 1); Sewon America Inc. (Tier 1); Solvay Specialty Polymers USA LLC (Tier 1); Southern Switches Corp. (Tier 1); Stryten Energy (Tier 1); Suhner Manufacturing Corp. (Tier 1) Materials [4]: PHA Body Systems LLC (Tier 1); Panasonic Automotive Systems Co. (Tier 1); SK Battery America (Tier 1); Sumitomo Electric Wiring Systems (Tier 1) Thermal Management [3]: Hyundai Transys Georgia Powertrain (Tier 1/2); Novelis Inc. (Tier 1); Peerless-Winsmith Inc. (Tier 1)",golden,"Grouped by EV Supply Chain Role:
+- Battery Cell: Hitachi Astemo Americas Inc.; Honda Development & Manufacturing
+- Battery Pack: F&P Georgia Manufacturing; Hollingsworth & Vose Co.; Hyundai Motor Group; IMMI
+- Charging Infrastructure: Morgan Corp.
+- General Automotive: Fouts Brothers Fire Equipment; Hitachi Astemo; Hwashin; Hyundai & LG Energy Solution (LGES); Hyundai Industrial Co.; Hyundai MOBIS (Georgia); Hyundai Transys Georgia Seating Systems; IMS Gear Georgia Inc.; Inalfa Roof Systems Inc.; JAC Products Inc.; JTEKT North America Corp.; Jefferson Southern Corp.; Jefferson Southern Corporation; Joon Georgia, Inc.; KTX America Corporation; Kautex Inc.; Kumho Tire USA Inc.; Kyungshin America Corp.; Lark United Manufacturing Inc.; Lear Corporation; Lehigh Technologies Inc.; Linde + Wiemann; Lund International Inc.; Lund International Inc./Ventshade Division; Lyle Industries Inc.; MAT Heavy Duty; Mack Trucks; Magna International; Mando America Corp.; Master Craft Engineering Inc.; Maxxis International USA; Mercedes-Benz USA LLC; Michelin Tread Technologies; Milliken & Co./Valway Plant; Mobis Alabama LLC; MollerTech LLC; Murata Electronics North America Inc.; NIFCO KTW America Corp.; NVH Korea; Neaton Rome Inc.; Nidec Elesys Americas Inc.; Nile Automotive; Nisshinbo Automotive Manufacturing Inc.; Nivel Parts & Manufacturing Co. LLC; Novelis Inc.; OTR Wheel Engineering Inc.; Oneda Corp.; PAI Industries Inc.; PIOLAX Corp.; PPG Industries Inc.; Paccar; Pak-Lite Inc.; Panasonic Automotive Systems Co.; Panduit Corp.; Perkins Small Engines LLC; Peterson Spring; Piedmont Automotive Products Inc.; Pirelli Tire North America LLC; Porsche Cars North America Inc.; Propex Operating Co. LLC; QSR Inc.; Racemark International LLC; RealTruck; Rivian Automotive; Robert Bosch LLC; SAFT America Inc.; SHIROKI North America Inc; SKF USA Inc.; SRG Global Inc.; Sejong Georgia LLC; Seohan Auto USA; Seoyon E-HWA; Seoyon E-Hwa Interior Systems; Sewon America Inc.; Solvay Specialty Polymers USA LLC; Southern Switches Corp.; Stryten Energy; Suhner Manufacturing Corp.
+- Materials: PHA Body Systems LLC; Panasonic Automotive Systems Co.; SK Battery America; Sumitomo Electric Wiring Systems
+- Thermal Management: Hyundai Transys Georgia Powertrain; Novelis Inc.; Peerless-Winsmith Inc.",12.06,True,,0.98,1.0,1.0,1.0,0.0,0.0
+gemma_rag,ollama,gemma3:12b,True,"List the companies involved in Battery Pack activities and include their Category, Location, Product / Service, and Employment.","F&P Georgia Manufacturing | Category: Tier 1/2 | Location: Toccoa, Stephens County | Product / Service: Lithium-ion battery recycler and raw materials provider | Employment: 104 Hollingsworth & Vose Co. | Category: Tier 1/2 | Location: Bainbridge, Decatur County | Product / Service: Lithium-ion battery materials | Employment: 400 Hyundai Motor Group | Category: Tier 1/2 | Location: McDonough, Henry County | Product / Service: Battery parts for electric vehicles | Employment: 164 IMMI | Category: Tier 1/2 | Location: Jefferson, Jackson County | Product / Service: Battery electrolyte | Employment: 100",golden,"Here are the companies involved in Battery Pack activities, along with their Category, Location, Product / Service, and Employment:
+
+- Company: F&P Georgia Manufacturing | Category: Tier 1/2 | Location: Toccoa, Stephens County | Product / Service: Lithium-ion battery recycler and raw materials provider | Employment: 104
+- Company: Hollingsworth & Vose Co. | Category: Tier 1/2 | Location: Bainbridge, Decatur County | Product / Service: Lithium-ion battery materials | Employment: 400
+- Company: Hyundai Motor Group | Category: Tier 1/2 | Location: McDonough, Henry County | Product / Service: Battery parts for electric vehicles | Employment: 164
+- Company: IMMI | Category: Tier 1/2 | Location: Jefferson, Jackson County | Product / Service: Battery electrolyte | Employment: 100",3.8,True,,1.0,1.0,1.0,1.0,0.0,0.0
+gemma_rag,ollama,gemma3:12b,True,"Which companies are classified under Battery Cell, and which Primary OEMs are they linked to?",Hitachi Astemo Americas Inc. -> Primary OEMs: Hyundai Kia Honda Development & Manufacturing -> Primary OEMs: Hyundai Kia,golden,"Two companies are classified under Battery Cell, and they are linked to the following Primary OEMs:
+- Hitachi Astemo Americas Inc. | Primary OEMs: Hyundai Kia
+- Honda Development & Manufacturing | Primary OEMs: Hyundai Kia",1.25,True,,0.5,1.0,1.0,1.0,0.0,0.0
+gemma_rag,ollama,gemma3:12b,True,"Map the companies whose EV Supply Chain Role is Thermal Management, including their Location and Primary Facility Type.","Freudenberg-NOK | Location: Carnesville, Franklin County | Primary Facility Type: Manufacturing Plant Hyundai Transys Georgia Powertrain | Location: Dublin, Laurens County | Primary Facility Type: Manufacturing Plant Novelis Inc. | Location: Lawrenceville, Gwinnett County | Primary Facility Type: Manufacturing Plant Peerless-Winsmith Inc. | Location: Statesboro, Bulloch County | Primary Facility Type: Manufacturing Plant",golden,"Here are the companies with an EV Supply Chain Role of Thermal Management, their Location, and Primary Facility Type:
+
+- Company: Freudenberg-NOK | EV Supply Chain Role: Thermal Management | Location: Carnesville, Franklin County | Primary Facility Type: Manufacturing Plant
+- Company: Hyundai Transys Georgia Powertrain | EV Supply Chain Role: Thermal Management | Location: Dublin, Laurens County | Primary Facility Type: Manufacturing Plant
+- Company: Novelis Inc. | EV Supply Chain Role: Thermal Management | Location: Lawrenceville, Gwinnett County | Primary Facility Type: Manufacturing Plant
+- Company: Peerless-Winsmith Inc. | EV Supply Chain Role: Thermal Management | Location: Statesboro, Bulloch County | Primary Facility Type: Manufacturing Plant
+- Company: ZF Gainesville LLC | EV Supply Chain Role: EV thermal management and power electronics | Location: Georgia | Primary Facility Type: Manufacturing",3.64,True,,0.75,1.0,1.0,1.0,0.0,0.0
+gemma_rag,ollama,gemma3:12b,True,"Which companies are tagged as Power Electronics, and what Product / Service do they provide?","GSC Steel Stamping LLC | Product / Service: Deep grove ball bearings Toyota Industries Electric Systems North 255 DC-to-DC converters Jackson America, Inc.*",golden,"The following companies are tagged as Power Electronics:
+
+- GSC Steel Stamping LLC provides Deep grove ball bearings Toyota Industries Electric Systems North 255 DC-to-DC converters Jackson America, Inc.*
+- Yazaki North America provides Automotive supplier division (mobility solutions: ADAS, powertrain, electronics)
+- ZF Gainesville LLC provides Automotive supplier footprint (electrification, thermal, powertrain, ADAS components)",1.93,True,,0.5,1.0,1.0,1.0,0.0,0.0
+gemma_rag,ollama,gemma3:12b,True,Show all Vehicle Assembly entities and summarize their Primary OEMs and Employment.,"Kia Georgia Inc. | Primary OEMs: Club Car LLC | Employment: 777 Superior Essex Inc. | Primary OEMs: Hyundai Motor Group | Employment: 8,100 Suzuki Manufacturing of America Corp. | Primary OEMs: Rivian Automotive | Employment: 7,500 TCI Powder Coatings | Primary OEMs: Kia Georgia Inc. | Employment: 3,000 TDK Components USA Inc. | Primary OEMs: Mercedes-Benz USA LLC | Employment: 1,000 TE Connectivity | Primary OEMs: Blue Bird Corp. | Employment: 1,900 Teklas USA | Primary OEMs: Yamaha Motor Manufacturing Corp. | Employment: 1,800 Textron Specialized Vehicles | Primary OEMs: Textron Specialized Vehicles | Employment: 1,100 Thermal Ceramics Inc. | Primary OEMs: SK Battery America | Employment: 3,000 Thomson Plastics Inc. | Primary OEMs: Archer Aviation Inc. | Employment: 1,000",golden,"Here's a summary of Vehicle Assembly entities, their Primary OEMs, and Employment, based on the provided evidence:
+
+*   **Kia Georgia Inc.** | Primary OEMs: Club Car LLC | Employment: 777
+*   **Superior Essex Inc.** | Primary OEMs: Hyundai Motor Group | Employment: 8100
+*   **Suzuki Manufacturing of America Corp.** | Primary OEMs: Rivian Automotive | Employment: 7500
+*   **TCI Powder Coatings** | Primary OEMs: Kia Georgia Inc. | Employment: 3000
+*   **TDK Components USA Inc.** | Primary OEMs: Mercedes-Benz USA LLC | Employment: 1000
+*   **TE Connectivity** | Primary OEMs: Blue Bird Corp. | Employment: 1900
+*   **Teklas USA** | Primary OEMs: Yamaha Motor Manufacturing Corp. | Employment: 1800
+*   **Textron Specialized Vehicles** | Primary OEMs: Textron Specialized Vehicles | Employment: 1100
+*   **Thermal Ceramics Inc.** | Primary OEMs: SK Battery America | Employment: 3000
+*   **Thomson Plastics Inc.** | Primary OEMs: Archer Aviation Inc. | Employment: 1000",4.9,True,,1.0,1.0,1.0,1.0,0.0,0.0
+gemma_rag,ollama,gemma3:12b,True,List all companies with EV / Battery Relevant = Yes and provide their EV Supply Chain Role and Category.,"Duckyang | EV Supply Chain Role: General Automotive | Category: Tier 2/3 Enchem America Inc. | EV Supply Chain Role: General Automotive | Category: Tier 2/3 F&P Georgia Manufacturing | EV Supply Chain Role: Battery Pack | Category: Tier 1/2 GSC Steel Stamping LLC | EV Supply Chain Role: Power Electronics | Category: Tier 2/3 Hitachi Astemo Americas Inc. | EV Supply Chain Role: Battery Cell | Category: Tier 1/2 Hollingsworth & Vose Co. | EV Supply Chain Role: Battery Pack | Category: Tier 1/2 Honda Development & Manufacturing | EV Supply Chain Role: Battery Cell | Category: Tier 1/2 Hyundai Motor Group | EV Supply Chain Role: Battery Pack | Category: Tier 1/2 Hyundai Transys Georgia Powertrain | EV Supply Chain Role: Thermal Management | Category: Tier 1/2 IMMI | EV Supply Chain Role: Battery Pack | Category: Tier 1/2 Kia Georgia Inc. | EV Supply Chain Role: Vehicle Assembly | Category: OEM Racemark International LLC | EV Supply Chain Role: General Automotive | Category: Tier 1 Superior Essex Inc. | EV Supply Chain Role: Vehicle Assembly | Category: OEM Suzuki Manufacturing of America Corp. | EV Supply Chain Role: Vehicle Assembly | Category: OEM TI Fluid Systems | EV Supply Chain Role: Vehicle safety systems OEM (EV + ICE) | Category: OEM TI Fluid Systems | EV Supply Chain Role: OEM corporate footprint influencing EV strategy | Category: OEM (Footprint) TN Americas Holding Inc. | EV Supply Chain Role: OEM parent group footprint (EV + HD electrification) | Category: OEM (Footprint) Thermal Ceramics Inc. | EV Supply Chain Role: Vehicle Assembly | Category: OEM Thomson Plastics Inc. | EV Supply Chain Role: Vehicle Assembly | Category: OEM Tie Down Engineering | EV Supply Chain Role: OEM corporate and engineering footprint (electrification) | Category: OEM (Footprint) Toyota Industries Group (TACG-TICA) | EV Supply Chain Role: OEM parent group footprint (electric truck strategy) | Category: OEM (Footprint) Trenton Pressing | EV Supply Chain Role: OEM corporate footprint and supplier integration | Category: OEM (Footprint) Trenton Pressing Inc. | EV Supply Chain Role: Machined components supporting EV and ICE vehicles | Category: OEM Supply Chain Valeo | EV Supply Chain Role: Tier 1 automotive components | Category: OEM Supply Chain Vanguard National Trailer Corp. | EV Supply Chain Role: Body and chassis components for EV and ICE OEMs | Category: OEM Supply Chain Vernay | EV Supply Chain Role: Stamped and welded assemblies for OEMs | Category: OEM Supply Chain Vista Metals Corp. | EV Supply Chain Role: EV and ICE component manufacturing | Category: OEM Supply Chain Voestalpine Automotive Body Parts Inc. | EV Supply Chain Role: EV and ICE powertrain and HVAC components | Category: OEM Supply Chain Volvo Cars USA | EV Supply Chain Role: Plastic components for EV and ICE vehicles | Category: OEM Supply Chain Volvo Group North America | EV Supply Chain Role: Stamped metal components for OEMs | Category: OEM Supply Chain WIKA USA | EV Supply Chain Role: HV and LV wiring harnesses for EVs and ICE vehicles | Category: OEM Supply Chain Wabash National Corp. | EV Supply Chain Role: Interior and exterior plastic parts | Category: OEM Supply Chain Wheelabrator Group Inc. | EV Supply Chain Role: Interior trim and textile components | Category: OEM Supply Chain Woodbridge Foam Corp. | EV Supply Chain Role: EV wiring harnesses and power distribution | Category: OEM Supply Chain Woory Industrial Co. | EV Supply Chain Role: High‑voltage EV connectors and electronics | Category: OEM Supply Chain YKK USA Inc. | EV Supply Chain Role: EV sensors, braking, and control systems | Category: OEM Footprint Yachiyo Manufacturing of America LLC | EV Supply Chain Role: EV electrical distribution and interior systems | Category: OEM Supply Chain Yamaha Motor Manufacturing Corp. | EV Supply Chain Role: Advanced electrical architecture for EVs | Category: OEM Supply Chain Yazaki North America | EV Supply Chain Role: Power electronics, sensors, and EV systems | Category: OEM Footprint ZF Gainesville LLC | EV Supply Chain Role: EV body, powertrain, and thermal components | Category: OEM Supply Chain ZF Gainesville LLC | EV Supply Chain Role: EV thermal management and power electronics | Category: OEM Supply Chain ZF Gainesville LLC | EV Supply Chain Role: EV thermal systems and electronics | Category: OEM Footprint",golden,"- Company: Duckyang | EV Supply Chain Role: General Automotive | Category: Tier 2/3
+- Company: Enchem America Inc. | EV Supply Chain Role: General Automotive | Category: Tier 2/3
+- Company: F&P Georgia Manufacturing | EV Supply Chain Role: Battery Pack | Category: Tier 1/2
+- Company: GSC Steel Stamping LLC | EV Supply Chain Role: Power Electronics | Category: Tier 2/3
+- Company: Hitachi Astemo Americas Inc. | EV Supply Chain Role: Battery Cell | Category: Tier 1/2
+- Company: Hollingsworth & Vose Co. | EV Supply Chain Role: Battery Pack | Category: Tier 1/2
+- Company: Honda Development & Manufacturing | EV Supply Chain Role: Battery Cell | Category: Tier 1/2
+- Company: Hyundai Motor Group | EV Supply Chain Role: Battery Pack | Category: Tier 1/2
+- Company: Hyundai Transys Georgia Powertrain | EV Supply Chain Role: Thermal Management | Category: Tier 1/2
+- Company: IMMI | EV Supply Chain Role: Battery Pack | Category: Tier 1/2
+- Company: Kia Georgia Inc. | EV Supply Chain Role: Vehicle Assembly | Category: OEM
+- Company: Racemark International LLC | EV Supply Chain Role: General Automotive | Category: Tier 1
+- Company: Superior Essex Inc. | EV Supply Chain Role: Vehicle Assembly | Category: OEM
+- Company: Suzuki Manufacturing of America Corp. | EV Supply Chain Role: Vehicle Assembly | Category: OEM
+- Company: Thermal Ceramics Inc. | EV Supply Chain Role: Vehicle Assembly | Category: OEM
+- Company: Thomson Plastics Inc. | EV Supply Chain Role: Vehicle Assembly | Category: OEM
+- Company: TI Fluid Systems | EV Supply Chain Role: Vehicle safety systems OEM (EV + ICE) | Category: OEM
+- Company: TI Fluid Systems | EV Supply Chain Role: OEM corporate footprint influencing EV strategy | Category: OEM (Footprint)
+- Company: Tie Down Engineering | EV Supply Chain Role: OEM corporate and engineering footprint (electrification) | Category: OEM (Footprint)
+- Company: TN Americas Holding Inc. | EV Supply Chain Role: OEM parent group footprint (EV + HD electrification) | Category: OEM (Footprint)
+- Company: Toyota Industries Group (TACG-TICA) | EV Supply Chain Role: OEM parent group footprint (electric truck strategy) | Category: OEM (Footprint)
+- Company: Trenton Pressing | EV Supply Chain Role: OEM corporate footprint and supplier integration | Category: OEM (Footprint)
+- Company: Trenton Pressing Inc. | EV Supply Chain Role: Machined components supporting EV and ICE vehicles | Category: OEM Supply Chain
+- Company: Valeo | EV Supply Chain Role: Tier 1 automotive components | Category: OEM Supply Chain
+- Company: Vanguard National Trailer Corp. | EV Supply Chain Role: Body and chassis components for EV and ICE OEMs | Category: OEM Supply Chain
+- Company: Vernay | EV Supply Chain Role: Stamped and welded assemblies for OEMs | Category: OEM Supply Chain
+- Company: Vista Metals Corp. | EV Supply Chain Role: EV and ICE component manufacturing | Category: OEM Supply Chain
+- Company: Voestalpine Automotive Body Parts Inc. | EV Supply Chain Role: EV and ICE powertrain and HVAC components | Category: OEM Supply Chain
+- Company: Volvo Cars USA | EV Supply Chain Role: Plastic components for EV and ICE vehicles | Category: OEM Supply Chain
+- Company: Volvo Group North America | EV Supply Chain Role: Stamped metal components for OEMs | Category: OEM Supply Chain
+- Company: Wabash National Corp. | EV Supply Chain Role: Interior and exterior plastic parts | Category: OEM Supply Chain
+- Company: Wheelabrator Group Inc. | EV Supply Chain Role: Interior trim and textile components | Category: OEM Supply Chain
+- Company: WIKA USA | EV Supply Chain Role: HV and LV wiring harnesses for EVs and ICE vehicles | Category: OEM Supply Chain
+- Company: Woodbridge Foam Corp. | EV Supply Chain Role: EV wiring harnesses and power distribution | Category: OEM Supply Chain
+- Company: Woory Industrial Co. | EV Supply Chain Role: High‑voltage EV connectors and electronics | Category: OEM Supply Chain",15.96,True,,0.91,0.76,0.76,0.76,0.24,0.0
+gemma_rag,ollama,gemma3:12b,True,Which EV Supply Chain Roles have at least one company with EV / Battery Relevant = Yes? Provide the roles and the matching companies.,"Advanced electrical architecture for EVs: Yamaha Motor Manufacturing Corp. Battery Cell: Hitachi Astemo Americas Inc.; Honda Development & Manufacturing Battery Pack: F&P Georgia Manufacturing; Hollingsworth & Vose Co.; Hyundai Motor Group; IMMI Body and chassis components for EV and ICE OEMs: Vanguard National Trailer Corp. EV and ICE component manufacturing: Vista Metals Corp. EV and ICE powertrain and HVAC components: Voestalpine Automotive Body Parts Inc. EV body, powertrain, and thermal components: ZF Gainesville LLC EV electrical distribution and interior systems: Yachiyo Manufacturing of America LLC EV sensors, braking, and control systems: YKK USA Inc. EV thermal management and power electronics: ZF Gainesville LLC EV thermal systems and electronics: ZF Gainesville LLC EV wiring harnesses and power distribution: Woodbridge Foam Corp. General Automotive: Duckyang; Enchem America Inc.; Racemark International LLC HV and LV wiring harnesses for EVs and ICE vehicles: WIKA USA High‑voltage EV connectors and electronics: Woory Industrial Co. Interior and exterior plastic parts: Wabash National Corp. Interior trim and textile components: Wheelabrator Group Inc. Machined components supporting EV and ICE vehicles: Trenton Pressing Inc. OEM corporate and engineering footprint (electrification): Tie Down Engineering OEM corporate footprint and supplier integration: Trenton Pressing OEM corporate footprint influencing EV strategy: TI Fluid Systems OEM parent group footprint (EV + HD electrification): TN Americas Holding Inc. OEM parent group footprint (electric truck strategy): Toyota Industries Group (TACG-TICA) Plastic components for EV and ICE vehicles: Volvo Cars USA Power Electronics: GSC Steel Stamping LLC Power electronics, sensors, and EV systems: Yazaki North America Stamped and welded assemblies for OEMs: Vernay Stamped metal components for OEMs: Volvo Group North America Thermal Management: Hyundai Transys Georgia Powertrain Tier 1 automotive components: Valeo Vehicle Assembly: Kia Georgia Inc.; Superior Essex Inc.; Suzuki Manufacturing of America Corp.; Thermal Ceramics Inc.; Thomson Plastics Inc. Vehicle safety systems OEM (EV + ICE): TI Fluid Systems",golden,"Here's a list of EV Supply Chain Roles and the matching companies:
+
+*   **Advanced electrical architecture for EVs:** Yamaha Motor Manufacturing Corp.
+*   **Battery Cell:** Hitachi Astemo Americas Inc.; Honda Development & Manufacturing
+*   **Battery Pack:** F&P Georgia Manufacturing; Hollingsworth & Vose Co.; Hyundai Motor Group; IMMI
+*   **Body and chassis components for EV and ICE OEMs:** Vanguard National Trailer Corp.
+*   **EV and ICE component manufacturing:** Vista Metals Corp.
+*   **EV and ICE powertrain and HVAC components:** Voestalpine Automotive Body Parts Inc.
+*   **EV body, powertrain, and thermal components:** ZF Gainesville LLC
+*   **EV electrical distribution and interior systems:** Yachiyo Manufacturing of America LLC
+*   **EV sensors, braking, and control systems:** YKK USA Inc.
+*   **EV thermal management and power electronics:** ZF Gainesville LLC
+*   **EV thermal systems and electronics:** ZF Gainesville LLC
+*   **EV wiring harnesses and power distribution:** Woodbridge Foam Corp.
+*   **General Automotive:** Duckyang; Enchem America Inc.; Racemark International LLC
+*   **HV and LV wiring harnesses for EVs and ICE vehicles:** WIKA USA
+*   **High‑voltage EV connectors and electronics:** Woory Industrial Co.
+*   **Interior and exterior plastic parts:** Wabash National Corp.
+*   **Interior trim and textile components:** Wheelabrator Group Inc.
+*   **Machined components supporting EV and ICE vehicles:** Trenton Pressing Inc.
+*   **OEM corporate and engineering footprint (electrification):** Tie Down Engineering
+*   **OEM corporate footprint and supplier integration:** Trenton Pressing
+*   **OEM corporate footprint influencing EV strategy:** TI Fluid Systems
+*   **OEM parent group footprint (EV + HD electrification):** TN Americas Holding Inc.
+*   **OEM parent group footprint (electric truck strategy):** Toyota Industries Group (TACG-TICA)
+*   **Plastic components for EV and ICE vehicles:** Volvo Cars USA
+*   **Power Electronics:** GSC Steel Stamping LLC
+*   **Power electronics, sensors, and EV systems:** Yazaki North America
+*   **Stamped and welded assemblies for OEMs:** Vernay
+*   **Stamped metal components for OEMs:** Volvo Group North America
+*   **Thermal Management:** Hyundai Transys Georgia Powertrain
+*   **Tier 1 automotive components:** Valeo
+*   **Vehicle Assembly:** Kia Georgia Inc.; Superior Essex Inc.; Suzuki Manufacturing of America Corp.; Thermal Ceramics Inc.; Thomson Plastics Inc.
+*   **Vehicle safety systems OEM (EV + ICE):** TI Fluid Systems",9.91,True,,0.98,1.0,1.0,1.0,0.0,0.0
+gemma_rag,ollama,gemma3:12b,True,Identify the set of Industry Groups represented among Battery Pack and Battery Cell companies.,Battery Pack industry groups: Electronic and Other Electrical Equipment and Components; Primary Metal Industries Battery Cell industry groups: Electronic and Other Electrical Equipment and Components Union across both roles: Electronic and Other Electrical Equipment and Components; Primary Metal Industries,golden,"Industry Groups represented among Battery Pack and Battery Cell companies:
+- Electronic and Other Electrical Equipment and Components; Primary Metal Industries",0.9,True,,0.67,1.0,1.0,1.0,0.0,0.0
+gemma_rag,ollama,gemma3:12b,True,"For each Category (Tier 2/3, Tier 1/2, Tier 1, OEM, OEM Supply Chain, OEM (Footprint), OEM Footprint), count how many companies are in the dataset.",Tier 2/3: 74 Tier 1/2: 18 Tier 1: 78 OEM: 12 OEM Supply Chain: 17 OEM (Footprint): 5 OEM Footprint: 3,golden,"- Tier 2/3: 74
+- Tier 1/2: 18
+- Tier 1: 78
+- OEM: 12
+- OEM Supply Chain: 17
+- OEM (Footprint): 5
+- OEM Footprint: 3",1.53,True,,1.0,1.0,1.0,1.0,0.0,0.0
+gemma_no_rag,ollama,gemma3:12b,False,"Show all companies categorized as Tier 1 and Tier 1/2, and group them by EV Supply Chain Role.","Battery Cell [2]: Hitachi Astemo Americas Inc. (Tier 1/2); Honda Development & Manufacturing (Tier 1/2) Battery Pack [4]: F&P Georgia Manufacturing (Tier 1/2); Hollingsworth & Vose Co. (Tier 1/2); Hyundai Motor Group (Tier 1/2); IMMI (Tier 1/2) Charging Infrastructure [1]: Morgan Corp. (Tier 1) General Automotive [78]: Fouts Brothers Fire Equipment (Tier 1/2); Hitachi Astemo (Tier 1/2); Hwashin (Tier 1/2); Hyundai & LG Energy Solution (LGES) (Tier 1/2); Hyundai Industrial Co. (Tier 1/2); Hyundai MOBIS (Georgia) (Tier 1/2); Hyundai Transys Georgia Seating Systems (Tier 1/2); IMS Gear Georgia Inc. (Tier 1/2); Inalfa Roof Systems Inc. (Tier 1/2); JAC Products Inc. (Tier 1/2); JTEKT North America Corp. (Tier 1); Jefferson Southern Corp. (Tier 1/2); Jefferson Southern Corporation (Tier 1); Joon Georgia, Inc. (Tier 1); KTX America Corporation (Tier 1); Kautex Inc. (Tier 1); Kumho Tire USA Inc. (Tier 1); Kyungshin America Corp. (Tier 1); Lark United Manufacturing Inc. (Tier 1); Lear Corporation (Tier 1); Lehigh Technologies Inc. (Tier 1); Linde + Wiemann (Tier 1); Lund International Inc. (Tier 1); Lund International Inc./Ventshade Division (Tier 1); Lyle Industries Inc. (Tier 1); MAT Heavy Duty (Tier 1); Mack Trucks (Tier 1); Magna International (Tier 1); Mando America Corp. (Tier 1); Master Craft Engineering Inc. (Tier 1); Maxxis International USA (Tier 1); Mercedes-Benz USA LLC (Tier 1); Michelin Tread Technologies (Tier 1); Milliken & Co./Valway Plant (Tier 1); Mobis Alabama LLC (Tier 1); MollerTech LLC (Tier 1); Murata Electronics North America Inc. (Tier 1); NIFCO KTW America Corp. (Tier 1); NVH Korea (Tier 1); Neaton Rome Inc. (Tier 1); Nidec Elesys Americas Corp. (Tier 1); Nile Automotive (Tier 1); Nisshinbo Automotive Manufacturing Inc. (Tier 1); Nivel Parts & Manufacturing Co. LLC (Tier 1); Novelis Inc. (Tier 1); OTR Wheel Engineering Inc. (Tier 1); Oneda Corp. (Tier 1); PAI Industries Inc. (Tier 1); PIOLAX Corp. (Tier 1); PPG Industries Inc. (Tier 1); Paccar (Tier 1); Pak-Lite Inc. (Tier 1); Panasonic Automotive Systems Co. (Tier 1); Panduit Corp. (Tier 1); Perkins Small Engines LLC (Tier 1); Peterson Spring (Tier 1); Piedmont Automotive Products Inc. (Tier 1); Pirelli Tire North America LLC (Tier 1); Porsche Cars North America Inc. (Tier 1); Propex Operating Co. LLC (Tier 1); QSR Inc. (Tier 1); Racemark International LLC (Tier 1); RealTruck (Tier 1); Rivian Automotive (Tier 1); Robert Bosch LLC (Tier 1); SAFT America Inc. (Tier 1); SHIROKI North America Inc (Tier 1); SKF USA Inc. (Tier 1); SRG Global Inc. (Tier 1); Sejong Georgia LLC (Tier 1); Seohan Auto USA (Tier 1); Seoyon E-HWA (Tier 1); Seoyon E-Hwa Interior Systems (Tier 1); Sewon America Inc. (Tier 1); Solvay Specialty Polymers USA LLC (Tier 1); Southern Switches Corp. (Tier 1); Stryten Energy (Tier 1); Suhner Manufacturing Corp. (Tier 1) Materials [4]: PHA Body Systems LLC (Tier 1); Panasonic Automotive Systems Co. (Tier 1); SK Battery America (Tier 1); Sumitomo Electric Wiring Systems (Tier 1) Thermal Management [3]: Hyundai Transys Georgia Powertrain (Tier 1/2); Novelis Inc. (Tier 1); Peerless-Winsmith Inc. (Tier 1)",golden,"I do not have access to a dataset to fulfill this request. Generally, companies categorized as Tier 1 and Tier 1/2 within the EV supply chain would be grouped by their specific role, such as battery materials, cell manufacturing, electric motor production, power electronics, or vehicle assembly.",1.36,True,,0.0,,,,,
+gemma_no_rag,ollama,gemma3:12b,False,"List the companies involved in Battery Pack activities and include their Category, Location, Product / Service, and Employment.","F&P Georgia Manufacturing | Category: Tier 1/2 | Location: Toccoa, Stephens County | Product / Service: Lithium-ion battery recycler and raw materials provider | Employment: 104 Hollingsworth & Vose Co. | Category: Tier 1/2 | Location: Bainbridge, Decatur County | Product / Service: Lithium-ion battery materials | Employment: 400 Hyundai Motor Group | Category: Tier 1/2 | Location: McDonough, Henry County | Product / Service: Battery parts for electric vehicles | Employment: 164 IMMI | Category: Tier 1/2 | Location: Jefferson, Jackson County | Product / Service: Battery electrolyte | Employment: 100",golden,"I do not have access to a specific dataset to provide a list of companies involved in Battery Pack activities with their Category, Location, Product/Service, and Employment. However, generally, companies involved in battery pack activities span several categories:
+
+*   **Automotive Manufacturers:** (e.g., Tesla, GM, Ford, Volkswagen, BYD) - Location varies globally; Product/Service: Electric Vehicle Battery Packs; Employment: Varies greatly by company.
+*   **Battery Manufacturers:** (e.g., CATL, LG Energy Solution, Panasonic, Samsung SDI, SK Innovation) - Locations primarily in Asia and Europe; Product/Service: Battery Cell and Pack Manufacturing; Employment: High, often tens of thousands.
+*   **Technology Companies:** (e.g., QuantumScape, Solid Power) - Locations in North America and Europe; Product/Service: Battery Technology Development; Employment: Smaller, focused on R&D.
+*   **Energy Storage Companies:** (e.g., Fluence, Wärtsilä) - Locations globally; Product/Service: Battery Energy Storage Systems; Employment: Moderate.
+*   **Materials Suppliers:** (e.g., Albemarle, Livent) - Locations globally; Product/Service: Lithium, Nickel, and other battery materials; Employment: Significant.
+
+
+
+The specific details (location, product/service specifics, and employment numbers) would vary considerably for each company and are not available to me.",5.06,True,,0.0,,,,,
+gemma_no_rag,ollama,gemma3:12b,False,"Which companies are classified under Battery Cell, and which Primary OEMs are they linked to?",Hitachi Astemo Americas Inc. -> Primary OEMs: Hyundai Kia Honda Development & Manufacturing -> Primary OEMs: Hyundai Kia,golden,"Based on general industry knowledge, companies classified under Battery Cell include manufacturers like CATL, LG Energy Solution, Panasonic, SK Innovation, Samsung SDI, and BYD. Primary OEMs (Original Equipment Manufacturers) linked to these battery cell manufacturers typically include Tesla, Volkswagen, General Motors, Ford, Stellantis, and Hyundai/Kia.
+
+
+
+Please note that specific partnerships and supply chain relationships can change frequently and are not always publicly available, so this is a general overview.",1.8,True,,0.0,,,,,
+gemma_no_rag,ollama,gemma3:12b,False,"Map the companies whose EV Supply Chain Role is Thermal Management, including their Location and Primary Facility Type.","Freudenberg-NOK | Location: Carnesville, Franklin County | Primary Facility Type: Manufacturing Plant Hyundai Transys Georgia Powertrain | Location: Dublin, Laurens County | Primary Facility Type: Manufacturing Plant Novelis Inc. | Location: Lawrenceville, Gwinnett County | Primary Facility Type: Manufacturing Plant Peerless-Winsmith Inc. | Location: Statesboro, Bulloch County | Primary Facility Type: Manufacturing Plant",golden,"Here's a mapping of companies with an EV Supply Chain Role of Thermal Management, including their Location and Primary Facility Type, based on general industry knowledge:
+
+*   **Delta Electronics (Taiwan):** Location - Taiwan, Primary Facility Type - Manufacturing
+*   **DENSO (Japan):** Location - Japan, Primary Facility Type - Manufacturing
+*   **LG Electronics (South Korea):** Location - South Korea, Primary Facility Type - Manufacturing
+*   **Panasonic (Japan):** Location - Japan, Primary Facility Type - Manufacturing
+*   **Robert Bosch (Germany):** Location - Germany, Primary Facility Type - Manufacturing
+*   **Valeo (France):** Location - France, Primary Facility Type - Manufacturing
+*   **Therma-Vu (USA):** Location - USA, Primary Facility Type - Manufacturing
+
+**Note:** Specific facility details and primary facility types can vary within these companies and are subject to change.",3.36,True,,0.0,,,,,
+gemma_no_rag,ollama,gemma3:12b,False,"Which companies are tagged as Power Electronics, and what Product / Service do they provide?","GSC Steel Stamping LLC | Product / Service: Deep grove ball bearings Toyota Industries Electric Systems North 255 DC-to-DC converters Jackson America, Inc.*",golden,"Based on general knowledge, companies tagged as Power Electronics often provide products and services such as:
+
+*   **Power Supplies:** Devices that convert electrical power from one form to another.
+*   **Inverters:** Circuits that convert DC power to AC power.
+*   **Rectifiers:** Circuits that convert AC power to DC power.
+*   **DC-DC Converters:** Circuits that change DC voltage levels.
+*   **Motor Drives:** Systems for controlling electric motors.
+*   **LED Drivers:** Circuits for powering LEDs.
+*   **Power Modules:** Integrated power electronic components.
+*   **Semiconductors:** Discrete power devices like transistors and diodes.
+*   **System Design and Engineering Services:** Providing expertise in power electronic system design.
+
+
+
+The specific companies and their offerings would depend on a particular dataset or directory, which I do not have access to.",3.22,True,,0.0,,,,,
+gemma_no_rag,ollama,gemma3:12b,False,Show all Vehicle Assembly entities and summarize their Primary OEMs and Employment.,"Kia Georgia Inc. | Primary OEMs: Club Car LLC | Employment: 777 Superior Essex Inc. | Primary OEMs: Hyundai Motor Group | Employment: 8,100 Suzuki Manufacturing of America Corp. | Primary OEMs: Rivian Automotive | Employment: 7,500 TCI Powder Coatings | Primary OEMs: Kia Georgia Inc. | Employment: 3,000 TDK Components USA Inc. | Primary OEMs: Mercedes-Benz USA LLC | Employment: 1,000 TE Connectivity | Primary OEMs: Blue Bird Corp. | Employment: 1,900 Teklas USA | Primary OEMs: Yamaha Motor Manufacturing Corp. | Employment: 1,800 Textron Specialized Vehicles | Primary OEMs: Textron Specialized Vehicles | Employment: 1,100 Thermal Ceramics Inc. | Primary OEMs: SK Battery America | Employment: 3,000 Thomson Plastics Inc. | Primary OEMs: Archer Aviation Inc. | Employment: 1,000",golden,"Vehicle Assembly entities generally include Body Assembly, Frame Assembly, Powertrain Assembly, and Final Assembly. Primary OEMs are typically the vehicle manufacturers themselves (e.g., Ford, Toyota, BMW). Employment varies significantly by facility but can range from hundreds to tens of thousands of workers.",1.22,True,,0.0,,,,,
+gemma_no_rag,ollama,gemma3:12b,False,List all companies with EV / Battery Relevant = Yes and provide their EV Supply Chain Role and Category.,"Duckyang | EV Supply Chain Role: General Automotive | Category: Tier 2/3 Enchem America Inc. | EV Supply Chain Role: General Automotive | Category: Tier 2/3 F&P Georgia Manufacturing | EV Supply Chain Role: Battery Pack | Category: Tier 1/2 GSC Steel Stamping LLC | EV Supply Chain Role: Power Electronics | Category: Tier 2/3 Hitachi Astemo Americas Inc. | EV Supply Chain Role: Battery Cell | Category: Tier 1/2 Hollingsworth & Vose Co. | EV Supply Chain Role: Battery Pack | Category: Tier 1/2 Honda Development & Manufacturing | EV Supply Chain Role: Battery Cell | Category: Tier 1/2 Hyundai Motor Group | EV Supply Chain Role: Battery Pack | Category: Tier 1/2 Hyundai Transys Georgia Powertrain | EV Supply Chain Role: Thermal Management | Category: Tier 1/2 IMMI | EV Supply Chain Role: Battery Pack | Category: Tier 1/2 Kia Georgia Inc. | EV Supply Chain Role: Vehicle Assembly | Category: OEM Racemark International LLC | EV Supply Chain Role: General Automotive | Category: Tier 1 Superior Essex Inc. | EV Supply Chain Role: Vehicle Assembly | Category: OEM Suzuki Manufacturing of America Corp. | EV Supply Chain Role: Vehicle Assembly | Category: OEM TI Fluid Systems | EV Supply Chain Role: Vehicle safety systems OEM (EV + ICE) | Category: OEM TI Fluid Systems | EV Supply Chain Role: OEM corporate footprint influencing EV strategy | Category: OEM (Footprint) TN Americas Holding Inc. | EV Supply Chain Role: OEM parent group footprint (EV + HD electrification) | Category: OEM (Footprint) Thermal Ceramics Inc. | EV Supply Chain Role: Vehicle Assembly | Category: OEM Thomson Plastics Inc. | EV Supply Chain Role: Vehicle Assembly | Category: OEM Tie Down Engineering | EV Supply Chain Role: OEM corporate and engineering footprint (electrification) | Category: OEM (Footprint) Toyota Industries Group (TACG-TICA) | EV Supply Chain Role: OEM parent group footprint (electric truck strategy) | Category: OEM (Footprint) Trenton Pressing | EV Supply Chain Role: OEM corporate footprint and supplier integration | Category: OEM (Footprint) Trenton Pressing Inc. | EV Supply Chain Role: Machined components supporting EV and ICE vehicles | Category: OEM Supply Chain Valeo | EV Supply Chain Role: Tier 1 automotive components | Category: OEM Supply Chain Vanguard National Trailer Corp. | EV Supply Chain Role: Body and chassis components for EV and ICE OEMs | Category: OEM Supply Chain Vernay | EV Supply Chain Role: Stamped and welded assemblies for OEMs | Category: OEM Supply Chain Vista Metals Corp. | EV Supply Chain Role: EV and ICE component manufacturing | Category: OEM Supply Chain Voestalpine Automotive Body Parts Inc. | EV Supply Chain Role: EV and ICE powertrain and HVAC components | Category: OEM Supply Chain Volvo Cars USA | EV Supply Chain Role: Plastic components for EV and ICE vehicles | Category: OEM Supply Chain Volvo Group North America | EV Supply Chain Role: Stamped metal components for OEMs | Category: OEM Supply Chain WIKA USA | EV Supply Chain Role: HV and LV wiring harnesses for EVs and ICE vehicles | Category: OEM Supply Chain Wabash National Corp. | EV Supply Chain Role: Interior and exterior plastic parts | Category: OEM Supply Chain Wheelabrator Group Inc. | EV Supply Chain Role: Interior trim and textile components | Category: OEM Supply Chain Woodbridge Foam Corp. | EV Supply Chain Role: EV wiring harnesses and power distribution | Category: OEM Supply Chain Woory Industrial Co. | EV Supply Chain Role: High‑voltage EV connectors and electronics | Category: OEM Supply Chain YKK USA Inc. | EV Supply Chain Role: EV sensors, braking, and control systems | Category: OEM Footprint Yachiyo Manufacturing of America LLC | EV Supply Chain Role: EV electrical distribution and interior systems | Category: OEM Supply Chain Yamaha Motor Manufacturing Corp. | EV Supply Chain Role: Advanced electrical architecture for EVs | Category: OEM Supply Chain Yazaki North America | EV Supply Chain Role: Power electronics, sensors, and EV systems | Category: OEM Footprint ZF Gainesville LLC | EV Supply Chain Role: EV body, powertrain, and thermal components | Category: OEM Supply Chain ZF Gainesville LLC | EV Supply Chain Role: EV thermal management and power electronics | Category: OEM Supply Chain ZF Gainesville LLC | EV Supply Chain Role: EV thermal systems and electronics | Category: OEM Footprint",golden,"Here's a list of companies with EV/Battery Relevance = Yes, along with their EV Supply Chain Role and Category, based on general knowledge:
+
+*   **Tesla:** EV Manufacturer, Battery Pack Assembly
+*   **Panasonic:** Battery Cell Manufacturer, Battery Management Systems
+*   **LG Chem:** Battery Cell Manufacturer, Battery Materials
+*   **Samsung SDI:** Battery Cell Manufacturer, Battery Materials
+*   **SK Innovation:** Battery Cell Manufacturer, Battery Materials
+*   **CATL:** Battery Cell Manufacturer, Battery Materials
+*   **BYD:** EV Manufacturer, Battery Pack Assembly
+*   **General Motors:** EV Manufacturer, Battery Pack Assembly
+*   **Ford:** EV Manufacturer, Battery Pack Assembly
+*   **Volkswagen:** EV Manufacturer, Battery Pack Assembly
+*   **Stellantis:** EV Manufacturer, Battery Pack Assembly
+*   **AMD:** Semiconductor Manufacturer, Battery Management Systems
+*   **Nvidia:** Semiconductor Manufacturer, Battery Management Systems
+
+
+
+**Note:** *The specific EV Supply Chain Role and Category can vary depending on the source and the company's evolving business activities. The above is based on common industry understanding.*",4.05,True,,0.0,,,,,
+gemma_no_rag,ollama,gemma3:12b,False,Which EV Supply Chain Roles have at least one company with EV / Battery Relevant = Yes? Provide the roles and the matching companies.,"Advanced electrical architecture for EVs: Yamaha Motor Manufacturing Corp. Battery Cell: Hitachi Astemo Americas Inc.; Honda Development & Manufacturing Battery Pack: F&P Georgia Manufacturing; Hollingsworth & Vose Co.; Hyundai Motor Group; IMMI Body and chassis components for EV and ICE OEMs: Vanguard National Trailer Corp. EV and ICE component manufacturing: Vista Metals Corp. EV and ICE powertrain and HVAC components: Voestalpine Automotive Body Parts Inc. EV body, powertrain, and thermal components: ZF Gainesville LLC EV electrical distribution and interior systems: Yachiyo Manufacturing of America LLC EV sensors, braking, and control systems: YKK USA Inc. EV thermal management and power electronics: ZF Gainesville LLC EV thermal systems and electronics: ZF Gainesville LLC EV wiring harnesses and power distribution: Woodbridge Foam Corp. General Automotive: Duckyang; Enchem America Inc.; Racemark International LLC HV and LV wiring harnesses for EVs and ICE vehicles: WIKA USA High‑voltage EV connectors and electronics: Woory Industrial Co. Interior and exterior plastic parts: Wabash National Corp. Interior trim and textile components: Wheelabrator Group Inc. Machined components supporting EV and ICE vehicles: Trenton Pressing Inc. OEM corporate and engineering footprint (electrification): Tie Down Engineering OEM corporate footprint and supplier integration: Trenton Pressing OEM corporate footprint influencing EV strategy: TI Fluid Systems OEM parent group footprint (EV + HD electrification): TN Americas Holding Inc. OEM parent group footprint (electric truck strategy): Toyota Industries Group (TACG-TICA) Plastic components for EV and ICE vehicles: Volvo Cars USA Power Electronics: GSC Steel Stamping LLC Power electronics, sensors, and EV systems: Yazaki North America Stamped and welded assemblies for OEMs: Vernay Stamped metal components for OEMs: Volvo Group North America Thermal Management: Hyundai Transys Georgia Powertrain Tier 1 automotive components: Valeo Vehicle Assembly: Kia Georgia Inc.; Superior Essex Inc.; Suzuki Manufacturing of America Corp.; Thermal Ceramics Inc.; Thomson Plastics Inc. Vehicle safety systems OEM (EV + ICE): TI Fluid Systems",golden,"Here's a list of EV Supply Chain Roles that have at least one company with EV/Battery Relevance marked as ""Yes,"" based on general knowledge of the EV supply chain:
+
+*   **Lithium Mining:** Albemarle, SQM, Ganfeng
+*   **Lithium Processing:** Livent, Piedmont Lithium
+*   **Cathode Material Production:** BASF, Umicore, L&F
+*   **Anode Material Production:** Shin-Etsu Chemical, Kureha
+*   **Battery Cell Manufacturing:** CATL, LG Energy Solution, Panasonic
+*   **Battery Pack Assembly:** Tesla, SK Innovation, Samsung SDI
+*   **Electric Motor Manufacturing:** Nidec, Valeo
+*   **Power Electronics Manufacturing:** Infineon, STMicroelectronics
+*   **Charging Infrastructure Manufacturing:** ABB, Siemens
+*   **Battery Recycling:** Redwood Materials, Li-Cycle
+
+
+
+**Please note:** The specific companies associated with each role can vary and this list is based on general industry knowledge. The exact dataset answer is unknown from general knowledge.",3.82,True,,0.0,,,,,
+gemma_no_rag,ollama,gemma3:12b,False,Identify the set of Industry Groups represented among Battery Pack and Battery Cell companies.,Battery Pack industry groups: Electronic and Other Electrical Equipment and Components; Primary Metal Industries Battery Cell industry groups: Electronic and Other Electrical Equipment and Components Union across both roles: Electronic and Other Electrical Equipment and Components; Primary Metal Industries,golden,The Battery Pack and Battery Cell industries are primarily represented within the **Electrical Equipment & Supplies** and **Chemicals** industry groups.,0.73,True,,0.0,,,,,
+gemma_no_rag,ollama,gemma3:12b,False,"For each Category (Tier 2/3, Tier 1/2, Tier 1, OEM, OEM Supply Chain, OEM (Footprint), OEM Footprint), count how many companies are in the dataset.",Tier 2/3: 74 Tier 1/2: 18 Tier 1: 78 OEM: 12 OEM Supply Chain: 17 OEM (Footprint): 5 OEM Footprint: 3,golden,"The exact number of companies within each category is unknown from general knowledge. However, generally, datasets classifying companies by tiers (Tier 1, Tier 2, Tier 3) and OEM (Original Equipment Manufacturer) classifications, including supply chain and footprint details, would likely show a significantly larger number of companies in Tier 2 and Tier 3 categories compared to Tier 1. OEM Supply Chain and OEM Footprint categories would also likely contain a substantial number of companies, reflecting the breadth of the supply chain and manufacturing locations.",2.02,True,,0.0,,,,,

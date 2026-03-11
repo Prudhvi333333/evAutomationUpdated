@@ -22,7 +22,7 @@ class RetrievalSettings:
     reranker_weight: float = 0.35
     max_chunks_per_company: int = 2
     structured_summary_limit: int = 8
-    structured_exhaustive_limit: int = 80
+    structured_exhaustive_limit: int = 150
     compact_context_enabled: bool = True
     generation_context_result_limit: int = 5
     generation_context_char_budget: int = 4200

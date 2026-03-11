@@ -565,6 +565,40 @@ class HybridRetriever:
         lines.append(f"Applied filters: {', '.join(applied_filters)}")
         lines.append(f"Matched rows: {len(matched_rows)}")
 
+        # For explicit grouped listing questions, prefer a compact grouped summary first.
+        # This keeps the context aligned with question intent and avoids noisy row-by-row spillover.
+        grouped_listing_requested = (
+            query_plan.group_by_role
+            and self._is_exhaustive_question(query_plan)
+            and not any(
+                term in query_plan.normalized_question
+                for term in {"count", "how many", "total", "average", "top", "bottom", "highest", "lowest"}
+            )
+        )
+        if grouped_listing_requested:
+            grouped: defaultdict[str, list[str]] = defaultdict(list)
+            for row in matched_rows:
+                grouped[row.get("ev_supply_chain_role") or "Unspecified"].append(
+                    row.get("company") or "Unknown"
+                )
+            lines.append("Grouped by EV Supply Chain Role:")
+            full_group_output = len(matched_rows) <= self.settings.structured_exhaustive_limit
+            for role in sorted(grouped):
+                companies = sorted(dict.fromkeys(grouped[role]))
+                if full_group_output:
+                    lines.append(f"- {role}: {'; '.join(companies)}")
+                else:
+                    preview = companies[: self.settings.structured_summary_limit]
+                    lines.append(f"- {role}: {', '.join(preview)}")
+                    if len(companies) > len(preview):
+                        lines.append(f"  + {len(companies) - len(preview)} more companies")
+            if not full_group_output:
+                lines.append(
+                    f"Summary truncated because matched rows ({len(matched_rows)}) exceed "
+                    f"structured_exhaustive_limit ({self.settings.structured_exhaustive_limit})."
+                )
+            return "\n".join(lines)
+
         analytic_lines = self._build_analytic_summary_lines(query_plan, matched_rows)
         if analytic_lines:
             lines.extend(analytic_lines)
@@ -828,6 +862,10 @@ class HybridRetriever:
         if frame.empty:
             return []
         group_field = self._detect_group_field(question)
+
+        # Let _build_structured_summary handle explicit exhaustive grouped listings.
+        if query_plan.group_by_role and self._is_exhaustive_question(query_plan):
+            return []
 
         threshold = self._extract_employment_threshold(query_plan.question)
         if threshold is not None:
