@@ -1,0 +1,55 @@
+question,reference_answer,reference_source,answer,latency_seconds,success,error_message,answer_accuracy,faithfulness,response_groundedness,grounded_claim_ratio,unsupported_claim_ratio,contradicted_claim_ratio
+"Which Industry Group has the largest number of companies in the dataset, and what are the top 3 Industry Groups by count?",Largest Industry Group: Transportation Equipment (89 companies). Top 3 by count: Transportation Equipment (89); Rubber and Miscellaneous Plastic Products (28); Primary Metal Industries (16). Tie at third place with count 16: Primary Metal Industries; Electronic and Other Electrical Equipment and Components,golden,"The Industry Group with the largest number of companies is Transportation Equipment with 89 companies.
+
+The top 3 Industry Groups by count are:
+- Transportation Equipment: 89
+- Rubber and Miscellaneous Plastic Products: 28
+- Electronic and Other Electrical Equipment and Components: 16",0.8,True,,0.83,1.0,1.0,1.0,0.0,0.0
+"Within the Industry Group 'Electronic and Other Electrical Equipment and Components', list the companies and their EV Supply Chain Role.",Industry Group = 'Electronic and Other Electrical Equipment and Components' [16]: Hitachi Astemo | EV Supply Chain Role: General Automotive Hitachi Astemo Americas Inc. | EV Supply Chain Role: Battery Cell Hollingsworth & Vose Co. | EV Supply Chain Role: Battery Pack Honda Development & Manufacturing | EV Supply Chain Role: Battery Cell Hwashin | EV Supply Chain Role: General Automotive Hyundai & LG Energy Solution (LGES) | EV Supply Chain Role: General Automotive Hyundai Industrial Co. | EV Supply Chain Role: General Automotive Hyundai MOBIS (Georgia) | EV Supply Chain Role: General Automotive Hyundai Motor Group | EV Supply Chain Role: Battery Pack Hyundai Transys Georgia Powertrain | EV Supply Chain Role: Thermal Management Hyundai Transys Georgia Seating Systems | EV Supply Chain Role: General Automotive IMMI | EV Supply Chain Role: Battery Pack IMS Gear Georgia Inc. | EV Supply Chain Role: General Automotive Inalfa Roof Systems Inc. | EV Supply Chain Role: General Automotive JAC Products Inc. | EV Supply Chain Role: General Automotive Jefferson Southern Corp. | EV Supply Chain Role: General Automotive,golden,"Hyundai MOBIS (Georgia): General Automotive
+Hitachi Astemo: General Automotive
+Hitachi Astemo Americas Inc.: Battery Cell
+Hollingsworth & Vose Co.: Battery Pack
+Honda Development & Manufacturing: Battery Cell",0.61,True,,0.31,0.75,0.75,0.75,0.25,0.0
+"Within 'Rubber and Miscellaneous Plastic Products', which companies are EV / Battery Relevant = Yes?",Industry Group = 'Rubber and Miscellaneous Plastic Products' with EV / Battery Relevant = Yes: None,golden,"The workbook evidence does not contain information on 'Rubber and Miscellaneous Plastic Products'. However, the following companies are marked as EV / Battery Relevant: Yes:
+
+* Duckyang
+* Enchem America Inc.
+* F&P Georgia Manufacturing
+* GSC Steel Stamping LLC
+* Hitachi Astemo Americas Inc.
+* Hollingsworth & Vose Co.
+* Honda Development & Manufacturing
+* Hyundai Motor Group
+* Hyundai Transys Georgia Powertrain
+* IMMI
+* Kia Georgia Inc.
+* Racemark International LLC
+* Superior Essex Inc.
+* Suzuki Manufacturing of America Corp.
+* Thermal Ceramics Inc.
+* Thomson Plastics Inc.
+* TI Fluid Systems
+* Tie Down Engineering
+* TN Americas Holding Inc.
+* Toyota Industries Group (TACG-TICA)
+* Trenton Pressing
+* Trenton Pressing Inc.
+* Valeo
+* Vanguard National Trailer Corp.
+* Vernay
+* Vista Metals Corp.
+* Voestalpine Automotive Body Parts Inc.
+* Volvo Cars USA
+* Volvo Group North America
+* Wabash National Corp.
+* Wheelabrator Group Inc.
+* WIKA USA
+* Woodbridge Foam Corp.
+* Woory Industrial Co.
+* Yachiyo Manufacturing of America LLC
+* Yamaha Motor Manufacturing Corp.
+* Yazaki North America",1.63,True,,0.0,0.0,0.0,0.0,1.0,0.0
+"Show all companies whose EV Supply Chain Role is General Automotive but EV / Battery Relevant = Yes, and include Product / Service.",General Automotive with EV / Battery Relevant = Yes [3]: Duckyang | Product / Service: High-quality electrodeposited (ED) copper foil for electric vehicles Enchem America Inc. | Product / Service: Electric wiring components Racemark International LLC | Product / Service: Manufacturing and R&D engine parts for EV,golden,"- Company: Duckyang | EV Supply Chain Role: General Automotive | Product / Service: High-quality electrodeposited (ED) copper foil for electric vehicles | EV / Battery Relevant: Yes
+- Company: Enchem America Inc. | EV Supply Chain Role: General Automotive | Product / Service: Electric wiring components | EV / Battery Relevant: Yes
+- Company: Racemark International LLC | EV Supply Chain Role: General Automotive | Product / Service: Manufacturing and R&D engine parts for EV | EV / Battery Relevant: Yes",0.92,True,,1.0,1.0,1.0,1.0,0.0,0.0
+"Which companies are in the Charging Infrastructure role, and what is their Category and Location?","Charging Infrastructure [1]: Morgan Corp. | Category: Tier 1 | Location: Lawrenceville, Gwinnett County",golden,"Morgan Corp. (Category: Tier 1, Location: Lawrenceville, Gwinnett County)",0.62,True,,0.8,1.0,1.0,1.0,0.0,0.0
