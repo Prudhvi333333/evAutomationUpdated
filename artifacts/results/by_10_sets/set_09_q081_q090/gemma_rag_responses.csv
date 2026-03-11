@@ -1,0 +1,79 @@
+question,reference_answer,reference_source,answer,latency_seconds,success,error_message,answer_accuracy,faithfulness,response_groundedness,grounded_claim_ratio,unsupported_claim_ratio,contradicted_claim_ratio
+List all companies whose Product / Service text mentions 'lithium' and include their EV Supply Chain Role and Location.,"Product / Service mentions 'lithium' [4]: Down 2 Earth Trailers | EV Supply Chain Role: General Automotive | Location: Cartersville, Bartow County Enplas USA Inc. | EV Supply Chain Role: General Automotive | Location: Covington, Newton County F&P Georgia Manufacturing | EV Supply Chain Role: Battery Pack | Location: Toccoa, Stephens County Hollingsworth & Vose Co. | EV Supply Chain Role: Battery Pack | Location: Bainbridge, Decatur County",golden,"- Company: Down 2 Earth Trailers | EV Supply Chain Role: General Automotive | Location: Cartersville, Bartow County
+- Company: Enplas USA Inc. | EV Supply Chain Role: General Automotive | Location: Covington, Newton County
+- Company: F&P Georgia Manufacturing | EV Supply Chain Role: Battery Pack | Location: Toccoa, Stephens County
+- Company: Hollingsworth & Vose Co. | EV Supply Chain Role: Battery Pack | Location: Bainbridge, Decatur County
+- Company: Solvay Specialty Polymers USA LLC | EV Supply Chain Role: General Automotive | Location: Springfield, Effingham County",5.53,True,,0.75,1.0,1.0,1.0,0.0,0.0
+"Which companies are described as a recycler in Product / Service, and what are their Categories?","Product / Service describes a recycler [3]: EVCO Plastics | Category: Tier 2/3 | Product / Service: Recycler of copper, precious metals, and non-ferrous materials Enplas USA Inc. | Category: Tier 2/3 | Product / Service: Recycler of lithium ion batteries F&P Georgia Manufacturing | Category: Tier 1/2 | Product / Service: Lithium-ion battery recycler and raw materials provider",golden,"The following companies are described as a recycler:
+- EVCO Plastics, Product / Service: Recycler of copper, precious metals, and non-ferrous materials
+- F&P Georgia Manufacturing, Product / Service: Lithium-ion battery recycler and raw materials provider
+- Enplas USA Inc., Product / Service: Recycler of lithium ion batteries",1.74,True,,0.83,0.67,0.67,0.67,0.33,0.0
+Find companies whose Product / Service mentions 'wiring harness' or 'wire harness' and provide their Primary OEMs.,Product / Service mentions 'wiring harness' / 'wire harness' [3]: Solvay Specialty Polymers USA LLC | Primary OEMs: Multiple OEMs WIKA USA | Primary OEMs: Blank / Missing Woodbridge Foam Corp. | Primary OEMs: Blank / Missing,golden,"Companies whose Product / Service mentions 'wiring harness' or 'wire harness' and their Primary OEMs are:
+
+- Company: Solvay Specialty Polymers USA LLC | Primary OEMs: Multiple OEMs
+- Company: Woodbridge Foam Corp. | Primary OEMs: n/a
+- Company: WIKA USA | Primary OEMs: n/a",1.61,True,,0.83,0.67,0.67,0.67,0.33,0.0
+"Which companies mention 'connectors' in Product / Service, and what is their EV / Battery Relevant status?",Product / Service mentions 'connectors' [2]: WIKA USA | EV / Battery Relevant: Yes | EV Supply Chain Role: HV and LV wiring harnesses for EVs and ICE vehicles Woory Industrial Co. | EV / Battery Relevant: Yes | EV Supply Chain Role: High‑voltage EV connectors and electronics,golden,"The provided evidence does not mention any companies with ""connectors"" in their Product / Service.",1.05,True,,0.0,1.0,1.0,1.0,0.0,0.0
+Identify companies whose Product / Service mentions 'thermal' and list their EV Supply Chain Role and Primary Facility Type.,Product / Service mentions 'thermal' [5]: Freudenberg-NOK | EV Supply Chain Role: Thermal Management | Primary Facility Type: Manufacturing Plant Novelis Inc. | EV Supply Chain Role: Thermal Management | Primary Facility Type: Manufacturing Plant Peerless-Winsmith Inc. | EV Supply Chain Role: Thermal Management | Primary Facility Type: Manufacturing Plant ZF Gainesville LLC | EV Supply Chain Role: EV thermal management and power electronics | Primary Facility Type: Manufacturing ZF Gainesville LLC | EV Supply Chain Role: EV thermal systems and electronics | Primary Facility Type: Engineering / Operations,golden,"- Company: Freudenberg-NOK | EV Supply Chain Role: Thermal Management | Primary Facility Type: Manufacturing Plant
+- Company: Novelis Inc. | EV Supply Chain Role: Thermal Management | Primary Facility Type: Manufacturing Plant
+- Company: Peerless-Winsmith Inc. | EV Supply Chain Role: Thermal Management | Primary Facility Type: Manufacturing Plant
+- Company: ZF Gainesville LLC | EV Supply Chain Role: EV thermal management and power electronics | Primary Facility Type: Manufacturing
+- Company: ZF Gainesville LLC | EV Supply Chain Role: EV thermal systems and electronics | Primary Facility Type: Engineering / Operations",2.72,True,,0.96,1.0,1.0,1.0,0.0,0.0
+List companies whose Product / Service mentions 'powder coatings' and include their Category and Location.,"Product / Service mentions 'powder coatings' [1]: Archer Aviation Inc. | Category: Tier 2/3 | Location: Ellaville, Schley County",golden,"- Company: Archer Aviation Inc. | Category: Tier 2/3 | Location: Ellaville, Schley County",0.9,True,,1.0,1.0,1.0,1.0,0.0,0.0
+"Which companies mention 'sensors' in Product / Service, and what EV Supply Chain Role are they assigned?",Product / Service mentions 'sensors' [2]: Grudem | EV Supply Chain Role: General Automotive Woory Industrial Co. | EV Supply Chain Role: High‑voltage EV connectors and electronics,golden,"The following companies mention 'sensors' in Product / Service:
+
+*   **Yazaki North America:** EV Supply Chain Role: Power electronics, sensors, and EV systems
+*   **YKK USA Inc.:** EV Supply Chain Role: EV sensors, braking, and control systems",1.51,True,,0.0,1.0,1.0,1.0,0.0,0.0
+"For each Classification Method, count the number of companies and list the top 5 companies by Employment within each method.","Classification Method counts and top 5 companies by Employment: Supplier: 170 Top 5 by Employment: Jefferson Southern Corporation (900); Joon Georgia, Inc. (900); JTEKT North America Corp. (860); Grudem (807); Hitachi Astemo (800) Public OEM footprint / supplier listing: 26 Top 5 by Employment: WIKA USA (250,000); Yazaki North America (230,000); YKK USA Inc. (190,159); Yamaha Motor Manufacturing Corp. (190,000); Yachiyo Manufacturing of America LLC (173,700) Direct Manufacturer: 11 Top 5 by Employment: Superior Essex Inc. (8,100); Suzuki Manufacturing of America Corp. (7,500); TCI Powder Coatings (3,000); Thermal Ceramics Inc. (3,000); TE Connectivity (1,900)",golden,"Here's the breakdown of companies by Classification Method, along with the top 5 companies by Employment for each, based on the provided evidence:
+
+**Supplier: 170**
+Top 5 companies by Employment (employment numbers not provided in evidence)
+
+**Public OEM footprint / supplier listing: 26**
+Top 5 companies by Employment (employment numbers not provided in evidence)
+
+**Direct Manufacturer: 11**
+Top 5 companies by Employment (employment numbers not provided in evidence)
+
+The evidence does not contain employment numbers for the companies.",2.34,True,,0.5,0.8,0.8,0.8,0.2,0.0
+Identify entries classified as 'Public OEM footprint / supplier listing' and summarize their Categories and EV / Battery Relevant status.,Public OEM footprint / supplier listing [26 rows]: Category summary: OEM Supply Chain: 17; OEM (Footprint): 5; OEM Footprint: 3; OEM: 1 EV / Battery Relevant summary: Yes: 26 Companies: TI Fluid Systems; TI Fluid Systems; Tie Down Engineering; TN Americas Holding Inc.; Toyota Industries Group (TACG-TICA); Trenton Pressing; Trenton Pressing Inc.; Valeo; Vanguard National Trailer Corp.; Vernay; Vista Metals Corp.; Voestalpine Automotive Body Parts Inc.; Volvo Cars USA; Volvo Group North America; Wabash National Corp.; Wheelabrator Group Inc.; WIKA USA; Woodbridge Foam Corp.; Woory Industrial Co.; Yachiyo Manufacturing of America LLC; Yamaha Motor Manufacturing Corp.; Yazaki North America; YKK USA Inc.; ZF Gainesville LLC; ZF Gainesville LLC; ZF Gainesville LLC,golden,"Public OEM footprint / supplier listing includes 26 entries.
+
+**Category Summary:**
+OEM Supply Chain: 17
+OEM (Footprint): 5
+OEM Footprint: 3
+OEM: 1
+
+**EV / Battery Relevant Status:** Yes: 26
+
+**Companies:**
+TI Fluid Systems
+TI Fluid Systems
+Tie Down Engineering
+TN Americas Holding Inc.
+Toyota Industries Group (TACG-TICA)
+Trenton Pressing
+Trenton Pressing Inc.
+Valeo
+Vanguard National Trailer Corp.
+Vernay
+Vista Metals Corp.
+Voestalpine Automotive Body Parts Inc.
+Volvo Cars USA
+Volvo Group North America
+Wabash National Corp.
+Wheelabrator Group Inc.
+WIKA USA
+Woodbridge Foam Corp.
+Woory Industrial Co.
+Yachiyo Manufacturing of America LLC
+Yamaha Motor Manufacturing Corp.
+Yazaki North America
+YKK USA Inc.
+ZF Gainesville LLC
+ZF Gainesville LLC
+ZF Gainesville LLC",3.85,True,,1.0,1.0,1.0,1.0,0.0,0.0
+"Which companies are classified as Direct Manufacturer, and what EV Supply Chain Roles do they cover?",Direct Manufacturer entries [11]: Kia Georgia Inc. | EV Supply Chain Role: Vehicle Assembly Minebea AccessSolutions USA Inc. | EV Supply Chain Role: General Automotive Superior Essex Inc. | EV Supply Chain Role: Vehicle Assembly Suzuki Manufacturing of America Corp. | EV Supply Chain Role: Vehicle Assembly TCI Powder Coatings | EV Supply Chain Role: Vehicle Assembly TDK Components USA Inc. | EV Supply Chain Role: Vehicle Assembly TE Connectivity | EV Supply Chain Role: Vehicle Assembly Teklas USA | EV Supply Chain Role: Vehicle Assembly Textron Specialized Vehicles | EV Supply Chain Role: Vehicle Assembly Thermal Ceramics Inc. | EV Supply Chain Role: Vehicle Assembly Thomson Plastics Inc. | EV Supply Chain Role: Vehicle Assembly,golden,"The provided evidence does not classify any companies as ""Direct Manufacturers."" However, it lists 207 companies and their EV Supply Chain Roles. Here's a breakdown of the companies and their roles:
+
+*   **General Automotive:** ACM Georgia LLC, Adient, ADVICS Manufacturing Georgia LLC, Ajin Georgia, ALBAform Inc., Anovion Technologies, Apache Mills Inc., Aptiv, Archer Aviation Inc., Arising Industries Inc., Arising Industries Inc., Bonnell Aluminum, Bosal Industries Georgia, Carcoustics USA, Club Car LLC, Continental Automotive, Continental Tire the Americas LLC, DaeChang Seat Company, DAEHAN Solution Georgia LLC, Daesol Ausys, Daesol Material Georgia, LLC
+*   **Materials:** Ascend Elements, Aspen Aerogels, Aurubis, Beaver Manufacturing Co. Inc., Blue Bird Corp., Blue Ridge Manufacturing, Boogook Industries, Bosch (Automotive Division), Bridgestone Bandag, Constellium Automotive USA, DAEHAN Solution Georgia LLC, Daesol Ausys",4.27,True,,0.0,0.8,0.8,0.8,0.2,0.0

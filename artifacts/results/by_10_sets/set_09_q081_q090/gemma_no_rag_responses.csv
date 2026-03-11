@@ -1,0 +1,88 @@
+question,reference_answer,reference_source,answer,latency_seconds,success,error_message,answer_accuracy,faithfulness,response_groundedness,grounded_claim_ratio,unsupported_claim_ratio,contradicted_claim_ratio
+List all companies whose Product / Service text mentions 'lithium' and include their EV Supply Chain Role and Location.,"Product / Service mentions 'lithium' [4]: Down 2 Earth Trailers | EV Supply Chain Role: General Automotive | Location: Cartersville, Bartow County Enplas USA Inc. | EV Supply Chain Role: General Automotive | Location: Covington, Newton County F&P Georgia Manufacturing | EV Supply Chain Role: Battery Pack | Location: Toccoa, Stephens County Hollingsworth & Vose Co. | EV Supply Chain Role: Battery Pack | Location: Bainbridge, Decatur County",golden,"Based on general knowledge, companies involved with lithium and their EV supply chain roles and locations include:
+
+*   **Albemarle Corporation:** Lithium producer; North Carolina, USA; Chile; Australia
+*   **SQM (Sociedad Química y Minera):** Lithium producer; Chile; Australia
+*   **Ganfeng Lithium:** Lithium producer and battery manufacturer; China
+*   **Livent Corporation:** Lithium producer; Argentina; USA
+*   **Pilbara Minerals:** Lithium producer; Australia
+*   **Mineral Resources:** Lithium producer; Australia
+*   **Tianqi Lithium:** Lithium producer; China; Australia
+*   **Lithium Americas:** Lithium development company; USA; Argentina
+
+
+
+**Please note:** The specific details of each company's EV supply chain role and locations can vary and are subject to change.",3.08,True,,0.0,,,,,
+"Which companies are described as a recycler in Product / Service, and what are their Categories?","Product / Service describes a recycler [3]: EVCO Plastics | Category: Tier 2/3 | Product / Service: Recycler of copper, precious metals, and non-ferrous materials Enplas USA Inc. | Category: Tier 2/3 | Product / Service: Recycler of lithium ion batteries F&P Georgia Manufacturing | Category: Tier 1/2 | Product / Service: Lithium-ion battery recycler and raw materials provider",golden,"I do not have access to a specific dataset to determine which companies are described as a recycler and their corresponding categories. However, generally, companies described as recyclers in the ""Product / Service"" field typically operate within categories such as:
+
+*   **Waste Management:** This is a broad category encompassing recycling, disposal, and resource recovery.
+*   **Environmental Services:** This includes companies offering services related to environmental protection and sustainability, including recycling programs.
+*   **Materials Processing:** Companies that process and transform recyclable materials.
+*   **Sustainability:** Businesses focused on sustainable practices and solutions, often including recycling initiatives.",2.32,True,,0.0,,,,,
+Find companies whose Product / Service mentions 'wiring harness' or 'wire harness' and provide their Primary OEMs.,Product / Service mentions 'wiring harness' / 'wire harness' [3]: Solvay Specialty Polymers USA LLC | Primary OEMs: Multiple OEMs WIKA USA | Primary OEMs: Blank / Missing Woodbridge Foam Corp. | Primary OEMs: Blank / Missing,golden,"The exact list of companies and their Primary OEMs matching that criteria is not available from general knowledge. However, companies involved in automotive manufacturing, electrical component supply, and aerospace often deal with wiring harnesses. Likely OEMs would include those in the automotive (Ford, GM, Toyota, etc.), aerospace (Boeing, Airbus, etc.), and industrial machinery sectors.",1.45,True,,0.0,,,,,
+"Which companies mention 'connectors' in Product / Service, and what is their EV / Battery Relevant status?",Product / Service mentions 'connectors' [2]: WIKA USA | EV / Battery Relevant: Yes | EV Supply Chain Role: HV and LV wiring harnesses for EVs and ICE vehicles Woory Industrial Co. | EV / Battery Relevant: Yes | EV Supply Chain Role: High‑voltage EV connectors and electronics,golden,"I do not have access to a specific dataset to determine which companies mention ""connectors"" in their Product/Service offerings and their EV/Battery Relevant status.
+
+However, generally, companies involved in the EV/Battery space that might mention ""connectors"" include those producing:
+
+*   **Electric Vehicle Charging Infrastructure:** These companies manufacture and supply charging connectors and related equipment.
+*   **Battery Manufacturing Equipment:** Connector technology is crucial for battery assembly and testing.
+*   **Automotive Components:** Companies supplying electrical connectors for EVs.
+*   **Industrial Connector Manufacturers:** Some industrial connector companies may have products specifically adapted for EV/battery applications.",2.45,True,,0.0,,,,,
+Identify companies whose Product / Service mentions 'thermal' and list their EV Supply Chain Role and Primary Facility Type.,Product / Service mentions 'thermal' [5]: Freudenberg-NOK | EV Supply Chain Role: Thermal Management | Primary Facility Type: Manufacturing Plant Novelis Inc. | EV Supply Chain Role: Thermal Management | Primary Facility Type: Manufacturing Plant Peerless-Winsmith Inc. | EV Supply Chain Role: Thermal Management | Primary Facility Type: Manufacturing Plant ZF Gainesville LLC | EV Supply Chain Role: EV thermal management and power electronics | Primary Facility Type: Manufacturing ZF Gainesville LLC | EV Supply Chain Role: EV thermal systems and electronics | Primary Facility Type: Engineering / Operations,golden,"Here's a breakdown of companies involved in the EV supply chain that mention ""thermal"" in their product/service offerings, along with their typical EV Supply Chain Role and Primary Facility Type. Please note that specific details can vary, and this is based on general industry knowledge:
+
+**Company** | **EV Supply Chain Role** | **Primary Facility Type**
+---|---|---
+**3M** | Thermal Management Materials (adhesives, tapes, films) | Manufacturing, R&D
+**LORD Corporation** | Thermal Management Solutions (coolants, adhesives, acoustic materials) | Manufacturing, R&D
+**Henkel** | Thermal Interface Materials, Adhesives | Manufacturing, R&D
+**Dow** | Thermal Fluids, Silicone Elastomers | Manufacturing, R&D
+**Saint-Gobain** | Thermal Insulation Materials | Manufacturing
+**Thermo Fisher Scientific** | Thermal Analysis Equipment (for battery testing) | Manufacturing, Testing/Analysis
+**TE Connectivity** | Thermal Sensors, Connectors | Manufacturing
+
+**Important Note:** The exact product offerings and facility types can vary significantly within each company. This list represents common areas where ""thermal"" technologies are relevant in the EV supply chain.",4.22,True,,0.0,,,,,
+List companies whose Product / Service mentions 'powder coatings' and include their Category and Location.,"Product / Service mentions 'powder coatings' [1]: Archer Aviation Inc. | Category: Tier 2/3 | Location: Ellaville, Schley County",golden,"Based on general industry knowledge, companies involved with powder coatings can be found across various categories including:
+
+*   **Manufacturing:** Companies producing powder coating materials and equipment.
+*   **Industrial Services:** Businesses offering powder coating application services.
+*   **Metal Fabrication:** Companies utilizing powder coatings for their finished products.
+
+Locations for these companies are widespread, but concentrations are often found in areas with significant manufacturing activity, such as:
+
+*   **China:** A major producer of powder coatings and coated products.
+*   **United States:** Strong domestic production and application.
+*   **Europe (Germany, Italy, UK):** Established powder coating industries.
+
+*Note: Specific company names and their exact categorization and location are not verifiable from general knowledge.*",2.78,True,,0.0,,,,,
+"Which companies mention 'sensors' in Product / Service, and what EV Supply Chain Role are they assigned?",Product / Service mentions 'sensors' [2]: Grudem | EV Supply Chain Role: General Automotive Woory Industrial Co. | EV Supply Chain Role: High‑voltage EV connectors and electronics,golden,"I do not have access to a dataset to determine which companies mention ""sensors"" in their Product/Service and their assigned EV Supply Chain Role. However, generally, companies involved in sensor technology within the EV supply chain might hold roles such as:
+
+*   **Component Manufacturers:** Producing sensors for battery management systems, motor control, or driver-assistance systems.
+*   **Technology Suppliers:** Providing sensor technology platforms or software.
+*   **System Integrators:** Integrating sensors into larger EV systems.",1.95,True,,0.0,,,,,
+"For each Classification Method, count the number of companies and list the top 5 companies by Employment within each method.","Classification Method counts and top 5 companies by Employment: Supplier: 170 Top 5 by Employment: Jefferson Southern Corporation (900); Joon Georgia, Inc. (900); JTEKT North America Corp. (860); Grudem (807); Hitachi Astemo (800) Public OEM footprint / supplier listing: 26 Top 5 by Employment: WIKA USA (250,000); Yazaki North America (230,000); YKK USA Inc. (190,159); Yamaha Motor Manufacturing Corp. (190,000); Yachiyo Manufacturing of America LLC (173,700) Direct Manufacturer: 11 Top 5 by Employment: Superior Essex Inc. (8,100); Suzuki Manufacturing of America Corp. (7,500); TCI Powder Coatings (3,000); Thermal Ceramics Inc. (3,000); TE Connectivity (1,900)",golden,"The exact number of companies and top 5 companies by employment for each classification method is unknown from general knowledge. However, generally, classification methods involve categorizing companies based on shared characteristics. The number of companies within each method would depend on the specific criteria used for classification. Similarly, identifying the top 5 companies by employment within each method requires knowing the employment figures for each company and applying a ranking system.",1.64,True,,0.0,,,,,
+Identify entries classified as 'Public OEM footprint / supplier listing' and summarize their Categories and EV / Battery Relevant status.,Public OEM footprint / supplier listing [26 rows]: Category summary: OEM Supply Chain: 17; OEM (Footprint): 5; OEM Footprint: 3; OEM: 1 EV / Battery Relevant summary: Yes: 26 Companies: TI Fluid Systems; TI Fluid Systems; Tie Down Engineering; TN Americas Holding Inc.; Toyota Industries Group (TACG-TICA); Trenton Pressing; Trenton Pressing Inc.; Valeo; Vanguard National Trailer Corp.; Vernay; Vista Metals Corp.; Voestalpine Automotive Body Parts Inc.; Volvo Cars USA; Volvo Group North America; Wabash National Corp.; Wheelabrator Group Inc.; WIKA USA; Woodbridge Foam Corp.; Woory Industrial Co.; Yachiyo Manufacturing of America LLC; Yamaha Motor Manufacturing Corp.; Yazaki North America; YKK USA Inc.; ZF Gainesville LLC; ZF Gainesville LLC; ZF Gainesville LLC,golden,"I do not have access to a dataset to identify entries classified as 'Public OEM footprint / supplier listing' or summarize their Categories and EV / Battery Relevant status. Generally, such listings categorize suppliers based on their product offerings (e.g., raw materials, components, systems) and indicate whether their products or services are directly applicable to electric vehicle or battery manufacturing.",1.46,True,,0.0,,,,,
+"Which companies are classified as Direct Manufacturer, and what EV Supply Chain Roles do they cover?",Direct Manufacturer entries [11]: Kia Georgia Inc. | EV Supply Chain Role: Vehicle Assembly Minebea AccessSolutions USA Inc. | EV Supply Chain Role: General Automotive Superior Essex Inc. | EV Supply Chain Role: Vehicle Assembly Suzuki Manufacturing of America Corp. | EV Supply Chain Role: Vehicle Assembly TCI Powder Coatings | EV Supply Chain Role: Vehicle Assembly TDK Components USA Inc. | EV Supply Chain Role: Vehicle Assembly TE Connectivity | EV Supply Chain Role: Vehicle Assembly Teklas USA | EV Supply Chain Role: Vehicle Assembly Textron Specialized Vehicles | EV Supply Chain Role: Vehicle Assembly Thermal Ceramics Inc. | EV Supply Chain Role: Vehicle Assembly Thomson Plastics Inc. | EV Supply Chain Role: Vehicle Assembly,golden,"Here's a breakdown of companies classified as Direct Manufacturers and their EV Supply Chain Roles, based on general industry knowledge:
+
+**Direct Manufacturers (and their typical EV Supply Chain Roles):**
+
+*   **LG Chem/LG Energy Solution:** Battery Cells, Battery Modules, Battery Packs
+*   **Panasonic:** Battery Cells, Battery Modules, Battery Packs
+*   **CATL (Contemporary Amperex Technology Co. Limited):** Battery Cells, Battery Modules, Battery Packs
+*   **SK Innovation/SK On:** Battery Cells, Battery Modules, Battery Packs
+*   **Samsung SDI:** Battery Cells, Battery Modules, Battery Packs
+*   **BYD:** Battery Cells, Battery Modules, Battery Packs, Electric Vehicle Assembly
+*   **Tesla:** Battery Packs, Electric Vehicle Assembly (also increasingly involved in cell design and potentially some cell production)
+*   **Vestas:** Wind Turbine Blades (for electricity generation supporting EV charging)
+*   **Envision:** Wind Turbine Blades (for electricity generation supporting EV charging)
+*   **Siemens:** Electric Vehicle Charging Infrastructure, Power Electronics
+*   **Vale:** Lithium Extraction and Processing
+*   **Albemarle:** Lithium Extraction and Processing
+*   **SQM (Sociedad Química y Minera):** Lithium Extraction and Processing
+*   **Freyr:** Battery Cells
+*   **Northvolt:** Battery Cells
+
+**Important Considerations:**
+
+*   **Role Overlap:** Many companies have expanding roles within the EV supply chain. For example, some battery manufacturers are moving into module and pack assembly.
+*   **Tiered Supply Chain:** The EV supply chain is complex and tiered. ""Direct Manufacturer"" can refer to different levels of involvement.
+*   **Geographic Specialization:** Companies often specialize in certain geographic regions or aspects of the supply chain.",6.29,True,,0.0,,,,,

@@ -391,9 +391,7 @@ def export_response_sets(
     ragas_summary: pd.DataFrame | None = None,
 ) -> Path:
     output_dir.mkdir(parents=True, exist_ok=True)
-    timestamp = pd.Timestamp.utcnow().strftime("%Y%m%d_%H%M%S")
-    run_dir = output_dir / f"response_set_{timestamp}"
-    run_dir.mkdir(parents=True, exist_ok=True)
+    run_dir = output_dir
 
     metric_lookup = _metric_lookup(ragas_per_run)
     all_rows: list[dict[str, Any]] = []

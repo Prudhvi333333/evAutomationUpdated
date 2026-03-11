@@ -1,0 +1,43 @@
+question,reference_answer,reference_source,answer,latency_seconds,success,error_message,answer_accuracy,faithfulness,response_groundedness,grounded_claim_ratio,unsupported_claim_ratio,contradicted_claim_ratio
+"Among companies classified as Supplier, which EV Supply Chain Role appears most frequently?","Among companies classified as Supplier, the most frequent EV Supply Chain Role is General Automotive (135 rows).",golden,"General Automotive (113) appears most frequently among companies classified as Supplier. The companies with this role are: ACM Georgia LLC, Adient, ADVICS Manufacturing Georgia LLC, Ajin Georgia, ALBAform Inc., Anovion Technologies, Apache Mills Inc., Aptiv, Archer Aviation Inc., Arising Industries Inc., Arising Industries Inc., Bonnell Aluminum, Bosal Industries Georgia, Carcoustics USA, DaeChang Seat Company, Daesol Ausys, Daesol Material Georgia, LLC.",5.33,True,,0.85,0.8,0.8,0.8,0.2,0.0
+Find any companies where Category indicates an OEM-related class (starts with 'OEM') but Supplier or Affiliation Type is not filled; list those companies.,"OEM-related Category with blank Supplier or Affiliation Type [23 companies]: TI Fluid Systems | Categories: OEM, OEM (Footprint) TN Americas Holding Inc. | Categories: OEM (Footprint) Tie Down Engineering | Categories: OEM (Footprint) Toyota Industries Group (TACG-TICA) | Categories: OEM (Footprint) Trenton Pressing | Categories: OEM (Footprint) Trenton Pressing Inc. | Categories: OEM Supply Chain Valeo | Categories: OEM Supply Chain Vanguard National Trailer Corp. | Categories: OEM Supply Chain Vernay | Categories: OEM Supply Chain Vista Metals Corp. | Categories: OEM Supply Chain Voestalpine Automotive Body Parts Inc. | Categories: OEM Supply Chain Volvo Cars USA | Categories: OEM Supply Chain Volvo Group North America | Categories: OEM Supply Chain WIKA USA | Categories: OEM Supply Chain Wabash National Corp. | Categories: OEM Supply Chain Wheelabrator Group Inc. | Categories: OEM Supply Chain Woodbridge Foam Corp. | Categories: OEM Supply Chain Woory Industrial Co. | Categories: OEM Supply Chain YKK USA Inc. | Categories: OEM Footprint Yachiyo Manufacturing of America LLC | Categories: OEM Supply Chain Yamaha Motor Manufacturing Corp. | Categories: OEM Supply Chain Yazaki North America | Categories: OEM Footprint ZF Gainesville LLC | Categories: OEM Footprint, OEM Supply Chain",golden,TI Fluid Systems (1),0.72,True,,0.04,0.0,0.0,0.0,1.0,0.0
+"According to the Methodology sheet, what is the minimum employment threshold used to include companies in this dataset?",Minimum employment threshold: 50 or more employees.,golden,The minimum employment threshold used to include companies in this dataset is 50 or more employees.,0.92,True,,1.0,1.0,1.0,1.0,0.0,0.0
+"According to the Definitions sheet, how is the Location field formatted and how are City values standardized?","Location is formatted as City, County. City values use county seats as a standardized geographic point.",golden,County names are sourced from the original dataset.,0.68,True,,0.0,0.0,0.0,0.0,1.0,0.0
+"According to the Definitions sheet, what controlled vocabulary is used for EV Supply Chain Role (list the roles mentioned in the definition)?",Controlled vocabulary listed in Definitions for EV Supply Chain Role: vehicle assembly; battery cell; battery pack; power electronics; charging infrastructure; thermal management; materials; general automotive.,golden,"The EV Supply Chain Role classifies each company based on its primary function. The roles mentioned are: EV, battery, charging equipment, or supplies enabling components.",1.12,True,,0.2,0.0,0.0,0.0,1.0,0.0
+List all companies in Category = OEM Footprint and provide their Employment and EV Supply Chain Role.,"Category = OEM Footprint [3]: YKK USA Inc. | Employment: 190,159 | EV Supply Chain Role: EV sensors, braking, and control systems Yazaki North America | Employment: 230,000 | EV Supply Chain Role: Power electronics, sensors, and EV systems ZF Gainesville LLC | Employment: 106,100 | EV Supply Chain Role: EV thermal systems and electronics",golden,"- Company: Yazaki North America | Employment: 230000 | EV Supply Chain Role: Power electronics, sensors, and EV systems
+- Company: YKK USA Inc. | Employment: 190159 | EV Supply Chain Role: EV sensors, braking, and control systems
+- Company: ZF Gainesville LLC | Employment: 106100 | EV Supply Chain Role: EV thermal systems and electronics",2.0,True,,1.0,1.0,1.0,1.0,0.0,0.0
+"Which companies have Primary Facility Type = Regional corporate operations, and what are their Categories and Locations?",Primary Facility Type = Regional corporate operations [1]: Trenton Pressing | Category: OEM (Footprint) | Location: Georgia | EV Supply Chain Role: OEM corporate footprint and supplier integration,golden,"1 company has Primary Facility Type = Regional corporate operations: Trenton Pressing, Category not specified, Location: Georgia.",0.93,True,,0.67,0.67,0.67,0.67,0.33,0.0
+"Among EV / Battery Relevant = Yes companies, which Industry Groups are represented and how many companies are in each?","Industry Groups represented among EV / Battery Relevant = Yes companies: Electronic and Other Electrical Equipment and Components: 6 Transportation Equipment: 6 Primary Metal Industries: 3 Commercial vehicles and powertrains: 2 Machinery Except Electrical: 1 Automotive safety systems and restraints: 1 Passenger vehicles (EV + ICE): 1 Heavy-duty trucks: 1 Commercial vehicles (Kenworth, Peterbilt): 1 Automotive precision components: 1 Automotive parts manufacturing: 1 Automotive structural components: 1 Automotive stamping and assemblies: 1 Automotive modules and components: 1 Automotive components: 1 Automotive plastics: 1 Metal stamping and assemblies: 1 Automotive plastic components: 1 Automotive textiles and interiors: 1 Automotive wiring systems: 1 Automotive electrical systems: 1 Electrical connectors and sensors: 1 Automotive seating and E‑systems: 1 Automotive electronics: 1 Automotive electronics and systems: 1 Automotive electronics and safety systems: 1 Automotive systems and components: 1 Automotive thermal and electronics systems: 1 Automotive powertrain and thermal systems: 1",golden,"Among EV / Battery Relevant = Yes companies, the following Industry Groups are represented:
+
+- Electronic and Other Electrical Equipment and Components: 6 companies
+- Transportation Equipment: 6 companies
+- Primary Metal Industries: 3 companies
+- Commercial vehicles and powertrains: 2 companies
+- Automotive components: 1 company
+- Automotive electrical systems: 1 company
+- Automotive electronics: 1 company
+- Automotive electronics and safety systems: 1 company
+- Automotive electronics and systems: 1 company
+- Automotive modules and components: 1 company
+- Automotive parts manufacturing: 1 company
+- Automotive plastic components: 1 company
+- Automotive plastics: 1 company
+- Automotive powertrain and thermal systems: 1 company
+- Automotive precision components: 1 company
+- Automotive safety systems and restraints: 1 company
+- Automotive seating and E‑systems: 1 company
+- Automotive stamping and assemblies: 1 company
+- Automotive structural components: 1 company
+- Automotive systems and components: 1 company
+- Automotive textiles and interiors: 1 company
+- Automotive thermal and electronics systems: 1 company
+- Automotive wiring systems: 1 company
+- Commercial vehicles (Kenworth, Peterbilt): 1 company
+- Electrical connectors and sensors: 1 company
+- Heavy-duty trucks: 1 company
+- Machinery Except Electrical: 1 company
+- Metal stamping and assemblies: 1 company
+- Passenger vehicles (EV + ICE): 1 company",5.52,True,,0.97,1.0,1.0,1.0,0.0,0.0
+"Within Tier 1 suppliers, identify companies in 'Electronic and Other Electrical Equipment and Components' and list their Product / Service.",None. There are no Tier 1 suppliers in the dataset with Industry Group = Electronic and Other Electrical Equipment and Components.,golden,"The provided evidence does not contain any companies in 'Electronic and Other Electrical Equipment and Components'. The evidence lists Tier 1 suppliers and their Product / Service, but does not categorize them by industry.",1.36,True,,0.0,1.0,1.0,1.0,0.0,0.0
+"According to the Methodology sheet, how are supply chain tiers assigned (what approach is described)?","Supply chain tiers are assigned using a structured heuristic approach that reflects functional roles across OEM, Tier 1, Tier 2, and Tier 3.",golden,Supply chain tiers reflect functional roles OEM Tier 1 Tier 2 and Tier 3 and are assigned using a structured heuristic approach.,1.15,True,,0.88,1.0,1.0,1.0,0.0,0.0
