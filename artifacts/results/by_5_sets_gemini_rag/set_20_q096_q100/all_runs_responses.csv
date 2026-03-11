@@ -1,0 +1,45 @@
+run_name,provider,model_name,rag_enabled,question,reference_answer,reference_source,answer,latency_seconds,success,error_message,answer_accuracy,faithfulness,response_groundedness,grounded_claim_ratio,unsupported_claim_ratio,contradicted_claim_ratio
+gemini_rag,gemini,gemini-2.5-flash,True,List all companies in Category = OEM Footprint and provide their Employment and EV Supply Chain Role.,"Category = OEM Footprint [3]: YKK USA Inc. | Employment: 190,159 | EV Supply Chain Role: EV sensors, braking, and control systems Yazaki North America | Employment: 230,000 | EV Supply Chain Role: Power electronics, sensors, and EV systems ZF Gainesville LLC | Employment: 106,100 | EV Supply Chain Role: EV thermal systems and electronics",golden,"Yazaki North America:
+- Employment: 230000
+- EV Supply Chain Role: Power electronics, sensors, and EV systems
+
+YKK USA Inc.:
+- Employment: 190159
+- EV Supply Chain Role: EV sensors, braking, and control systems
+
+ZF Gainesville LLC:
+- Employment: 106100
+- EV Supply Chain Role: EV thermal systems and electronics",1.15,True,,1.0,1.0,1.0,1.0,0.0,0.0
+gemini_rag,gemini,gemini-2.5-flash,True,"Which companies have Primary Facility Type = Regional corporate operations, and what are their Categories and Locations?",Primary Facility Type = Regional corporate operations [1]: Trenton Pressing | Category: OEM (Footprint) | Location: Georgia | EV Supply Chain Role: OEM corporate footprint and supplier integration,golden,Trenton Pressing has Primary Facility Type = Regional corporate operations and is located in Georgia.,0.94,True,,0.5,1.0,1.0,1.0,0.0,0.0
+gemini_rag,gemini,gemini-2.5-flash,True,"Among EV / Battery Relevant = Yes companies, which Industry Groups are represented and how many companies are in each?","Industry Groups represented among EV / Battery Relevant = Yes companies: Electronic and Other Electrical Equipment and Components: 6 Transportation Equipment: 6 Primary Metal Industries: 3 Commercial vehicles and powertrains: 2 Machinery Except Electrical: 1 Automotive safety systems and restraints: 1 Passenger vehicles (EV + ICE): 1 Heavy-duty trucks: 1 Commercial vehicles (Kenworth, Peterbilt): 1 Automotive precision components: 1 Automotive parts manufacturing: 1 Automotive structural components: 1 Automotive stamping and assemblies: 1 Automotive modules and components: 1 Automotive components: 1 Automotive plastics: 1 Metal stamping and assemblies: 1 Automotive plastic components: 1 Automotive textiles and interiors: 1 Automotive wiring systems: 1 Automotive electrical systems: 1 Electrical connectors and sensors: 1 Automotive seating and E‑systems: 1 Automotive electronics: 1 Automotive electronics and systems: 1 Automotive electronics and safety systems: 1 Automotive systems and components: 1 Automotive thermal and electronics systems: 1 Automotive powertrain and thermal systems: 1",golden,"Among EV / Battery Relevant = Yes companies, the following Industry Groups are represented:
+- Electronic and Other Electrical Equipment and Components: 6
+- Transportation Equipment: 6
+- Primary Metal Industries: 3
+- Commercial vehicles and powertrains: 2
+- Automotive components: 1
+- Automotive electrical systems: 1
+- Automotive electronics: 1
+- Automotive electronics and safety systems: 1
+- Automotive electronics and systems: 1
+- Automotive modules and components: 1
+- Automotive parts manufacturing: 1
+- Automotive plastic components: 1
+- Automotive plastics: 1
+- Automotive powertrain and thermal systems: 1
+- Automotive precision components: 1
+- Automotive safety systems and restraints: 1
+- Automotive seating and E‑systems: 1
+- Automotive stamping and assemblies: 1
+- Automotive structural components: 1
+- Automotive systems and components: 1
+- Automotive textiles and interiors: 1
+- Automotive thermal and electronics systems: 1
+- Automotive wiring systems: 1
+- Commercial vehicles (Kenworth, Peterbilt): 1
+- Electrical connectors and sensors: 1
+- Heavy-duty trucks: 1
+- Machinery Except Electrical: 1
+- Metal stamping and assemblies: 1
+- Passenger vehicles (EV + ICE): 1",1.62,True,,0.85,1.0,1.0,1.0,0.0,0.0
+gemini_rag,gemini,gemini-2.5-flash,True,"Within Tier 1 suppliers, identify companies in 'Electronic and Other Electrical Equipment and Components' and list their Product / Service.",None. There are no Tier 1 suppliers in the dataset with Industry Group = Electronic and Other Electrical Equipment and Components.,golden,The workbook evidence does not contain information about companies in 'Electronic and Other Electrical Equipment and Components' within Tier 1 suppliers. It only lists companies and their products/services under the general 'Tier 1' category.,0.89,True,,0.0,0.0,0.0,0.0,1.0,0.0
+gemini_rag,gemini,gemini-2.5-flash,True,"According to the Methodology sheet, how are supply chain tiers assigned (what approach is described)?","Supply chain tiers are assigned using a structured heuristic approach that reflects functional roles across OEM, Tier 1, Tier 2, and Tier 3.",golden,"Supply chain tiers reflect functional roles (OEM, Tier 1, Tier 2, and Tier 3) and are assigned using a structured heuristic approach.",0.72,True,,1.0,1.0,1.0,1.0,0.0,0.0
