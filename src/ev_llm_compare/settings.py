@@ -4,6 +4,12 @@ from dataclasses import dataclass, field
 import os
 from pathlib import Path
 
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    def load_dotenv(*args: object, **kwargs: object) -> bool:
+        return False
+
 
 @dataclass(slots=True)
 class RetrievalSettings:
@@ -26,8 +32,8 @@ class RetrievalSettings:
     compact_context_enabled: bool = True
     generation_context_result_limit: int = 5
     generation_context_char_budget: int = 4200
-    ragas_context_result_limit: int = 4
-    ragas_context_char_budget: int = 2600
+    evaluation_context_result_limit: int = 4
+    evaluation_context_char_budget: int = 2600
 
 
 @dataclass(slots=True)
@@ -35,7 +41,6 @@ class RuntimeSettings:
     ollama_base_url: str = "http://localhost:11434"
     qdrant_path: Path = Path("artifacts/qdrant")
     output_dir: Path = Path("artifacts/results")
-    dotenv_enabled: bool = True
 
 
 @dataclass(slots=True)
@@ -50,18 +55,18 @@ class ModelSpec:
 
 
 @dataclass(slots=True)
+class EvaluationSettings:
+    judge_provider: str = "ollama"
+    judge_model: str = "mistral-small3.2:24b"
+    max_retries: int = 2
+
+
+@dataclass(slots=True)
 class AppConfig:
     retrieval: RetrievalSettings = field(default_factory=RetrievalSettings)
     runtime: RuntimeSettings = field(default_factory=RuntimeSettings)
+    evaluation: EvaluationSettings = field(default_factory=EvaluationSettings)
     models: list[ModelSpec] = field(default_factory=list)
-    ragas_judge_provider: str = "ollama"
-    ragas_judge_model: str = "mistral-small3.2:24b"
-    ragas_embedding_provider: str = "huggingface"
-    ragas_embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
-    ragas_timeout: int = 600
-    ragas_max_retries: int = 2
-    ragas_max_wait: int = 60
-    ragas_max_workers: int = 1
 
 
 def _env_flag(name: str, default: bool) -> bool:
@@ -71,19 +76,27 @@ def _env_flag(name: str, default: bool) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _env_value(*names: str, default: str) -> str:
+    for name in names:
+        value = os.getenv(name)
+        if value is not None:
+            return value
+    return default
+
+
 def _build_models() -> list[ModelSpec]:
     return [
         ModelSpec(
             run_name="qwen_rag",
             provider="ollama",
-            model_name=os.getenv("QWEN_MODEL", "qwen2.5:14b"),
+            model_name=os.getenv("QWEN_MODEL", "qwen3:8b"),
             rag_enabled=True,
             enabled=_env_flag("ENABLE_QWEN_RAG", True),
         ),
         ModelSpec(
             run_name="qwen_no_rag",
             provider="ollama",
-            model_name=os.getenv("QWEN_MODEL", "qwen2.5:14b"),
+            model_name=os.getenv("QWEN_MODEL", "qwen3:8b"),
             rag_enabled=False,
             enabled=_env_flag("ENABLE_QWEN_NO_RAG", True),
         ),
@@ -118,7 +131,10 @@ def _build_models() -> list[ModelSpec]:
     ]
 
 
-def load_config() -> AppConfig:
+def load_config(*, dotenv_enabled: bool = True) -> AppConfig:
+    if dotenv_enabled:
+        load_dotenv(override=False)
+
     config = AppConfig()
     config.models = [model for model in _build_models() if model.enabled]
     default_temperature = float(os.getenv("MODEL_TEMPERATURE", "0.1"))
@@ -178,16 +194,18 @@ def load_config() -> AppConfig:
             str(config.retrieval.generation_context_char_budget),
         )
     )
-    config.retrieval.ragas_context_result_limit = int(
-        os.getenv(
+    config.retrieval.evaluation_context_result_limit = int(
+        _env_value(
+            "EVALUATION_CONTEXT_RESULT_LIMIT",
             "RAGAS_CONTEXT_RESULT_LIMIT",
-            str(config.retrieval.ragas_context_result_limit),
+            default=str(config.retrieval.evaluation_context_result_limit),
         )
     )
-    config.retrieval.ragas_context_char_budget = int(
-        os.getenv(
+    config.retrieval.evaluation_context_char_budget = int(
+        _env_value(
+            "EVALUATION_CONTEXT_CHAR_BUDGET",
             "RAGAS_CONTEXT_CHAR_BUDGET",
-            str(config.retrieval.ragas_context_char_budget),
+            default=str(config.retrieval.evaluation_context_char_budget),
         )
     )
     config.runtime.ollama_base_url = os.getenv(
@@ -200,30 +218,21 @@ def load_config() -> AppConfig:
     config.runtime.output_dir = Path(
         os.getenv("OUTPUT_DIR", str(config.runtime.output_dir))
     )
-    config.ragas_judge_provider = os.getenv(
+    config.evaluation.judge_provider = _env_value(
+        "EVALUATION_JUDGE_PROVIDER",
         "RAGAS_JUDGE_PROVIDER",
-        config.ragas_judge_provider,
+        default=config.evaluation.judge_provider,
     )
-    config.ragas_judge_model = os.getenv(
+    config.evaluation.judge_model = _env_value(
+        "EVALUATION_JUDGE_MODEL",
         "RAGAS_JUDGE_MODEL",
-        config.ragas_judge_model,
+        default=config.evaluation.judge_model,
     )
-    config.ragas_embedding_provider = os.getenv(
-        "RAGAS_EMBEDDING_PROVIDER",
-        config.ragas_embedding_provider,
-    )
-    config.ragas_embedding_model = os.getenv(
-        "RAGAS_EMBEDDING_MODEL",
-        config.ragas_embedding_model,
-    )
-    config.ragas_timeout = int(os.getenv("RAGAS_TIMEOUT", str(config.ragas_timeout)))
-    config.ragas_max_retries = int(
-        os.getenv("RAGAS_MAX_RETRIES", str(config.ragas_max_retries))
-    )
-    config.ragas_max_wait = int(
-        os.getenv("RAGAS_MAX_WAIT", str(config.ragas_max_wait))
-    )
-    config.ragas_max_workers = int(
-        os.getenv("RAGAS_MAX_WORKERS", str(config.ragas_max_workers))
+    config.evaluation.max_retries = int(
+        _env_value(
+            "EVALUATION_MAX_RETRIES",
+            "RAGAS_MAX_RETRIES",
+            default=str(config.evaluation.max_retries),
+        )
     )
     return config

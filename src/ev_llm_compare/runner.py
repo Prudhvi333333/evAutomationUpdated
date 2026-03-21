@@ -2,19 +2,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
-try:
-    from dotenv import load_dotenv
-except ImportError:
-    def load_dotenv() -> bool:
-        return False
-
 from .chunking import ExcelChunkBuilder
 from .evaluation import (
     build_reference_answers,
     export_metrics_workbook,
     export_response_sets,
     export_results,
-    run_ragas,
+    export_single_model_report,
+    run_evaluation_metrics,
 )
 from .excel_loader import load_questions, load_reference_answers, load_workbook
 from .models import create_client, safe_generate
@@ -33,15 +28,13 @@ from .settings import AppConfig, ModelSpec
 class ComparisonRunner:
     def __init__(self, config: AppConfig):
         self.config = config
-        if config.runtime.dotenv_enabled:
-            load_dotenv()
 
     def run(
         self,
         data_workbook: str,
         question_workbook: str,
         question_sheet: str | None = None,
-        skip_ragas: bool = False,
+        skip_evaluation: bool = False,
         question_limit: int | None = None,
         selected_run_names: list[str] | None = None,
         output_dir: str | None = None,
@@ -51,7 +44,15 @@ class ComparisonRunner:
         golden_workbook: str | None = None,
         golden_sheet: str | None = None,
         write_checkpoint: bool = False,
+        single_model_report: bool = False,
+        **legacy_kwargs: object,
     ) -> Path:
+        if "skip_ragas" in legacy_kwargs:
+            skip_evaluation = skip_evaluation or bool(legacy_kwargs.pop("skip_ragas"))
+        if legacy_kwargs:
+            unknown = ", ".join(sorted(legacy_kwargs))
+            raise TypeError(f"Unexpected keyword argument(s): {unknown}")
+
         active_models = self._select_models(selected_run_names)
         if output_dir is not None:
             self.config.runtime.output_dir = Path(output_dir)
@@ -128,8 +129,8 @@ class ComparisonRunner:
                         )
                     )
 
-            ragas_per_run = None
-            ragas_summary = None
+            metrics_per_run = None
+            metrics_summary = None
             references = {question: "" for question in questions}
             reference_sources = {question: "missing" for question in questions}
             golden_path = self._resolve_reference_workbook(golden_workbook)
@@ -146,7 +147,7 @@ class ComparisonRunner:
                 self._log(
                     f"Matched {matched_count}/{len(questions)} questions to golden answers"
                 )
-            if skip_ragas:
+            if skip_evaluation:
                 self._log("Skipping reference generation and evaluation metrics")
             else:
                 try:
@@ -159,9 +160,9 @@ class ComparisonRunner:
                             f"{len(missing_reference_questions)} questions not covered by golden answers"
                         )
                         judge_spec = ModelSpec(
-                            run_name="ragas_judge",
-                            provider=self.config.ragas_judge_provider,
-                            model_name=self.config.ragas_judge_model,
+                            run_name="evaluation_judge",
+                            provider=self.config.evaluation.judge_provider,
+                            model_name=self.config.evaluation.judge_model,
                             rag_enabled=False,
                         )
                         judge_client = create_client(judge_spec, self.config.runtime)
@@ -185,26 +186,21 @@ class ComparisonRunner:
                             retrievals=retrievals,
                             references=references,
                             reference_sources=reference_sources,
-                            ragas_per_run=None,
-                            ragas_summary=None,
+                            metrics_per_run=None,
+                            metrics_summary=None,
                             filename_prefix="comparison_checkpoint",
                             single_sheet_only=single_sheet_only,
                         )
                         self._log(f"Checkpoint workbook written to {checkpoint_path}")
                     self._log("Running evaluation metrics")
-                    ragas_per_run, ragas_summary = run_ragas(
+                    metrics_per_run, metrics_summary = run_evaluation_metrics(
                         responses=responses,
                         reference_answers=references,
-                        judge_provider=self.config.ragas_judge_provider,
-                        judge_model=self.config.ragas_judge_model,
-                        embedding_provider=self.config.ragas_embedding_provider,
-                        embedding_model=self.config.ragas_embedding_model,
-                        timeout=self.config.ragas_timeout,
-                        max_retries=self.config.ragas_max_retries,
-                        max_wait=self.config.ragas_max_wait,
-                        max_workers=self.config.ragas_max_workers,
-                        context_result_limit=self.config.retrieval.ragas_context_result_limit,
-                        context_char_budget=self.config.retrieval.ragas_context_char_budget,
+                        judge_provider=self.config.evaluation.judge_provider,
+                        judge_model=self.config.evaluation.judge_model,
+                        max_retries=self.config.evaluation.max_retries,
+                        context_result_limit=self.config.retrieval.evaluation_context_result_limit,
+                        context_char_budget=self.config.retrieval.evaluation_context_char_budget,
                         compact_context=self.config.retrieval.compact_context_enabled,
                     )
                 except Exception as exc:
@@ -219,10 +215,31 @@ class ComparisonRunner:
                     responses=responses,
                     references=references,
                     reference_sources=reference_sources,
-                    ragas_per_run=ragas_per_run,
-                    ragas_summary=ragas_summary,
+                    metrics_per_run=metrics_per_run,
+                    metrics_summary=metrics_summary,
                 )
                 self._log(f"Per-run response files written to {response_dir_path}")
+
+            if single_model_report:
+                if len(active_models) != 1:
+                    raise ValueError(
+                        "--single-model-report requires exactly one selected run. "
+                        "Use --run-name once."
+                    )
+                single_model_path = export_single_model_report(
+                    output_dir=self.config.runtime.output_dir,
+                    responses=responses,
+                    references=references,
+                    reference_sources=reference_sources,
+                    judge_provider=self.config.evaluation.judge_provider,
+                    judge_model=self.config.evaluation.judge_model,
+                    max_retries=self.config.evaluation.max_retries,
+                    context_result_limit=self.config.retrieval.evaluation_context_result_limit,
+                    context_char_budget=self.config.retrieval.evaluation_context_char_budget,
+                    compact_context=self.config.retrieval.compact_context_enabled,
+                    metrics_per_run=metrics_per_run,
+                )
+                self._log(f"Single-model report written to {single_model_path}")
 
             self._log("Exporting results workbook")
             output_path = export_results(
@@ -231,16 +248,16 @@ class ComparisonRunner:
                 retrievals=retrievals,
                 references=references,
                 reference_sources=reference_sources,
-                ragas_per_run=ragas_per_run,
-                ragas_summary=ragas_summary,
+                metrics_per_run=metrics_per_run,
+                metrics_summary=metrics_summary,
                 single_sheet_only=single_sheet_only,
             )
             metrics_path = None
             if not single_sheet_only:
                 metrics_path = export_metrics_workbook(
                     output_dir=self.config.runtime.output_dir,
-                    ragas_per_run=ragas_per_run,
-                    ragas_summary=ragas_summary,
+                    metrics_per_run=metrics_per_run,
+                    metrics_summary=metrics_summary,
                 )
                 if metrics_path is not None:
                     self._log(f"Metrics workbook written to {metrics_path}")

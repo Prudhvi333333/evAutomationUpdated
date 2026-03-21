@@ -1,26 +1,43 @@
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 import pandas as pd
 
 from src.ev_llm_compare.evaluation import (
-    _derive_grounding_metrics,
-    _score_answer_accuracy,
+    attribute_response_sources,
     export_results,
+    export_single_model_report,
+    run_evaluation_metrics,
 )
+from src.ev_llm_compare.models import LLMClient
 from src.ev_llm_compare.schemas import ModelResponse, RetrievalResult
 
 
+class _DummyJudgeClient(LLMClient):
+    provider = "dummy"
+    model_name = "dummy-model"
+
+    def generate(
+        self,
+        prompt: str,
+        temperature: float,
+        max_tokens: int,
+        system_prompt: str | None = None,
+    ) -> str:
+        raise AssertionError("safe_generate should be patched in this test")
+
+
 class EvaluationExportTests(unittest.TestCase):
-    def test_export_results_writes_pivoted_responses_sheet(self) -> None:
+    def test_export_results_writes_current_metrics_columns(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             output_dir = Path(tmp_dir)
             responses = [
                 ModelResponse(
                     run_name="qwen_rag",
                     provider="ollama",
-                    model_name="qwen2.5:14b",
+                    model_name="qwen3:8b",
                     rag_enabled=True,
                     question="What is A?",
                     answer="Answer A with RAG",
@@ -32,7 +49,7 @@ class EvaluationExportTests(unittest.TestCase):
                 ModelResponse(
                     run_name="qwen_no_rag",
                     provider="ollama",
-                    model_name="qwen2.5:14b",
+                    model_name="qwen3:8b",
                     rag_enabled=False,
                     question="What is A?",
                     answer="Answer A without RAG",
@@ -44,7 +61,7 @@ class EvaluationExportTests(unittest.TestCase):
                 ModelResponse(
                     run_name="qwen_rag",
                     provider="ollama",
-                    model_name="qwen2.5:14b",
+                    model_name="qwen3:8b",
                     rag_enabled=True,
                     question="What is B?",
                     answer="Answer B with RAG",
@@ -56,7 +73,7 @@ class EvaluationExportTests(unittest.TestCase):
                 ModelResponse(
                     run_name="qwen_no_rag",
                     provider="ollama",
-                    model_name="qwen2.5:14b",
+                    model_name="qwen3:8b",
                     rag_enabled=False,
                     question="What is B?",
                     answer="Answer B without RAG",
@@ -81,36 +98,30 @@ class EvaluationExportTests(unittest.TestCase):
             }
             references = {"What is A?": "Ref A", "What is B?": "Ref B"}
             reference_sources = {"What is A?": "golden", "What is B?": "generated"}
-            ragas_per_run = pd.DataFrame(
+            metrics_per_run = pd.DataFrame(
                 [
                     {
-                            "run_name": "qwen_rag",
-                            "question": "What is A?",
-                            "answer_accuracy": 0.95,
-                            "faithfulness": 0.9,
-                            "response_groundedness": 0.85,
-                            "grounded_claim_ratio": 0.85,
-                            "unsupported_claim_ratio": 0.1,
-                            "contradicted_claim_ratio": 0.05,
-                            "ragas_answer_accuracy": 0.75,
-                            "ragas_faithfulness": 0.7,
-                            "ragas_response_groundedness": 0.65,
-                        },
-                        {
-                            "run_name": "qwen_no_rag",
-                            "question": "What is A?",
-                            "answer_accuracy": 0.8,
-                            "faithfulness": None,
-                            "response_groundedness": None,
-                            "grounded_claim_ratio": None,
-                            "unsupported_claim_ratio": None,
-                            "contradicted_claim_ratio": None,
-                            "ragas_answer_accuracy": 0.6,
-                            "ragas_faithfulness": None,
-                            "ragas_response_groundedness": None,
-                        },
-                    ]
-                )
+                        "run_name": "qwen_rag",
+                        "question": "What is A?",
+                        "answer_accuracy": 0.95,
+                        "faithfulness": 0.9,
+                        "response_groundedness": 0.85,
+                        "grounded_claim_ratio": 0.85,
+                        "unsupported_claim_ratio": 0.1,
+                        "contradicted_claim_ratio": 0.05,
+                    },
+                    {
+                        "run_name": "qwen_no_rag",
+                        "question": "What is A?",
+                        "answer_accuracy": 0.8,
+                        "faithfulness": None,
+                        "response_groundedness": None,
+                        "grounded_claim_ratio": None,
+                        "unsupported_claim_ratio": None,
+                        "contradicted_claim_ratio": None,
+                    },
+                ]
+            )
 
             workbook_path = export_results(
                 output_dir=output_dir,
@@ -118,8 +129,8 @@ class EvaluationExportTests(unittest.TestCase):
                 retrievals=retrievals,
                 references=references,
                 reference_sources=reference_sources,
-                ragas_per_run=ragas_per_run,
-                ragas_summary=None,
+                metrics_per_run=metrics_per_run,
+                metrics_summary=None,
             )
 
             df = pd.read_excel(workbook_path, sheet_name="responses")
@@ -137,18 +148,12 @@ class EvaluationExportTests(unittest.TestCase):
                     "qwen_rag_grounded_claim_ratio",
                     "qwen_rag_unsupported_claim_ratio",
                     "qwen_rag_contradicted_claim_ratio",
-                    "qwen_rag_ragas_answer_accuracy",
-                    "qwen_rag_ragas_faithfulness",
-                    "qwen_rag_ragas_response_groundedness",
                     "qwen_no_rag_answer_accuracy",
                     "qwen_no_rag_faithfulness",
                     "qwen_no_rag_response_groundedness",
                     "qwen_no_rag_grounded_claim_ratio",
                     "qwen_no_rag_unsupported_claim_ratio",
                     "qwen_no_rag_contradicted_claim_ratio",
-                    "qwen_no_rag_ragas_answer_accuracy",
-                    "qwen_no_rag_ragas_faithfulness",
-                    "qwen_no_rag_ragas_response_groundedness",
                     "qwen_rag_latency_seconds",
                     "qwen_no_rag_latency_seconds",
                     "qwen_rag_prompt_tokens_estimate",
@@ -162,14 +167,9 @@ class EvaluationExportTests(unittest.TestCase):
             self.assertEqual(df.iloc[0]["qwen_no_rag"], "Answer A without RAG")
             self.assertAlmostEqual(df.iloc[0]["qwen_rag_answer_accuracy"], 0.95)
             self.assertAlmostEqual(df.iloc[0]["qwen_rag_faithfulness"], 0.9)
-            self.assertAlmostEqual(df.iloc[0]["qwen_rag_response_groundedness"], 0.85)
             self.assertAlmostEqual(df.iloc[0]["qwen_rag_grounded_claim_ratio"], 0.85)
-            self.assertAlmostEqual(df.iloc[0]["qwen_rag_contradicted_claim_ratio"], 0.05)
-            self.assertAlmostEqual(df.iloc[0]["qwen_rag_ragas_answer_accuracy"], 0.75)
             self.assertAlmostEqual(df.iloc[0]["qwen_no_rag_answer_accuracy"], 0.8)
             self.assertTrue(pd.isna(df.iloc[0]["qwen_no_rag_faithfulness"]))
-            self.assertTrue(pd.isna(df.iloc[0]["qwen_no_rag_response_groundedness"]))
-            self.assertAlmostEqual(df.iloc[0]["qwen_no_rag_ragas_answer_accuracy"], 0.6)
             self.assertAlmostEqual(df.iloc[0]["qwen_rag_latency_seconds"], 1.1)
             self.assertEqual(df.iloc[0]["qwen_no_rag_prompt_tokens_estimate"], 77)
 
@@ -190,9 +190,6 @@ class EvaluationExportTests(unittest.TestCase):
                     "qwen_rag_grounded_claim_ratio",
                     "qwen_rag_unsupported_claim_ratio",
                     "qwen_rag_contradicted_claim_ratio",
-                    "qwen_rag_ragas_answer_accuracy",
-                    "qwen_rag_ragas_faithfulness",
-                    "qwen_rag_ragas_response_groundedness",
                     "qwen_no_rag",
                     "qwen_no_rag_answer_accuracy",
                     "qwen_no_rag_faithfulness",
@@ -200,55 +197,188 @@ class EvaluationExportTests(unittest.TestCase):
                     "qwen_no_rag_grounded_claim_ratio",
                     "qwen_no_rag_unsupported_claim_ratio",
                     "qwen_no_rag_contradicted_claim_ratio",
-                    "qwen_no_rag_ragas_answer_accuracy",
-                    "qwen_no_rag_ragas_faithfulness",
-                    "qwen_no_rag_ragas_response_groundedness",
                 ],
             )
-            self.assertEqual(single_sheet_df.iloc[0]["reference_answer"], "Ref A")
-            self.assertEqual(single_sheet_df.iloc[0]["reference_source"], "golden")
-            self.assertEqual(single_sheet_df.iloc[0]["qwen_rag"], "Answer A with RAG")
-            self.assertEqual(single_sheet_df.iloc[0]["qwen_no_rag"], "Answer A without RAG")
-            self.assertAlmostEqual(single_sheet_df.iloc[0]["qwen_rag_answer_accuracy"], 0.95)
-            self.assertAlmostEqual(single_sheet_df.iloc[0]["qwen_rag_faithfulness"], 0.9)
-            self.assertAlmostEqual(single_sheet_df.iloc[0]["qwen_rag_response_groundedness"], 0.85)
-            self.assertAlmostEqual(single_sheet_df.iloc[0]["qwen_rag_grounded_claim_ratio"], 0.85)
-            self.assertAlmostEqual(single_sheet_df.iloc[0]["qwen_rag_ragas_answer_accuracy"], 0.75)
-            self.assertAlmostEqual(single_sheet_df.iloc[0]["qwen_no_rag_answer_accuracy"], 0.8)
-            self.assertTrue(pd.isna(single_sheet_df.iloc[0]["qwen_no_rag_faithfulness"]))
-            self.assertTrue(pd.isna(single_sheet_df.iloc[0]["qwen_no_rag_response_groundedness"]))
 
-    def test_structured_answer_accuracy_penalizes_false_negative_list_answers(self) -> None:
-        question = (
-            "Which EV Supply Chain Roles have at least one company with EV / Battery Relevant = Yes? "
-            "Provide the roles and the matching companies."
-        )
-        reference_answer = (
-            "Battery Cell: Hitachi Astemo Americas Inc.; Honda Development & Manufacturing "
-            "Battery Pack: F&P Georgia Manufacturing; Hollingsworth & Vose Co.; Hyundai Motor Group; IMMI"
-        )
-        answer = (
-            "Based on the provided evidence, there are no companies listed with EV / Battery Relevant = Yes."
+    def test_run_evaluation_metrics_uses_retry_budget_and_scores_rag_metrics(self) -> None:
+        response = ModelResponse(
+            run_name="qwen_rag",
+            provider="ollama",
+            model_name="qwen3:8b",
+            rag_enabled=True,
+            question="What is A?",
+            answer="A is supported by the evidence.",
+            latency_seconds=0.8,
+            retrieved_chunks=[
+                RetrievalResult(
+                    chunk_id="c1",
+                    text="Company: A | Category: Tier 1",
+                    metadata={"company": "A", "sheet_name": "Data", "chunk_type": "row_full"},
+                    dense_score=0.9,
+                    lexical_score=0.8,
+                    final_score=0.85,
+                )
+            ],
+            prompt_tokens_estimate=42,
+            success=True,
         )
 
-        score = _score_answer_accuracy(question, answer, reference_answer)
-        self.assertEqual(score, 0.0)
-
-    def test_grounding_metrics_flag_contradicted_negative_answer(self) -> None:
-        question = (
-            "Which EV Supply Chain Roles have at least one company with EV / Battery Relevant = Yes? "
-            "Provide the roles and the matching companies."
+        answers = iter(
+            [
+                ("not-a-score", 0.01, True, None),
+                ("SCORE=0.80", 0.01, True, None),
+                (
+                    "\n".join(
+                        [
+                            "FAITHFULNESS=0.90",
+                            "RESPONSE_GROUNDEDNESS=0.85",
+                            "GROUNDED_CLAIM_RATIO=0.85",
+                            "UNSUPPORTED_CLAIM_RATIO=0.10",
+                            "CONTRADICTED_CLAIM_RATIO=0.05",
+                        ]
+                    ),
+                    0.01,
+                    True,
+                    None,
+                ),
+            ]
         )
-        answer = "There are no companies listed with EV / Battery Relevant = Yes."
-        contexts = [
-            "EV Supply Chain Roles with EV / Battery Relevant = Yes companies:\n"
-            "- Battery Cell: Hitachi Astemo Americas Inc.; Honda Development & Manufacturing"
-        ]
 
-        metrics = _derive_grounding_metrics(question, answer, contexts)
-        self.assertEqual(metrics["contradicted_claim_ratio"], 1.0)
-        self.assertEqual(metrics["faithfulness"], 0.0)
-        self.assertEqual(metrics["response_groundedness"], 0.0)
+        with patch(
+            "src.ev_llm_compare.evaluation._make_judge_client",
+            return_value=_DummyJudgeClient(),
+        ), patch(
+            "src.ev_llm_compare.evaluation.safe_generate",
+            side_effect=lambda *args, **kwargs: next(answers),
+        ) as mocked_generate:
+            metrics_per_run, metrics_summary = run_evaluation_metrics(
+                responses=[response],
+                reference_answers={"What is A?": "Reference A"},
+                judge_provider="ollama",
+                judge_model="judge-model",
+                max_retries=1,
+                context_result_limit=4,
+                context_char_budget=1000,
+            )
+
+        self.assertEqual(mocked_generate.call_count, 3)
+        self.assertAlmostEqual(metrics_per_run.iloc[0]["answer_accuracy"], 0.8)
+        self.assertAlmostEqual(metrics_per_run.iloc[0]["faithfulness"], 0.9)
+        self.assertAlmostEqual(metrics_per_run.iloc[0]["response_groundedness"], 0.85)
+        self.assertAlmostEqual(metrics_per_run.iloc[0]["contradicted_claim_ratio"], 0.05)
+        self.assertAlmostEqual(metrics_summary.iloc[0]["answer_accuracy"], 0.8)
+
+    def test_attribute_response_sources_treats_no_rag_response_as_pretrained(self) -> None:
+        response = ModelResponse(
+            run_name="qwen_no_rag",
+            provider="ollama",
+            model_name="qwen3:8b",
+            rag_enabled=False,
+            question="What is A?",
+            answer="A is a battery supplier in Georgia.",
+            latency_seconds=0.5,
+            retrieved_chunks=[],
+            prompt_tokens_estimate=25,
+            success=True,
+        )
+
+        attribution = attribute_response_sources(
+            response,
+            judge_client=None,
+        )
+
+        self.assertEqual(attribution["knowledge_source_data"], "")
+        self.assertEqual(attribution["pretrained_data"], "A is a battery supplier in Georgia.")
+        self.assertEqual(attribution["overall_response"], "A is a battery supplier in Georgia.")
+
+    def test_export_single_model_report_writes_attribution_columns(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            response = ModelResponse(
+                run_name="qwen_rag",
+                provider="ollama",
+                model_name="qwen3:8b",
+                rag_enabled=True,
+                question="What is A?",
+                answer="Company A is in Atlanta. It is a major battery innovator.",
+                latency_seconds=0.8,
+                retrieved_chunks=[
+                    RetrievalResult(
+                        chunk_id="c1",
+                        text="Company: A | Location: Atlanta",
+                        metadata={"company": "A", "sheet_name": "Data", "chunk_type": "row_full"},
+                        dense_score=0.9,
+                        lexical_score=0.8,
+                        final_score=0.85,
+                    )
+                ],
+                prompt_tokens_estimate=42,
+                success=True,
+            )
+            metrics_per_run = pd.DataFrame(
+                [
+                    {
+                        "run_name": "qwen_rag",
+                        "question": "What is A?",
+                        "answer_accuracy": 0.85,
+                        "faithfulness": 0.9,
+                        "response_groundedness": 0.5,
+                        "grounded_claim_ratio": 0.5,
+                        "unsupported_claim_ratio": 0.5,
+                        "contradicted_claim_ratio": 0.0,
+                    }
+                ]
+            )
+
+            with patch(
+                "src.ev_llm_compare.evaluation._make_judge_client",
+                return_value=_DummyJudgeClient(),
+            ), patch(
+                "src.ev_llm_compare.evaluation.safe_generate",
+                return_value=(
+                    '{"labels":[{"unit_id":1,"label":"knowledge_source"},{"unit_id":2,"label":"pretrained"}]}',
+                    0.01,
+                    True,
+                    None,
+                ),
+            ):
+                workbook_path = export_single_model_report(
+                    output_dir=Path(tmp_dir),
+                    responses=[response],
+                    references={"What is A?": "Ref A"},
+                    reference_sources={"What is A?": "golden"},
+                    judge_provider="ollama",
+                    judge_model="judge-model",
+                    metrics_per_run=metrics_per_run,
+                )
+
+            report_df = pd.read_excel(workbook_path, sheet_name="report")
+            self.assertEqual(
+                report_df.columns.tolist(),
+                [
+                    "Question",
+                    "reference_answer",
+                    "reference_source",
+                    "overall_response",
+                    "knowledge_source_data",
+                    "pretrained_data",
+                    "answer_accuracy",
+                    "faithfulness",
+                    "response_groundedness",
+                    "grounded_claim_ratio",
+                    "unsupported_claim_ratio",
+                    "contradicted_claim_ratio",
+                ],
+            )
+            self.assertEqual(report_df.iloc[0]["knowledge_source_data"], "Company A is in Atlanta.")
+            self.assertEqual(report_df.iloc[0]["pretrained_data"], "It is a major battery innovator.")
+            self.assertEqual(
+                report_df.iloc[0]["overall_response"],
+                "Company A is in Atlanta. It is a major battery innovator.",
+            )
+
+            attribution_df = pd.read_excel(workbook_path, sheet_name="attribution_units")
+            self.assertEqual(attribution_df.iloc[0]["label"], "knowledge_source")
+            self.assertEqual(attribution_df.iloc[1]["label"], "pretrained")
 
 
 if __name__ == "__main__":

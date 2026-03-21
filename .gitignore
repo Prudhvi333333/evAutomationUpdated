@@ -8,5 +8,11 @@ wheels/
 
 # Virtual environments
 .venv
+venv/
+venv
 
-config.py
+# OS files
+.DS_Store
+
+# Office temp files
+~$*.xlsx

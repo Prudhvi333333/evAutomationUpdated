@@ -24,9 +24,16 @@ def build_parser() -> argparse.ArgumentParser:
         help="Optional sheet name for the question workbook.",
     )
     parser.add_argument(
+        "--skip-evaluation",
+        action="store_true",
+        dest="skip_evaluation",
+        help="Run model comparison without judge-based evaluation metrics.",
+    )
+    parser.add_argument(
         "--skip-ragas",
         action="store_true",
-        help="Run model comparison without RAGAS evaluation.",
+        dest="skip_evaluation",
+        help=argparse.SUPPRESS,
     )
     parser.add_argument(
         "--question-limit",
@@ -74,7 +81,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--write-checkpoint",
         action="store_true",
-        help="Write an intermediate checkpoint workbook before RAGAS evaluation.",
+        help="Write an intermediate checkpoint workbook before evaluation metrics run.",
+    )
+    parser.add_argument(
+        "--single-model-report",
+        action="store_true",
+        help="Write a dedicated single-model workbook with per-question metrics and response attribution columns.",
     )
     return parser
 
@@ -91,7 +103,7 @@ def main() -> int:
         data_workbook=args.data_workbook,
         question_workbook=args.question_workbook,
         question_sheet=args.question_sheet,
-        skip_ragas=args.skip_ragas,
+        skip_evaluation=args.skip_evaluation,
         question_limit=args.question_limit,
         selected_run_names=args.run_names,
         output_dir=args.output_dir,
@@ -101,6 +113,7 @@ def main() -> int:
         golden_workbook=args.golden_workbook,
         golden_sheet=args.golden_sheet,
         write_checkpoint=args.write_checkpoint,
+        single_model_report=args.single_model_report,
     )
     print(f"Report written to {Path(report_path).resolve()}")
     return 0

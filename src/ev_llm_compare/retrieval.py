@@ -9,10 +9,22 @@ import re
 import tempfile
 from typing import Any
 
-from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, PointStruct, VectorParams
 import pandas as pd
-from sentence_transformers import CrossEncoder, SentenceTransformer
+
+try:
+    from qdrant_client import QdrantClient
+    from qdrant_client.models import Distance, PointStruct, VectorParams
+except ImportError:
+    QdrantClient = None  # type: ignore[assignment]
+    Distance = None  # type: ignore[assignment]
+    PointStruct = None  # type: ignore[assignment]
+    VectorParams = None  # type: ignore[assignment]
+
+try:
+    from sentence_transformers import CrossEncoder, SentenceTransformer
+except ImportError:
+    CrossEncoder = None  # type: ignore[assignment]
+    SentenceTransformer = None  # type: ignore[assignment]
 
 from .chunking import tokenize
 from .schemas import Chunk, RetrievalResult
@@ -81,6 +93,11 @@ class QueryPlan:
 
 class HybridRetriever:
     def __init__(self, chunks: list[Chunk], settings: RetrievalSettings, qdrant_path: Path):
+        if QdrantClient is None or SentenceTransformer is None:
+            raise RuntimeError(
+                "HybridRetriever requires qdrant-client and sentence-transformers to be installed."
+            )
+
         self.chunks = chunks
         self.settings = settings
         self.qdrant_path = qdrant_path
@@ -745,6 +762,9 @@ class HybridRetriever:
         return reranked
 
     def _load_reranker(self) -> CrossEncoder | None:
+        if CrossEncoder is None:
+            self._reranker_failed = True
+            return None
         if self._reranker_failed:
             return None
         if self._reranker is not None:
@@ -807,6 +827,8 @@ class HybridRetriever:
         return f"ev_compare_{build_collection_fingerprint(chunks, embedding_model)}"
 
     def _create_client(self, qdrant_path: Path) -> QdrantClient:
+        if QdrantClient is None:
+            raise RuntimeError("qdrant-client is required to create a retrieval index.")
         try:
             return QdrantClient(path=str(qdrant_path))
         except RuntimeError as exc:

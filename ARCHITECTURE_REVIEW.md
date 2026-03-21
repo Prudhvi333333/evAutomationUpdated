@@ -1,11 +1,11 @@
 # Architecture Review
 
-This file reviews the proposed domain-specific RAG architecture and aligns it with the active codebase.
+This file reviews the domain-specific RAG architecture used in the active codebase and keeps the system description aligned with the current implementation.
 
 ## What To Keep
 
 - Explicit ingestion and validation
-- Schema-aware loading for domain files
+- Schema-aware loading for workbook data
 - Hybrid retrieval instead of vector-only search
 - A separate reranking stage
 - Context building before answer generation
@@ -17,7 +17,7 @@ This file reviews the proposed domain-specific RAG architecture and aligns it wi
 2. `SQL Query` should be renamed to `Metadata Filter Engine` unless you actually maintain a relational store.
 3. `User Query Decomposition` should happen before retrieval and feed all retrieval branches.
 4. `Reranker` should sit after candidate union from dense, lexical, and metadata retrieval.
-5. `RAGAS` should live in an offline evaluation lane, not in the online answer-generation lane.
+5. The offline evaluation lane should be labeled `Judge-Based Metrics + Retrieval Metrics`, not `RAGAS`, because the current code uses custom LLM-judge prompts rather than the `ragas` Python API.
 6. `Recall@K`, `MRR`, `latency`, and `correctness` are evaluation outputs, not part of the LLM box itself.
 7. `Send Optimal Context` should be renamed to `Context Builder`, because this stage is doing selection, trimming, and diversity control.
 
@@ -48,7 +48,7 @@ flowchart LR
 
     I --> L[Offline Evaluation Inputs]
     J --> L
-    L --> M[RAGAS + Retrieval Metrics + Latency]
+    L --> M[Judge-Based Metrics + Retrieval Metrics + Latency]
 ```
 
 ## How This Maps To The Code
@@ -59,16 +59,16 @@ flowchart LR
 - Prompt building: `src/ev_llm_compare/prompts.py`
 - Model execution: `src/ev_llm_compare/models.py`
 - Orchestration: `src/ev_llm_compare/runner.py`
-- RAGAS and export: `src/ev_llm_compare/evaluation.py`
+- Reference generation, evaluation metrics, and export: `src/ev_llm_compare/evaluation.py`
 
-## Current Status After The Fixes
+## Current Status
 
 - Metadata-aware routing exists.
 - Hybrid retrieval exists.
 - Cross-encoder reranking exists with graceful fallback.
-- Context building now limits duplicate-company chunks.
+- Context building limits duplicate-company chunks.
 - Structured summaries are capped so prompts do not explode.
-- RAGAS is more fault-tolerant and exports a dedicated metrics workbook.
+- Offline evaluation exports a dedicated metrics workbook and per-question metrics sheet.
 
 ## Remaining Upgrade Path
 

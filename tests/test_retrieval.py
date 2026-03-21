@@ -38,7 +38,7 @@ class RetrievalTests(unittest.TestCase):
         self.assertEqual(plan.matched_categories, ["Tier 1"])
         self.assertEqual(plan.matched_role_terms, ["battery pack"])
 
-    def test_structured_summary_expands_exhaustive_group_queries(self) -> None:
+    def test_structured_summary_prefers_grouped_output_for_exhaustive_role_queries(self) -> None:
         retriever = HybridRetriever.__new__(HybridRetriever)
         retriever.settings = RetrievalSettings(structured_summary_limit=2)
         query_plan = HybridRetriever._plan_query(
@@ -88,9 +88,8 @@ class RetrievalTests(unittest.TestCase):
         ]
 
         summary = HybridRetriever._build_structured_summary(retriever, query_plan, matched_rows)
-        self.assertIn("Matching rows:", summary)
-        self.assertIn("Company: A | EV Supply Chain Role: Battery Pack", summary)
-        self.assertIn("Company: C | EV Supply Chain Role: Battery Pack", summary)
+        self.assertIn("Grouped by EV Supply Chain Role:", summary)
+        self.assertIn("- Battery Pack: A; B; C", summary)
 
     def _seed_retriever_for_summary(self, retriever: HybridRetriever) -> HybridRetriever:
         retriever.known_categories = ["Tier 1"]

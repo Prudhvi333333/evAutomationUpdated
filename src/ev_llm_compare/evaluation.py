@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+import json
 import os
 from pathlib import Path
 import re
@@ -29,6 +30,315 @@ Do not add explanation, JSON, markdown, or extra text."""
 LLM_JUDGE_PACKET_SYSTEM_PROMPT = """You are a strict evaluation judge for workbook question answering.
 Return only the requested metric lines with no explanation, JSON, markdown, or extra text.
 Use continuous scores from 0.00 to 1.00 with exactly two decimal places."""
+LLM_ATTRIBUTION_SYSTEM_PROMPT = """You are performing claim-level provenance attribution for workbook question answering.
+Return only valid JSON.
+Do not add markdown, explanation, or prose before or after the JSON."""
+
+ATTRIBUTION_BATCH_SIZE = 24
+
+
+def _split_text_blocks(text: str) -> list[str]:
+    blocks: list[str] = []
+    current: list[str] = []
+    for line in text.replace("\r\n", "\n").split("\n"):
+        if line.strip():
+            current.append(line.rstrip())
+            continue
+        if current:
+            blocks.append("\n".join(current).strip())
+            current = []
+    if current:
+        blocks.append("\n".join(current).strip())
+    return blocks
+
+
+def _is_list_like_line(line: str) -> bool:
+    stripped = line.lstrip()
+    if not stripped:
+        return False
+    if stripped.startswith(("-", "*", "•")):
+        return True
+    if stripped[:1].isdigit():
+        return True
+    return False
+
+
+def _sentence_units(text: str) -> list[str]:
+    if not text.strip():
+        return []
+
+    abbreviations = {
+        "co",
+        "corp",
+        "inc",
+        "llc",
+        "ltd",
+        "mr",
+        "mrs",
+        "ms",
+        "dr",
+        "st",
+        "vs",
+        "etc",
+    }
+    units: list[str] = []
+    current: list[str] = []
+    length = len(text)
+
+    for index, char in enumerate(text):
+        current.append(char)
+        if char not in {".", "!", "?", ";"}:
+            continue
+
+        segment = "".join(current).strip()
+        if not segment:
+            current = []
+            continue
+
+        if char == ".":
+            tail = segment.rstrip(".").split()[-1].lower() if segment.rstrip(".").split() else ""
+            if tail in abbreviations:
+                continue
+
+        next_non_space = ""
+        cursor = index + 1
+        while cursor < length:
+            candidate = text[cursor]
+            if not candidate.isspace():
+                next_non_space = candidate
+                break
+            cursor += 1
+        if next_non_space and next_non_space.islower():
+            continue
+
+        units.append(segment)
+        current = []
+
+    trailing = "".join(current).strip()
+    if trailing:
+        units.append(trailing)
+    return units
+
+
+def _segment_response_units(answer: str) -> list[str]:
+    text = (answer or "").replace("\r\n", "\n").strip()
+    if not text:
+        return []
+
+    units: list[str] = []
+    for block in _split_text_blocks(text):
+        lines = [line.strip() for line in block.split("\n") if line.strip()]
+        if not lines:
+            continue
+        if len(lines) > 1 and sum(1 for line in lines if _is_list_like_line(line)) >= max(1, len(lines) // 2):
+            units.extend(lines)
+            continue
+        if len(lines) > 1 and all(len(line) <= 140 for line in lines):
+            units.extend(lines)
+            continue
+        units.extend(_sentence_units(" ".join(lines)))
+    return [unit for unit in units if unit.strip()]
+
+
+def _build_attribution_prompt(
+    question: str,
+    retrieved_contexts: list[str],
+    unit_batch: list[tuple[int, str]],
+) -> str:
+    context = "\n\n".join(retrieved_contexts) if retrieved_contexts else "No retrieved evidence."
+    units_text = "\n".join(f"{unit_id}. {text}" for unit_id, text in unit_batch)
+    return (
+        "Task: attribute each response unit to one provenance label.\n"
+        "Labels:\n"
+        "- knowledge_source: the unit is directly supported by the retrieved workbook evidence.\n"
+        "- pretrained: the unit depends on general model knowledge, unsupported synthesis, filler, or anything not directly grounded in the retrieved evidence.\n"
+        "Rules:\n"
+        "- Use only the two labels above.\n"
+        "- If a unit mixes supported and unsupported material, label it pretrained.\n"
+        "- If you are uncertain, label it pretrained.\n"
+        "- Preserve the unit ids exactly.\n\n"
+        f"Question:\n{question}\n\n"
+        f"Retrieved evidence:\n{context}\n\n"
+        f"Response units:\n{units_text}\n\n"
+        "Return JSON in exactly this shape:\n"
+        '{"labels":[{"unit_id":1,"label":"knowledge_source"}]}'
+    )
+
+
+def _extract_json_payload(raw_text: str) -> Any | None:
+    if not raw_text:
+        return None
+    try:
+        return json.loads(raw_text)
+    except json.JSONDecodeError:
+        pass
+
+    start_positions = [
+        index for index, char in enumerate(raw_text) if char in {"{", "["}
+    ]
+    for start in start_positions:
+        stack: list[str] = []
+        in_string = False
+        escape = False
+        for end in range(start, len(raw_text)):
+            char = raw_text[end]
+            if in_string:
+                if escape:
+                    escape = False
+                elif char == "\\":
+                    escape = True
+                elif char == '"':
+                    in_string = False
+                continue
+            if char == '"':
+                in_string = True
+                continue
+            if char in {"{", "["}:
+                stack.append("}" if char == "{" else "]")
+                continue
+            if char in {"}", "]"}:
+                if not stack or char != stack[-1]:
+                    break
+                stack.pop()
+                if not stack:
+                    candidate = raw_text[start : end + 1]
+                    try:
+                        return json.loads(candidate)
+                    except json.JSONDecodeError:
+                        break
+    return None
+
+
+def _parse_attribution_labels(raw_text: str) -> dict[int, str] | None:
+    payload = _extract_json_payload(raw_text)
+    if not isinstance(payload, dict):
+        return None
+    labels = payload.get("labels")
+    if not isinstance(labels, list):
+        return None
+
+    parsed: dict[int, str] = {}
+    for item in labels:
+        if not isinstance(item, dict):
+            return None
+        unit_id = item.get("unit_id")
+        label = str(item.get("label", "")).strip().lower()
+        if not isinstance(unit_id, int):
+            return None
+        if label not in {"knowledge_source", "pretrained"}:
+            return None
+        parsed[unit_id] = label
+    return parsed
+
+
+def _llm_judge_attribution(
+    judge_client: LLMClient,
+    prompt: str,
+    retries: int = 2,
+) -> dict[int, str] | None:
+    for _ in range(max(1, retries + 1)):
+        answer, _, success, _ = safe_generate(
+            judge_client,
+            prompt,
+            temperature=0.0,
+            max_tokens=1200,
+            system_prompt=LLM_ATTRIBUTION_SYSTEM_PROMPT,
+        )
+        if not success:
+            continue
+        parsed = _parse_attribution_labels(answer)
+        if parsed is not None:
+            return parsed
+    return None
+
+
+def attribute_response_sources(
+    response: ModelResponse,
+    judge_client: LLMClient | None,
+    context_result_limit: int = 4,
+    context_char_budget: int = 2600,
+    compact_context: bool = True,
+    max_retries: int = 2,
+) -> dict[str, Any]:
+    overall_response = response.answer or ""
+    if not overall_response.strip():
+        return {
+            "overall_response": overall_response,
+            "knowledge_source_data": "",
+            "pretrained_data": "",
+            "attribution_units": [],
+        }
+
+    # No external knowledge source was available to the model, so the whole answer is treated as pretrained/general.
+    if not response.rag_enabled or not response.retrieved_chunks or judge_client is None:
+        return {
+            "overall_response": overall_response,
+            "knowledge_source_data": "",
+            "pretrained_data": overall_response,
+            "attribution_units": [
+                {"unit_id": 1, "unit_text": overall_response, "label": "pretrained"}
+            ],
+        }
+
+    units = _segment_response_units(overall_response)
+    if not units:
+        units = [overall_response]
+
+    retrieved_contexts = (
+        compact_context_segments(
+            response.question,
+            response.retrieved_chunks,
+            max_results=context_result_limit,
+            max_chars=context_char_budget,
+        )
+        if compact_context
+        else [chunk.text for chunk in response.retrieved_chunks]
+    )
+
+    labels_by_id: dict[int, str] = {}
+    indexed_units = list(enumerate(units, start=1))
+    for start in range(0, len(indexed_units), ATTRIBUTION_BATCH_SIZE):
+        batch = indexed_units[start : start + ATTRIBUTION_BATCH_SIZE]
+        prompt = _build_attribution_prompt(
+            question=response.question,
+            retrieved_contexts=retrieved_contexts,
+            unit_batch=batch,
+        )
+        parsed = _llm_judge_attribution(
+            judge_client,
+            prompt,
+            retries=max_retries,
+        )
+        batch_ids = {unit_id for unit_id, _ in batch}
+        if parsed is None or not batch_ids.issubset(parsed):
+            for unit_id in batch_ids:
+                labels_by_id[unit_id] = "pretrained"
+            continue
+        labels_by_id.update({unit_id: parsed[unit_id] for unit_id in batch_ids})
+
+    knowledge_units: list[str] = []
+    pretrained_units: list[str] = []
+    attribution_units: list[dict[str, Any]] = []
+    for unit_id, unit_text in indexed_units:
+        label = labels_by_id.get(unit_id, "pretrained")
+        attribution_units.append(
+            {
+                "unit_id": unit_id,
+                "unit_text": unit_text,
+                "label": label,
+            }
+        )
+        if label == "knowledge_source":
+            knowledge_units.append(unit_text)
+        else:
+            pretrained_units.append(unit_text)
+
+    return {
+        "overall_response": overall_response,
+        "knowledge_source_data": "\n".join(knowledge_units).strip(),
+        "pretrained_data": "\n".join(pretrained_units).strip(),
+        "attribution_units": attribution_units,
+    }
 
 
 def build_reference_answers(
@@ -204,17 +514,62 @@ def _llm_judge_grounding_packet(
     return None
 
 
-def run_ragas(
+def _score_response_metrics(
+    response: ModelResponse,
+    reference_answers: dict[str, str],
+    judge_client: LLMClient,
+    max_retries: int,
+    context_result_limit: int,
+    context_char_budget: int,
+    compact_context: bool,
+) -> dict[str, Any]:
+    record = {
+        "run_name": response.run_name,
+        "question": response.question,
+        **{metric_name: None for metric_name in REPORT_METRIC_NAMES},
+    }
+    reference_answer = reference_answers.get(response.question, "")
+    if response.success and reference_answer:
+        record["answer_accuracy"] = _llm_judge_metric(
+            judge_client,
+            _llm_judge_prompt_answer_accuracy(
+                response.question,
+                response.answer,
+                reference_answer,
+            ),
+            retries=max_retries,
+        )
+    if response.success and response.rag_enabled and response.retrieved_chunks:
+        retrieved_contexts = (
+            compact_context_segments(
+                response.question,
+                response.retrieved_chunks,
+                max_results=context_result_limit,
+                max_chars=context_char_budget,
+            )
+            if compact_context
+            else [chunk.text for chunk in response.retrieved_chunks]
+        )
+        grounding_packet = _llm_judge_grounding_packet(
+            judge_client,
+            _llm_judge_prompt_grounding_packet(
+                response.question,
+                response.answer,
+                retrieved_contexts,
+            ),
+            retries=max_retries,
+        )
+        if grounding_packet is not None:
+            record.update(grounding_packet)
+    return record
+
+
+def run_evaluation_metrics(
     responses: list[ModelResponse],
     reference_answers: dict[str, str],
     judge_provider: str,
     judge_model: str,
-    embedding_provider: str,
-    embedding_model: str,
-    timeout: int = 600,
     max_retries: int = 2,
-    max_wait: int = 60,
-    max_workers: int = 1,
     context_result_limit: int = 4,
     context_char_budget: int = 2600,
     compact_context: bool = True,
@@ -223,46 +578,15 @@ def run_ragas(
 
     record_lookup: dict[tuple[str, str], dict[str, Any]] = {}
     for response in responses:
-        base_record = {
-            "run_name": response.run_name,
-            "question": response.question,
-            **{metric_name: None for metric_name in REPORT_METRIC_NAMES},
-        }
-        reference_answer = reference_answers.get(response.question, "")
-        if response.success:
-            if reference_answer:
-                base_record["answer_accuracy"] = _llm_judge_metric(
-                    judge_client,
-                    _llm_judge_prompt_answer_accuracy(
-                        response.question,
-                        response.answer,
-                        reference_answer,
-                    ),
-                )
-        if response.success and response.rag_enabled and response.retrieved_chunks:
-            retrieved_contexts = (
-                compact_context_segments(
-                    response.question,
-                    response.retrieved_chunks,
-                    max_results=context_result_limit,
-                    max_chars=context_char_budget,
-                )
-                if compact_context
-                else [chunk.text for chunk in response.retrieved_chunks]
-            )
-            grounding_packet = _llm_judge_grounding_packet(
-                judge_client,
-                _llm_judge_prompt_grounding_packet(
-                    response.question,
-                    response.answer,
-                    retrieved_contexts,
-                ),
-            )
-            if grounding_packet is not None:
-                base_record.update(grounding_packet)
-        record_lookup[(response.run_name, response.question)] = {
-            **base_record,
-        }
+        record_lookup[(response.run_name, response.question)] = _score_response_metrics(
+            response=response,
+            reference_answers=reference_answers,
+            judge_client=judge_client,
+            max_retries=max_retries,
+            context_result_limit=context_result_limit,
+            context_char_budget=context_char_budget,
+            compact_context=compact_context,
+        )
 
     per_run_records = [
         record_lookup[(response.run_name, response.question)]
@@ -290,11 +614,20 @@ def export_results(
     retrievals: dict[str, list[Any]],
     references: dict[str, str],
     reference_sources: dict[str, str],
-    ragas_per_run: pd.DataFrame | None,
-    ragas_summary: pd.DataFrame | None,
+    metrics_per_run: pd.DataFrame | None = None,
+    metrics_summary: pd.DataFrame | None = None,
     filename_prefix: str = "comparison_report",
     single_sheet_only: bool = False,
+    **legacy_kwargs: Any,
 ) -> Path:
+    if "ragas_per_run" in legacy_kwargs and metrics_per_run is None:
+        metrics_per_run = legacy_kwargs.pop("ragas_per_run")
+    if "ragas_summary" in legacy_kwargs and metrics_summary is None:
+        metrics_summary = legacy_kwargs.pop("ragas_summary")
+    if legacy_kwargs:
+        unknown = ", ".join(sorted(legacy_kwargs))
+        raise TypeError(f"Unexpected keyword argument(s): {unknown}")
+
     output_dir.mkdir(parents=True, exist_ok=True)
     timestamp = pd.Timestamp.utcnow().strftime("%Y%m%d_%H%M%S")
     workbook_path = output_dir / f"{filename_prefix}_{timestamp}.xlsx"
@@ -335,8 +668,8 @@ def export_results(
                 }
             )
 
-    comparison_df = _build_comparison_sheet(response_rows, ragas_per_run)
-    single_sheet_df = _build_single_sheet_report(response_rows, ragas_per_run)
+    comparison_df = _build_comparison_sheet(response_rows, metrics_per_run)
+    single_sheet_df = _build_single_sheet_report(response_rows, metrics_per_run)
 
     with pd.ExcelWriter(workbook_path, engine="openpyxl") as writer:
         single_sheet_df.to_excel(writer, sheet_name="all_in_one", index=False)
@@ -354,31 +687,130 @@ def export_results(
                     for question, answer in references.items()
                 ]
             ).to_excel(writer, sheet_name="references", index=False)
-            if ragas_per_run is not None:
-                ragas_per_run.to_excel(writer, sheet_name="metrics_per_question", index=False)
-            if ragas_summary is not None:
-                ragas_summary.to_excel(writer, sheet_name="metrics_summary", index=False)
+            if metrics_per_run is not None:
+                metrics_per_run.to_excel(writer, sheet_name="metrics_per_question", index=False)
+            if metrics_summary is not None:
+                metrics_summary.to_excel(writer, sheet_name="metrics_summary", index=False)
 
     return workbook_path
 
 
 def export_metrics_workbook(
     output_dir: Path,
-    ragas_per_run: pd.DataFrame | None,
-    ragas_summary: pd.DataFrame | None,
+    metrics_per_run: pd.DataFrame | None = None,
+    metrics_summary: pd.DataFrame | None = None,
     filename_prefix: str = "metrics_report",
+    **legacy_kwargs: Any,
 ) -> Path | None:
-    if ragas_per_run is None and ragas_summary is None:
+    if "ragas_per_run" in legacy_kwargs and metrics_per_run is None:
+        metrics_per_run = legacy_kwargs.pop("ragas_per_run")
+    if "ragas_summary" in legacy_kwargs and metrics_summary is None:
+        metrics_summary = legacy_kwargs.pop("ragas_summary")
+    if legacy_kwargs:
+        unknown = ", ".join(sorted(legacy_kwargs))
+        raise TypeError(f"Unexpected keyword argument(s): {unknown}")
+
+    if metrics_per_run is None and metrics_summary is None:
         return None
 
     output_dir.mkdir(parents=True, exist_ok=True)
     timestamp = pd.Timestamp.utcnow().strftime("%Y%m%d_%H%M%S")
     workbook_path = output_dir / f"{filename_prefix}_{timestamp}.xlsx"
     with pd.ExcelWriter(workbook_path, engine="openpyxl") as writer:
-        if ragas_per_run is not None:
-            ragas_per_run.to_excel(writer, sheet_name="metrics_per_question", index=False)
-        if ragas_summary is not None:
-            ragas_summary.to_excel(writer, sheet_name="metrics_summary", index=False)
+        if metrics_per_run is not None:
+            metrics_per_run.to_excel(writer, sheet_name="metrics_per_question", index=False)
+        if metrics_summary is not None:
+            metrics_summary.to_excel(writer, sheet_name="metrics_summary", index=False)
+    return workbook_path
+
+
+def export_single_model_report(
+    output_dir: Path,
+    responses: list[ModelResponse],
+    references: dict[str, str],
+    reference_sources: dict[str, str],
+    judge_provider: str,
+    judge_model: str,
+    max_retries: int = 2,
+    context_result_limit: int = 4,
+    context_char_budget: int = 2600,
+    compact_context: bool = True,
+    metrics_per_run: pd.DataFrame | None = None,
+    filename_prefix: str | None = None,
+) -> Path:
+    if not responses:
+        raise ValueError("Cannot export a single-model report with no responses.")
+
+    run_names = sorted({response.run_name for response in responses})
+    if len(run_names) != 1:
+        joined = ", ".join(run_names)
+        raise ValueError(
+            "Single-model report requires exactly one run. "
+            f"Received: {joined}"
+        )
+
+    run_name = run_names[0]
+    judge_client = None
+    if any(response.rag_enabled and response.retrieved_chunks for response in responses):
+        judge_client = _make_judge_client(judge_provider, judge_model)
+
+    metric_lookup = _metric_lookup(metrics_per_run)
+    report_rows: list[dict[str, Any]] = []
+    attribution_rows: list[dict[str, Any]] = []
+    for response in responses:
+        attribution = attribute_response_sources(
+            response,
+            judge_client=judge_client,
+            context_result_limit=context_result_limit,
+            context_char_budget=context_char_budget,
+            compact_context=compact_context,
+            max_retries=max_retries,
+        )
+        metrics = metric_lookup.get((response.question, response.run_name), {})
+        report_row: dict[str, Any] = {
+            "Question": response.question,
+            "reference_answer": references.get(response.question, ""),
+            "reference_source": reference_sources.get(response.question, ""),
+            "overall_response": attribution["overall_response"],
+            "knowledge_source_data": attribution["knowledge_source_data"],
+            "pretrained_data": attribution["pretrained_data"],
+        }
+        for metric_name in REPORT_METRIC_NAMES:
+            report_row[metric_name] = metrics.get(metric_name)
+        report_rows.append(report_row)
+
+        for unit in attribution["attribution_units"]:
+            attribution_rows.append(
+                {
+                    "question": response.question,
+                    "run_name": response.run_name,
+                    "unit_id": unit["unit_id"],
+                    "label": unit["label"],
+                    "unit_text": unit["unit_text"],
+                }
+            )
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    timestamp = pd.Timestamp.utcnow().strftime("%Y%m%d_%H%M%S")
+    prefix = filename_prefix or f"{run_name}_single_model_report"
+    workbook_path = output_dir / f"{prefix}_{timestamp}.xlsx"
+
+    with pd.ExcelWriter(workbook_path, engine="openpyxl") as writer:
+        pd.DataFrame(report_rows).to_excel(writer, sheet_name="report", index=False)
+        pd.DataFrame(attribution_rows).to_excel(
+            writer,
+            sheet_name="attribution_units",
+            index=False,
+        )
+        if metrics_per_run is not None:
+            metrics_per_run.to_excel(writer, sheet_name="metrics_per_question", index=False)
+            summary_df = (
+                metrics_per_run.groupby("run_name", dropna=False)
+                .agg({metric_name: "mean" for metric_name in REPORT_METRIC_NAMES})
+                .reset_index()
+            )
+            summary_df.to_excel(writer, sheet_name="metrics_summary", index=False)
+
     return workbook_path
 
 
@@ -387,13 +819,22 @@ def export_response_sets(
     responses: list[ModelResponse],
     references: dict[str, str],
     reference_sources: dict[str, str],
-    ragas_per_run: pd.DataFrame | None = None,
-    ragas_summary: pd.DataFrame | None = None,
+    metrics_per_run: pd.DataFrame | None = None,
+    metrics_summary: pd.DataFrame | None = None,
+    **legacy_kwargs: Any,
 ) -> Path:
+    if "ragas_per_run" in legacy_kwargs and metrics_per_run is None:
+        metrics_per_run = legacy_kwargs.pop("ragas_per_run")
+    if "ragas_summary" in legacy_kwargs and metrics_summary is None:
+        metrics_summary = legacy_kwargs.pop("ragas_summary")
+    if legacy_kwargs:
+        unknown = ", ".join(sorted(legacy_kwargs))
+        raise TypeError(f"Unexpected keyword argument(s): {unknown}")
+
     output_dir.mkdir(parents=True, exist_ok=True)
     run_dir = output_dir
 
-    metric_lookup = _metric_lookup(ragas_per_run)
+    metric_lookup = _metric_lookup(metrics_per_run)
     all_rows: list[dict[str, Any]] = []
     grouped: defaultdict[str, list[ModelResponse]] = defaultdict(list)
     for response in responses:
@@ -416,15 +857,15 @@ def export_response_sets(
         )
 
     pd.DataFrame(all_rows).to_csv(run_dir / "all_runs_responses.csv", index=False)
-    single_sheet_df = _build_single_sheet_report(all_rows, ragas_per_run)
+    single_sheet_df = _build_single_sheet_report(all_rows, metrics_per_run)
     with pd.ExcelWriter(run_dir / "all_runs_single_sheet.xlsx", engine="openpyxl") as writer:
         single_sheet_df.to_excel(writer, sheet_name="all_in_one", index=False)
-    if ragas_per_run is not None or ragas_summary is not None:
+    if metrics_per_run is not None or metrics_summary is not None:
         with pd.ExcelWriter(run_dir / "all_runs_metrics.xlsx", engine="openpyxl") as writer:
-            if ragas_per_run is not None:
-                ragas_per_run.to_excel(writer, sheet_name="metrics_per_question", index=False)
-            if ragas_summary is not None:
-                ragas_summary.to_excel(writer, sheet_name="metrics_summary", index=False)
+            if metrics_per_run is not None:
+                metrics_per_run.to_excel(writer, sheet_name="metrics_per_question", index=False)
+            if metrics_summary is not None:
+                metrics_summary.to_excel(writer, sheet_name="metrics_summary", index=False)
 
     for run_name, run_responses in grouped.items():
         rows = [
@@ -463,13 +904,13 @@ def export_response_sets(
 
 
 def _metric_lookup(
-    ragas_per_run: pd.DataFrame | None,
+    metrics_per_run: pd.DataFrame | None,
 ) -> dict[tuple[str, str], dict[str, Any]]:
-    if ragas_per_run is None or ragas_per_run.empty:
+    if metrics_per_run is None or metrics_per_run.empty:
         return {}
     return {
         (row["question"], row["run_name"]): row
-        for row in ragas_per_run.to_dict(orient="records")
+        for row in metrics_per_run.to_dict(orient="records")
     }
 
 
@@ -483,7 +924,7 @@ def _response_metrics(
 
 def _build_comparison_sheet(
     response_rows: list[dict[str, Any]],
-    ragas_per_run: pd.DataFrame | None,
+    metrics_per_run: pd.DataFrame | None,
 ) -> pd.DataFrame:
     question_order = list(dict.fromkeys(row["question"] for row in response_rows))
     run_order = list(dict.fromkeys(row["run_name"] for row in response_rows))
@@ -495,8 +936,8 @@ def _build_comparison_sheet(
 
     metric_names: list[str] = list(REPORT_METRIC_NAMES)
     metric_lookup: dict[tuple[str, str], dict[str, Any]] = {}
-    if ragas_per_run is not None and not ragas_per_run.empty:
-        metric_lookup = _metric_lookup(ragas_per_run)
+    if metrics_per_run is not None and not metrics_per_run.empty:
+        metric_lookup = _metric_lookup(metrics_per_run)
 
     comparison_rows: list[dict[str, Any]] = []
     for question in question_order:
@@ -534,7 +975,7 @@ def _build_comparison_sheet(
 
 def _build_single_sheet_report(
     response_rows: list[dict[str, Any]],
-    ragas_per_run: pd.DataFrame | None,
+    metrics_per_run: pd.DataFrame | None,
 ) -> pd.DataFrame:
     question_order = list(dict.fromkeys(row["question"] for row in response_rows))
     run_order = list(dict.fromkeys(row["run_name"] for row in response_rows))
@@ -546,8 +987,8 @@ def _build_single_sheet_report(
 
     metric_names: list[str] = list(REPORT_METRIC_NAMES)
     metric_lookup: dict[tuple[str, str], dict[str, Any]] = {}
-    if ragas_per_run is not None and not ragas_per_run.empty:
-        metric_lookup = _metric_lookup(ragas_per_run)
+    if metrics_per_run is not None and not metrics_per_run.empty:
+        metric_lookup = _metric_lookup(metrics_per_run)
 
     rows: list[dict[str, Any]] = []
     for question in question_order:
@@ -574,3 +1015,6 @@ def _build_single_sheet_report(
         for metric_name in metric_names:
             ordered_columns.append(f"{run_name}_{metric_name}")
     return pd.DataFrame(rows, columns=ordered_columns)
+
+
+run_ragas = run_evaluation_metrics

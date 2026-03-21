@@ -1,6 +1,8 @@
 # EV LLM Comparison Pipeline
 
-This repository is organized around one production use case: compare multiple LLMs on Excel-based EV supply-chain questions, with and without RAG, and export evaluation workbooks with responses, retrieval evidence, reference answers, and RAGAS scores.
+This repository compares multiple LLMs on Excel-based EV supply-chain questions, with and without RAG, then exports workbooks containing responses, retrieval evidence, reference answers, and evaluation metrics.
+
+The active application code lives in `src/ev_llm_compare/`. For a code-oriented walkthrough of the modules and runtime flow, see `CODEBASE_OVERVIEW.md`.
 
 ## Supported runs
 
@@ -11,23 +13,30 @@ This repository is organized around one production use case: compare multiple LL
 - Gemini 2.5 Flash with RAG
 - Gemini 2.5 Flash without RAG
 
-## What changed
+## Repo shape
 
-- Replaced the generic document-QA prototype with an Excel-first pipeline under `src/ev_llm_compare/`
-- Added structured row-aware chunking plus hybrid dense + lexical retrieval
-- Added query planning, structured metadata routing, reranking, and safer context selection
-- Added a single CLI entrypoint for repeatable comparisons on changing workbooks
-- Added golden-answer loading with fallback reference generation for missing questions
-- Batched RAGAS scoring with `answer_accuracy`, `faithfulness`, and `response_groundedness`
-
-## Project layout
-
-- `src/ev_llm_compare/`: active production code
+- `src/ev_llm_compare/`: production code
+- `tests/`: unit tests for loader, retrieval, settings, and exports
 - `artifacts/qdrant/`: local vector index storage
-- `artifacts/results/`: generated comparison workbooks
+- `artifacts/results/`: generated comparison workbooks and response exports
+- `GNEM updated excel (1).xlsx`: checked-in source workbook
+- `Sample questions.xlsx`: checked-in workbook with 100 questions
+- `artifacts/Golden_answers.xlsx`: checked-in workbook with 100 golden answers
+- `Grouped_use_cases_for_Sample 100 questions.xlsx`: reference grouping of the 100 sample questions
 - `main.py`: CLI entrypoint
 
 ## Setup
+
+Using `pip`:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+pip install -e .
+```
+
+Using `uv`:
 
 ```bash
 uv sync
@@ -39,23 +48,26 @@ Environment variables:
 ```bash
 export GEMINI_API_KEY=your_key_here
 export OLLAMA_BASE_URL=http://localhost:11434
-export QWEN_MODEL=qwen2.5:14b
+export QWEN_MODEL=qwen3:8b
 export GEMMA_MODEL=gemma3:12b
-export RAGAS_JUDGE_PROVIDER=ollama
-export RAGAS_JUDGE_MODEL=llama3.1:8b
-export RAGAS_EMBEDDING_PROVIDER=huggingface
-export RAGAS_EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
+export EVALUATION_JUDGE_PROVIDER=ollama
+export EVALUATION_JUDGE_MODEL=mistral-small3.2:24b
+export EVALUATION_MAX_RETRIES=2
 ```
 
-Make sure the local Ollama models are pulled:
+Legacy `RAGAS_*` environment variables are still accepted as compatibility aliases, but the evaluation layer is now documented as judge-based metrics because it does not call the `ragas` Python API directly.
+
+Make sure the local Ollama models are pulled if you are using Ollama-backed runs:
 
 ```bash
-ollama pull qwen2.5:14b
+ollama pull qwen3:8b
 ollama pull gemma3:12b
-ollama pull llama3.1:8b
+ollama pull mistral-small3.2:24b
 ```
 
 ## Run
+
+Default run:
 
 ```bash
 python main.py \
@@ -63,7 +75,7 @@ python main.py \
   --question-workbook "Sample questions.xlsx"
 ```
 
-To compare the first 10 questions with a single-sheet output that includes each model response plus three metric columns per model:
+Example: compare the first 10 questions with a single-sheet report:
 
 ```bash
 python main.py \
@@ -82,6 +94,26 @@ python main.py \
   --no-response-exports
 ```
 
+Example: generate a dedicated single-model workbook with per-question metrics plus `overall_response`, `knowledge_source_data`, and `pretrained_data`:
+
+```bash
+python main.py \
+  --data-workbook "GNEM updated excel (1).xlsx" \
+  --question-workbook "Sample questions.xlsx" \
+  --run-name qwen_rag \
+  --golden-workbook "artifacts/Golden_answers.xlsx" \
+  --output-dir "artifacts/results/qwen_single_model" \
+  --single-model-report
+```
+
+To skip evaluation while validating model access:
+
+```bash
+python main.py --skip-evaluation
+```
+
+`--skip-ragas` is still accepted as a hidden compatibility alias.
+
 Optional runtime overrides:
 
 ```bash
@@ -89,63 +121,72 @@ export MODEL_MAX_TOKENS=1600
 export MODEL_TEMPERATURE=0.1
 ```
 
-To skip RAGAS while validating model access:
+## Retrieval and chunking
 
-```bash
-python main.py --skip-ragas
-```
-
-## Retrieval and chunking strategy
-
-- Every tabular Excel row becomes multiple chunk views:
-  - full row snapshot
-  - company profile
-  - identity theme
-  - location theme
-  - supply-chain theme
-  - product theme
-- Single-column sheets such as methodology or definitions are indexed as note/reference chunks.
-- Retrieval uses:
+- Every tabular row is expanded into multiple chunk views:
+  - `row_full`
+  - `company_profile`
+  - `identity_theme`
+  - `location_theme`
+  - `supply_chain_theme`
+  - `product_theme`
+- Single-column sheets such as methodology or definitions are indexed as `note_reference` chunks.
+- Retrieval combines:
   - query planning and metadata-aware routing
   - sentence-transformer dense search
   - lexical overlap scoring
   - reciprocal-rank fusion
-  - cross-encoder reranking when enabled
-- Exact entity mentions such as company names receive metadata boosts to improve precision.
-- Context selection caps duplicate companies and trims oversized structured summaries.
+  - optional cross-encoder reranking
+- Exact metadata matches can produce structured summaries before prompt generation.
+- Context selection caps duplicate companies and trims oversized structured outputs.
 
 ## Outputs
 
 The default full workbook writes these sheets in `artifacts/results/`:
 
-- `responses`
 - `all_in_one`
+- `responses`
+- `responses_raw`
 - `retrieval`
 - `references`
-- `ragas_per_question`
-- `ragas_summary`
+- `metrics_per_question`
+- `metrics_summary`
 
 If you pass `--single-sheet-only`, the output workbook contains only `all_in_one`.
+
 That sheet includes:
 
 - `Question`
 - `reference_answer`
 - `reference_source`
 - one response column per model
-- three metric columns per model: `answer_accuracy`, `faithfulness`, `response_groundedness`
+- six metric columns per model:
+  - `answer_accuracy`
+  - `faithfulness`
+  - `response_groundedness`
+  - `grounded_claim_ratio`
+  - `unsupported_claim_ratio`
+  - `contradicted_claim_ratio`
 
 Per-run response exports are written to `artifacts/correct_responses/` by default:
 
 - `all_runs_responses.csv`
 - `all_runs_metrics.xlsx`
+- `all_runs_single_sheet.xlsx`
 - `<run_name>_responses.csv`
 - `<run_name>_responses.md`
+
+When `--single-model-report` is used with exactly one run, an additional workbook is written to the output directory with:
+
+- `report`
+- `attribution_units`
+- `metrics_per_question`
+- `metrics_summary`
 
 ## Notes
 
 - The pipeline is workbook-driven, so you can point it at updated Excel files without changing code.
-- RAGAS requires the configured judge model and embedding backend to be available.
 - If `artifacts/Golden_answers.xlsx` exists, it is used automatically for `answer_accuracy`.
 - Any question missing from the golden workbook falls back to generated reference answers.
-- Non-RAG runs only receive `answer_accuracy`; context-grounded RAG metrics are reserved for RAG runs.
-- The checked-in `Sample questions.xlsx` currently contains 1 question. Use a workbook with 20 rows in the question column when you are ready to run the 20-question comparison.
+- Non-RAG runs only receive `answer_accuracy`; grounding metrics are reserved for RAG runs with retrieved context.
+- The checked-in sample assets are aligned: the source workbook, 100-question workbook, and 100-answer golden workbook are all ready for local comparisons.

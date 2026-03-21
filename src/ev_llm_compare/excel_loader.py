@@ -25,50 +25,50 @@ def _is_tabular_sheet(df: pd.DataFrame) -> bool:
 
 def load_workbook(workbook_path: str | Path) -> tuple[list[TableRow], list[WorkbookNote]]:
     path = Path(workbook_path).expanduser().resolve()
-    excel_file = pd.ExcelFile(path)
     rows: list[TableRow] = []
     notes: list[WorkbookNote] = []
 
-    for sheet_name in excel_file.sheet_names:
-        df = pd.read_excel(path, sheet_name=sheet_name)
-        df = df.dropna(how="all").dropna(axis=1, how="all")
-        if df.empty:
-            continue
+    with pd.ExcelFile(path) as excel_file:
+        for sheet_name in excel_file.sheet_names:
+            df = pd.read_excel(excel_file, sheet_name=sheet_name)
+            df = df.dropna(how="all").dropna(axis=1, how="all")
+            if df.empty:
+                continue
 
-        cleaned_columns = [normalize_cell(column) for column in df.columns]
-        df.columns = cleaned_columns
+            cleaned_columns = [normalize_cell(column) for column in df.columns]
+            df.columns = cleaned_columns
 
-        if _is_tabular_sheet(df):
-            for row_idx, (_, series) in enumerate(df.iterrows(), start=1):
-                values = {
-                    column: normalize_cell(value)
-                    for column, value in series.to_dict().items()
-                    if normalize_cell(value)
-                }
-                if values:
-                    rows.append(
-                        TableRow(
+            if _is_tabular_sheet(df):
+                for row_idx, (_, series) in enumerate(df.iterrows(), start=1):
+                    values = {
+                        column: normalize_cell(value)
+                        for column, value in series.to_dict().items()
+                        if normalize_cell(value)
+                    }
+                    if values:
+                        rows.append(
+                            TableRow(
+                                workbook_path=path,
+                                sheet_name=sheet_name,
+                                row_number=row_idx,
+                                values=values,
+                            )
+                        )
+            else:
+                parts: list[str] = []
+                for column in df.columns:
+                    for value in df[column].tolist():
+                        text = normalize_cell(value)
+                        if text:
+                            parts.append(text)
+                if parts:
+                    notes.append(
+                        WorkbookNote(
                             workbook_path=path,
                             sheet_name=sheet_name,
-                            row_number=row_idx,
-                            values=values,
+                            text="\n".join(parts),
                         )
                     )
-        else:
-            parts: list[str] = []
-            for column in df.columns:
-                for value in df[column].tolist():
-                    text = normalize_cell(value)
-                    if text:
-                        parts.append(text)
-            if parts:
-                notes.append(
-                    WorkbookNote(
-                        workbook_path=path,
-                        sheet_name=sheet_name,
-                        text="\n".join(parts),
-                    )
-                )
 
     if not rows and not notes:
         raise ValueError(f"No usable content found in workbook: {path}")
