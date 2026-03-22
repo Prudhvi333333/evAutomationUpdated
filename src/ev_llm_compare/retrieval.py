@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass
 import hashlib
+import json
 import math
 from pathlib import Path
 import re
@@ -92,7 +93,15 @@ class QueryPlan:
 
 
 class HybridRetriever:
-    def __init__(self, chunks: list[Chunk], settings: RetrievalSettings, qdrant_path: Path):
+    def __init__(
+        self,
+        chunks: list[Chunk],
+        settings: RetrievalSettings,
+        qdrant_path: Path,
+        *,
+        collection_name: str | None = None,
+        force_reindex: bool = False,
+    ):
         if QdrantClient is None or SentenceTransformer is None:
             raise RuntimeError(
                 "HybridRetriever requires qdrant-client and sentence-transformers to be installed."
@@ -101,6 +110,10 @@ class HybridRetriever:
         self.chunks = chunks
         self.settings = settings
         self.qdrant_path = qdrant_path
+        self.force_reindex = force_reindex
+        self.collection_fingerprint = build_collection_fingerprint(chunks, settings.embedding_model)
+        self.collection_name = collection_name or self._collection_name(chunks, settings.embedding_model)
+        self._persistent_collection_requested = collection_name is not None
         self._temp_dir: tempfile.TemporaryDirectory[str] | None = None
         self._reranker: CrossEncoder | None = None
         self._reranker_failed = False
@@ -114,7 +127,6 @@ class HybridRetriever:
         self.known_primary_oems = self._known_field_values("primary_oems")
         self.role_terms = self._build_role_terms()
         self.client = self._create_client(qdrant_path)
-        self.collection_name = self._collection_name(chunks, settings.embedding_model)
         self._index_chunks()
 
     def close(self) -> None:
@@ -126,7 +138,7 @@ class HybridRetriever:
             self._temp_dir.cleanup()
             self._temp_dir = None
 
-    def retrieve(self, question: str) -> list[RetrievalResult]:
+    def retrieve(self, question: str, top_k: int | None = None) -> list[RetrievalResult]:
         query_plan = self._plan_query(question)
         structured_results = self._structured_matches(query_plan)
         dense_rank, dense_scores = self._rank_dense(query_plan.dense_queries)
@@ -150,7 +162,12 @@ class HybridRetriever:
             )
         retrieved.sort(key=lambda item: item.final_score, reverse=True)
         reranked = self._rerank_candidates(question, retrieved)
-        return self._select_context_results(query_plan, structured_results, reranked)
+        return self._select_context_results(
+            query_plan,
+            structured_results,
+            reranked,
+            limit=top_k,
+        )
 
     def _index_chunks(self) -> None:
         self.qdrant_path.mkdir(parents=True, exist_ok=True)
@@ -184,14 +201,55 @@ class HybridRetriever:
         for start in range(0, len(points), self.settings.batch_size):
             batch = points[start : start + self.settings.batch_size]
             self.client.upsert(collection_name=self.collection_name, points=batch)
+        self._write_collection_manifest()
 
     def _collection_is_current(self) -> bool:
+        if self.force_reindex:
+            return False
         try:
             self.client.get_collection(self.collection_name)
             count = self.client.count(collection_name=self.collection_name, exact=True).count
-            return count == len(self.chunks)
+            if count != len(self.chunks):
+                return False
+            manifest = self._read_collection_manifest()
+            if manifest is None:
+                return not self._persistent_collection_requested
+            return (
+                manifest.get("fingerprint") == self.collection_fingerprint
+                and int(manifest.get("chunk_count", -1)) == len(self.chunks)
+            )
         except Exception:
             return False
+
+    def _collection_manifest_path(self) -> Path:
+        safe_name = re.sub(r"[^A-Za-z0-9_.-]+", "_", self.collection_name)
+        return self.qdrant_path / "_index_manifests" / f"{safe_name}.json"
+
+    def _read_collection_manifest(self) -> dict[str, Any] | None:
+        manifest_path = self._collection_manifest_path()
+        if not manifest_path.exists():
+            return None
+        try:
+            return json.loads(manifest_path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            return None
+
+    def _write_collection_manifest(self) -> None:
+        manifest_path = self._collection_manifest_path()
+        manifest_path.parent.mkdir(parents=True, exist_ok=True)
+        manifest_path.write_text(
+            json.dumps(
+                {
+                    "collection_name": self.collection_name,
+                    "fingerprint": self.collection_fingerprint,
+                    "chunk_count": len(self.chunks),
+                    "embedding_model": self.settings.embedding_model,
+                },
+                indent=2,
+                sort_keys=True,
+            ),
+            encoding="utf-8",
+        )
 
     def _build_idf(self, chunks: list[Chunk]) -> dict[str, float]:
         document_frequency: defaultdict[str, int] = defaultdict(int)
@@ -781,6 +839,7 @@ class HybridRetriever:
         query_plan: QueryPlan,
         structured_results: list[RetrievalResult],
         candidates: list[RetrievalResult],
+        limit: int | None = None,
     ) -> list[RetrievalResult]:
         ordered_candidates = sorted(
             candidates,
@@ -788,6 +847,7 @@ class HybridRetriever:
             reverse=True,
         )
 
+        result_limit = limit or self.settings.final_top_k
         selected: list[RetrievalResult] = []
         seen_keys: set[str] = set()
         company_counts: defaultdict[str, int] = defaultdict(int)
@@ -807,7 +867,7 @@ class HybridRetriever:
             seen_keys.add(unique_key)
             if company:
                 company_counts[company] += 1
-            if len(selected) >= self.settings.final_top_k:
+            if len(selected) >= result_limit:
                 break
         return selected
 
@@ -834,6 +894,11 @@ class HybridRetriever:
         except RuntimeError as exc:
             if "already accessed by another instance" not in str(exc):
                 raise
+            if self._persistent_collection_requested:
+                raise RuntimeError(
+                    f"Qdrant path is locked and collection '{self.collection_name}' requires a persistent index. "
+                    "Close the other process using the local Qdrant path and try again."
+                ) from exc
             self._temp_dir = tempfile.TemporaryDirectory(prefix="ev_qdrant_")
             return QdrantClient(path=self._temp_dir.name)
 

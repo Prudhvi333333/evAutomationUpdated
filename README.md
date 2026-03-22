@@ -48,7 +48,7 @@ Environment variables:
 ```bash
 export GEMINI_API_KEY=your_key_here
 export OLLAMA_BASE_URL=http://localhost:11434
-export QWEN_MODEL=qwen3:8b
+export QWEN_MODEL=qwen2.5:14b
 export GEMMA_MODEL=gemma3:12b
 export EVALUATION_JUDGE_PROVIDER=ollama
 export EVALUATION_JUDGE_MODEL=mistral-small3.2:24b

@@ -122,7 +122,7 @@ class ComparisonRunner:
                             question=question,
                             answer=answer,
                             latency_seconds=latency,
-                            retrieved_chunks=question_retrieval,
+                            retrieved_chunks=question_retrieval if spec.rag_enabled else [],
                             prompt_tokens_estimate=max(1, len(prompt) // 4),
                             success=success,
                             error_message=error,

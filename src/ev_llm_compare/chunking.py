@@ -15,6 +15,25 @@ def tokenize(text: str) -> set[str]:
     return set(TOKEN_PATTERN.findall(text.lower()))
 
 
+def sliding_window_chunks(text: str, chunk_size: int, chunk_overlap: int) -> list[tuple[int, str]]:
+    chunks: list[tuple[int, str]] = []
+    if chunk_size <= 0:
+        raise ValueError("chunk_size must be positive")
+    if chunk_overlap < 0:
+        raise ValueError("chunk_overlap must be non-negative")
+
+    start = 0
+    while start < len(text):
+        end = min(len(text), start + chunk_size)
+        candidate = text[start:end].strip()
+        if candidate:
+            chunks.append((start, candidate))
+        if end == len(text):
+            break
+        start = max(end - chunk_overlap, start + 1)
+    return chunks
+
+
 class ExcelChunkBuilder:
     def __init__(self, settings: RetrievalSettings):
         self.settings = settings
@@ -79,31 +98,25 @@ class ExcelChunkBuilder:
         return chunks
 
     def _build_note_chunks(self, note: WorkbookNote) -> list[Chunk]:
-        text = note.text
-        size = self.settings.note_chunk_size
-        overlap = self.settings.note_chunk_overlap
-        start = 0
         chunks: list[Chunk] = []
-        while start < len(text):
-            end = min(len(text), start + size)
-            candidate = text[start:end].strip()
-            if candidate:
-                chunk_id = self._make_chunk_id(f"{note.sheet_name}-note-{start}")
-                chunks.append(
-                    Chunk(
-                        chunk_id=chunk_id,
-                        text=candidate,
-                        metadata={
-                            "source_file": note.workbook_path.name,
-                            "sheet_name": note.sheet_name,
-                            "chunk_type": "note_reference",
-                        },
-                        token_set=tokenize(candidate),
-                    )
+        for start, candidate in sliding_window_chunks(
+            note.text,
+            self.settings.note_chunk_size,
+            self.settings.note_chunk_overlap,
+        ):
+            chunk_id = self._make_chunk_id(f"{note.sheet_name}-note-{start}")
+            chunks.append(
+                Chunk(
+                    chunk_id=chunk_id,
+                    text=candidate,
+                    metadata={
+                        "source_file": note.workbook_path.name,
+                        "sheet_name": note.sheet_name,
+                        "chunk_type": "note_reference",
+                    },
+                    token_set=tokenize(candidate),
                 )
-            if end == len(text):
-                break
-            start = max(end - overlap, start + 1)
+            )
         return chunks
 
     def _company_profile_text(self, row: TableRow, ordered_columns: list[str]) -> str:
