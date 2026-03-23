@@ -40,6 +40,7 @@ if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
 from ev_llm_compare.chunking import ExcelChunkBuilder
+from ev_llm_compare.derived_analytics import build_derived_summary_chunks
 from ev_llm_compare.excel_loader import load_workbook, normalize_cell
 from ev_llm_compare.models import GenerationMetadata, create_client, safe_generate_with_metadata
 from ev_llm_compare.offline_corpus import build_document_chunks, load_offline_documents, resolve_tavily_root
@@ -64,9 +65,12 @@ PROMPT_A = (
     "Provide 3-7 bullet points."
 )
 PROMPT_B = (
-    "Use ONLY the CONTEXT. If the answer is not in the CONTEXT, say "
-    "'Not found in provided context.' Do not guess.\n"
-    "Provide 3-7 bullet points.\n"
+    "Use ONLY the CONTEXT. Do not guess.\n"
+    "If the CONTEXT partially answers the question, answer only the supported part.\n"
+    "If some requested details are missing, add a section titled 'Missing info:' and list the missing pieces.\n"
+    "Only say 'Not found in provided context.' if the CONTEXT contains no relevant evidence at all.\n"
+    "Provide 3-7 bullet points for supported findings.\n"
+    "Every factual bullet must end with one or more citations using only these formats: [DOC:<id>] and/or [WEB:<id>].\n"
     "Then include: Evidence: list the context IDs you used."
 )
 EVAL_SYSTEM_PROMPT = "Follow the user instructions exactly."
@@ -365,28 +369,89 @@ def build_model_spec(model_name: str, mode: str) -> ModelSpec:
     )
 
 
+def route_question(question: str) -> str:
+    normalized = re.sub(r"\s+", " ", question.lower()).strip()
+    web_needed_terms = {
+        "international import",
+        "international imports",
+        "imports",
+        "growing fastest",
+        "growing",
+        "demand",
+        "regionally",
+        "workforce capacity",
+        "shifting from ice",
+        "shifting from ice",
+        "ice components",
+    }
+    analytic_terms = {
+        "highest",
+        "lowest",
+        "versus",
+        " vs ",
+        "compare",
+        "comparison",
+        "concentration",
+        "risk",
+        "bottleneck",
+        "dependencies",
+        "cluster",
+        "clusters",
+        "outside of major metros",
+        "combine",
+        "counties",
+    }
+    if any(term in normalized for term in web_needed_terms):
+        return "web_needed"
+    if any(term in normalized for term in analytic_terms):
+        return "analytic"
+    return "lookup"
+
+
+def question_top_k_local(route_label: str, default_top_k: int) -> int:
+    if route_label == "analytic":
+        return max(default_top_k, 7)
+    return default_top_k
+
+
+def question_top_k_tavily(route_label: str, default_top_k: int) -> int:
+    if route_label == "web_needed":
+        return max(default_top_k, 5)
+    if route_label == "analytic":
+        return max(default_top_k, 4)
+    return default_top_k
+
+
 def build_context_result(
     mode: str,
     local_results: list[RetrievalResult],
     tavily_results: list[RetrievalResult],
     context_budget_tokens: int,
     token_counter: TokenCounter,
+    *,
+    route_label: str | None = None,
 ) -> ContextBuildResult:
     local_header = "LOCAL_CONTEXT:\n"
     web_header = "WEB_CONTEXT:\n"
-    remaining_budget = max(1, context_budget_tokens)
+    total_budget = max(1, context_budget_tokens)
 
     local_blocks = [_format_local_block(result) for result in local_results]
     web_blocks = [_format_web_block(result) for result in tavily_results]
 
+    if mode == "hybrid_rag" and route_label == "web_needed":
+        local_budget = max(1, int(total_budget * 0.45))
+        web_budget = max(1, total_budget - local_budget)
+    else:
+        local_budget = total_budget
+        web_budget = None
+
     local_section, local_tokens = _fit_context_blocks(
         local_header,
         local_blocks,
-        remaining_budget,
+        local_budget,
         token_counter,
         fallback_text="No local context retrieved.",
     )
-    remaining_budget = max(0, remaining_budget - local_tokens)
 
     sections = [local_section]
     local_section_chars = len(local_section)
@@ -394,6 +459,7 @@ def build_context_result(
     web_section = ""
     web_tokens = 0
     if mode == "hybrid_rag":
+        remaining_budget = web_budget if web_budget is not None else max(0, total_budget - local_tokens)
         web_section, web_tokens = _fit_context_blocks(
             web_header,
             web_blocks,
@@ -535,11 +601,13 @@ def build_retrieval_log(results: list[RetrievalResult], *, source_kind: str) -> 
             "chunk_id": result.chunk_id,
             "score": result.final_score,
             "text_preview": preview_text(result.text),
+            "chunk_type": normalize_cell(metadata.get("chunk_type")),
         }
         if source_kind == "local":
             source_file = normalize_cell(metadata.get("source_file"))
             sheet_name = normalize_cell(metadata.get("sheet_name"))
             entry["source"] = "::".join(part for part in [source_file, sheet_name] if part) or source_file
+            entry["analysis_type"] = normalize_cell(metadata.get("analysis_type"))
         else:
             entry["filepath"] = normalize_cell(metadata.get("filepath"))
             entry["url"] = normalize_cell(metadata.get("url"))
@@ -643,6 +711,7 @@ def build_excel_row(
         "model": record["model"],
         "resolved_model_name": record["resolved_model_name"],
         "mode": record["mode"],
+        "question_route": record.get("question_route"),
         "prompt_used": record["prompt_used"],
         "model_response": record["answer_text"],
         "knowledge_source_data": knowledge_source_data,
@@ -683,6 +752,7 @@ def export_excel_workbook(
         "model",
         "resolved_model_name",
         "mode",
+        "question_route",
         "prompt_used",
         "answer_text",
         "success",
@@ -728,6 +798,7 @@ def main() -> int:
             data_workbook = Path(args.data_workbook).expanduser().resolve() if args.data_workbook else resolve_default_workbook_path()
             rows, notes = load_workbook(data_workbook)
             local_chunks = ExcelChunkBuilder(config.retrieval).build(rows, notes)
+            local_chunks.extend(build_derived_summary_chunks(rows))
             local_retriever = HybridRetriever(
                 chunks=local_chunks,
                 settings=config.retrieval,
@@ -788,6 +859,9 @@ def main() -> int:
                     flush=True,
                 )
 
+                question_route = route_question(item.question) if args.mode != "no_rag" else "no_rag"
+                effective_top_k_local = question_top_k_local(question_route, top_k_local)
+                effective_top_k_tavily = question_top_k_tavily(question_route, args.top_k_tavily)
                 local_results: list[RetrievalResult] = []
                 tavily_results: list[RetrievalResult] = []
                 retrieval_ms_local = 0.0
@@ -795,12 +869,12 @@ def main() -> int:
 
                 if args.mode in {"local_rag", "hybrid_rag"} and local_retriever is not None:
                     retrieval_start = time.perf_counter()
-                    local_results = local_retriever.retrieve(item.question, top_k=top_k_local)
+                    local_results = local_retriever.retrieve(item.question, top_k=effective_top_k_local)
                     retrieval_ms_local = round((time.perf_counter() - retrieval_start) * 1000, 2)
 
                 if args.mode == "hybrid_rag" and tavily_retriever is not None:
                     retrieval_start = time.perf_counter()
-                    tavily_results = tavily_retriever.retrieve(item.question, top_k=args.top_k_tavily)
+                    tavily_results = tavily_retriever.retrieve(item.question, top_k=effective_top_k_tavily)
                     retrieval_ms_tavily = round((time.perf_counter() - retrieval_start) * 1000, 2)
 
                 context_result = None
@@ -811,6 +885,7 @@ def main() -> int:
                         tavily_results,
                         context_budget_tokens,
                         token_counter,
+                        route_label=question_route,
                     )
 
                 prompt_text, prompt_used = build_prompt(
@@ -846,6 +921,7 @@ def main() -> int:
                     "model": args.model,
                     "resolved_model_name": spec.model_name,
                     "mode": args.mode,
+                    "question_route": question_route,
                     "local_retrieval": build_retrieval_log(local_results, source_kind="local"),
                     "tavily_retrieval": build_retrieval_log(tavily_results, source_kind="tavily"),
                     "context_lengths": {
@@ -893,9 +969,12 @@ def main() -> int:
                             "run_id": run_id,
                             "q_id": item.q_id,
                             "question": item.question,
+                            "question_route": question_route,
                             "rank": rank,
                             "chunk_id": result.chunk_id,
                             "score": result.final_score,
+                            "chunk_type": normalize_cell(result.metadata.get("chunk_type")),
+                            "analysis_type": normalize_cell(result.metadata.get("analysis_type")),
                             "source_file": normalize_cell(result.metadata.get("source_file")),
                             "sheet_name": normalize_cell(result.metadata.get("sheet_name")),
                             "text": result.text,
@@ -907,9 +986,11 @@ def main() -> int:
                             "run_id": run_id,
                             "q_id": item.q_id,
                             "question": item.question,
+                            "question_route": question_route,
                             "rank": rank,
                             "chunk_id": result.chunk_id,
                             "score": result.final_score,
+                            "chunk_type": normalize_cell(result.metadata.get("chunk_type")),
                             "filepath": normalize_cell(result.metadata.get("filepath")),
                             "url": normalize_cell(result.metadata.get("url")),
                             "text": result.text,

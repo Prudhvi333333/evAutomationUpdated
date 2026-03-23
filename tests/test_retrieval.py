@@ -91,9 +91,26 @@ class RetrievalTests(unittest.TestCase):
         self.assertIn("Grouped by EV Supply Chain Role:", summary)
         self.assertIn("- Battery Pack: A; B; C", summary)
 
+    def test_query_plan_does_not_treat_oem_contracts_as_oem_category(self) -> None:
+        retriever = HybridRetriever.__new__(HybridRetriever)
+        retriever.known_categories = ["OEM", "Tier 1", "Tier 2/3"]
+        retriever.known_companies = []
+        retriever.known_locations = []
+        retriever.known_primary_oems = []
+        retriever.role_terms = ["dc fast charging"]
+
+        plan = HybridRetriever._plan_query(
+            retriever,
+            "Which suppliers manufacture DC fast charging hardware and have existing OEM contracts?",
+        )
+
+        self.assertEqual(plan.matched_categories, [])
+
     def _seed_retriever_for_summary(self, retriever: HybridRetriever) -> HybridRetriever:
         retriever.known_categories = ["Tier 1"]
         retriever.known_companies = []
+        retriever.known_locations = []
+        retriever.known_primary_oems = []
         retriever.role_terms = ["battery pack"]
         return retriever
 

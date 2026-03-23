@@ -546,6 +546,20 @@ class HybridRetriever:
                 boost += 0.015
         if chunk_type == "note_reference" and any(term in question_lower for term in {"define", "definition", "methodology"}):
             boost += 0.03
+        if chunk_type == "derived_analytic_summary":
+            analysis_title = normalize_text(str(metadata.get("analysis_title", "")))
+            analysis_type = normalize_text(str(metadata.get("analysis_type", "")))
+            title_overlap = tokenize(question_lower) & tokenize(analysis_title)
+            type_overlap = tokenize(question_lower) & tokenize(analysis_type)
+            if title_overlap:
+                boost += min(0.06, 0.012 * len(title_overlap))
+            if type_overlap:
+                boost += min(0.04, 0.01 * len(type_overlap))
+            if any(
+                term in question_lower
+                for term in {"highest", "lowest", "compare", "versus", "vs", "concentration", "cluster", "density", "county"}
+            ):
+                boost += 0.03
         return boost
 
     def _structured_matches(self, query_plan: QueryPlan) -> list[RetrievalResult]:
@@ -560,10 +574,27 @@ class HybridRetriever:
         if not matched_rows:
             return []
 
+        has_explicit_filters = any(
+            [
+                query_plan.matched_categories,
+                query_plan.matched_companies,
+                query_plan.matched_locations,
+                query_plan.matched_primary_oems,
+                query_plan.matched_role_terms,
+            ]
+        )
+        if (
+            not has_explicit_filters
+            and len(matched_rows) > self.settings.structured_exhaustive_limit
+            and not self._is_exhaustive_question(query_plan)
+        ):
+            return []
+
+        summary_text = self._build_structured_summary(query_plan, matched_rows)
         results: list[RetrievalResult] = [
             RetrievalResult(
                 chunk_id=f"structured-summary::{hashlib.sha1(query_plan.normalized_question.encode('utf-8')).hexdigest()[:12]}",
-                text=self._build_structured_summary(query_plan, matched_rows),
+                text=summary_text,
                 metadata={
                     "chunk_type": "structured_match_summary",
                     "company": "",
@@ -891,6 +922,10 @@ class HybridRetriever:
         chunk_type = str(result.metadata.get("chunk_type", ""))
         if chunk_type == "structured_match_summary":
             return 3.0
+        if chunk_type == "derived_analytic_summary":
+            if query_plan.intent in {"aggregation", "comparison"}:
+                return 2.7
+            return 1.7
         if query_plan.intent == "definition" and chunk_type == "note_reference":
             return 2.5
         if chunk_type in {"structured_row_match", "company_profile", "row_full"}:
@@ -952,6 +987,8 @@ class HybridRetriever:
             category_key = self._category_key(category)
             if not category_key or category_key in seen_keys:
                 continue
+            if category_key == "oem" and not self._question_intends_oem_category(question_key):
+                continue
             if re.search(rf"(?<!\\w){re.escape(category_key)}(?!\\w)", question_key):
                 matches.append(category)
                 seen_keys.add(category_key)
@@ -967,6 +1004,36 @@ class HybridRetriever:
             if match:
                 return self._category_key(match.group(1))
         return None
+
+    def _question_intends_oem_category(self, question_key: str) -> bool:
+        if any(
+            term in question_key
+            for term in {
+                "primary oem",
+                "primary oems",
+                "oem contract",
+                "oem contracts",
+                "oem customer",
+                "oem customers",
+            }
+        ):
+            return False
+        if any(
+            term in question_key
+            for term in {
+                "category oem",
+                "category is oem",
+                "category oems",
+                "oem footprint",
+                "oem footprints",
+                "oem company",
+                "oem companies",
+                "original equipment manufacturer",
+                "original equipment manufacturers",
+            }
+        ):
+            return True
+        return bool(re.search(r"^(show|list|find|identify|map)\s+oem\b", question_key))
 
     def _build_analytic_summary_lines(
         self,
