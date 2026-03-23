@@ -15,6 +15,7 @@ CHANGELOG:
   - Preserves question ids and duplicate question text for reproducible logging instead of deduping by question.
   - Uses persistent named Qdrant collections ("local" and "tavily") with fingerprint manifests so an index is only treated as current when the source content still matches.
   - Keeps non-RAG execution fully context-free and never attaches retrieved chunks to non-RAG answers.
+  - Reuses the repo's existing non-RAG prompt/system instructions so standalone answers stay substantive instead of defaulting to "I don't know."
   - Writes an analyst-facing Excel workbook alongside the raw JSONL log, with separate context and pretrained-data columns.
 """
 
@@ -42,6 +43,7 @@ from ev_llm_compare.chunking import ExcelChunkBuilder
 from ev_llm_compare.excel_loader import load_workbook, normalize_cell
 from ev_llm_compare.models import GenerationMetadata, create_client, safe_generate_with_metadata
 from ev_llm_compare.offline_corpus import build_document_chunks, load_offline_documents, resolve_tavily_root
+from ev_llm_compare.prompts import NON_RAG_SYSTEM_PROMPT
 from ev_llm_compare.retrieval import HybridRetriever
 from ev_llm_compare.schemas import RetrievalResult
 from ev_llm_compare.settings import ModelSpec, load_config
@@ -52,7 +54,12 @@ except ImportError:
     tiktoken = None  # type: ignore[assignment]
 
 PROMPT_A = (
-    "Answer using your own knowledge only. If unsure, say 'I don't know.' "
+    "Answer from your general model knowledge only.\n"
+    "Give the best direct answer you can without using retrieved context.\n"
+    "Prefer specific company names, locations, products, and roles over generic process advice.\n"
+    "If some details are uncertain, state the uncertainty briefly and still provide the most useful likely answer.\n"
+    "Do not mention missing workbooks, missing datasets, or that more research is needed.\n"
+    "Avoid saying 'I don't know' unless you truly cannot provide any useful domain answer.\n"
     "Provide 3-7 bullet points."
 )
 PROMPT_B = (
@@ -62,6 +69,10 @@ PROMPT_B = (
     "Then include: Evidence: list the context IDs you used."
 )
 EVAL_SYSTEM_PROMPT = "Follow the user instructions exactly."
+NON_RAG_EVAL_SYSTEM_PROMPT = (
+    NON_RAG_SYSTEM_PROMPT
+    + "\nPrefer a substantive domain answer over abstaining when you can provide useful general knowledge."
+)
 
 QUESTION_COLUMN_CANDIDATES = {
     "question",
@@ -472,6 +483,12 @@ def build_prompt(mode: str, question: str, context_text: str | None = None) -> t
     return prompt, "B"
 
 
+def build_system_prompt(mode: str) -> str:
+    if mode == "no_rag":
+        return NON_RAG_EVAL_SYSTEM_PROMPT
+    return EVAL_SYSTEM_PROMPT
+
+
 def extract_citations(answer_text: str, valid_doc_ids: set[str], valid_web_ids: set[str]) -> dict[str, list[str]]:
     doc_ids = {
         match.group(1)
@@ -805,7 +822,7 @@ def main() -> int:
                     prompt_text,
                     temperature=spec.temperature,
                     max_tokens=spec.max_tokens,
-                    system_prompt=EVAL_SYSTEM_PROMPT,
+                    system_prompt=build_system_prompt(args.mode),
                     seed=args.seed,
                 )
 
