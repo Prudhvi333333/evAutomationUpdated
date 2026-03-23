@@ -55,11 +55,12 @@ except ImportError:
 
 PROMPT_A = (
     "Answer from your general model knowledge only.\n"
-    "Give the best direct answer you can without using retrieved context.\n"
-    "Prefer specific company names, locations, products, and roles over generic process advice.\n"
-    "If some details are uncertain, state the uncertainty briefly and still provide the most useful likely answer.\n"
-    "Do not mention missing workbooks, missing datasets, or that more research is needed.\n"
-    "Avoid saying 'I don't know' unless you truly cannot provide any useful domain answer.\n"
+    "Do not use retrieved context.\n\n"
+    "Goal: provide the most useful baseline answer while avoiding fabricated specifics.\n"
+    "- If you are confident about a specific company, location, or partnership, you may name it.\n"
+    "- If you are not confident, do NOT invent names or exact locations. Instead describe likely categories and give 1-2 clearly labeled examples (for example: 'illustrative examples (may not be GA/AL-specific)').\n"
+    "- If asked for a list of specific entities you cannot verify, say so briefly and provide: (a) what types of entities would be Tier 1/Tier 2, and (b) a cautious short list labeled 'illustrative examples'.\n"
+    "- Do not mention missing workbooks or datasets.\n"
     "Provide 3-7 bullet points."
 )
 PROMPT_B = (
