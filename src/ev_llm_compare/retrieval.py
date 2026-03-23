@@ -9,6 +9,7 @@ from pathlib import Path
 import re
 import tempfile
 from typing import Any
+import uuid
 
 import pandas as pd
 
@@ -56,6 +57,7 @@ QUERY_STOPWORDS = {
     "which",
     "with",
 }
+INDEX_MANIFEST_VERSION = 2
 
 
 def normalize_text(value: str) -> str:
@@ -101,6 +103,7 @@ class HybridRetriever:
         *,
         collection_name: str | None = None,
         force_reindex: bool = False,
+        client: QdrantClient | None = None,
     ):
         if QdrantClient is None or SentenceTransformer is None:
             raise RuntimeError(
@@ -117,8 +120,12 @@ class HybridRetriever:
         self._temp_dir: tempfile.TemporaryDirectory[str] | None = None
         self._reranker: CrossEncoder | None = None
         self._reranker_failed = False
+        self._owns_client = client is None
         self.embedding_model = SentenceTransformer(settings.embedding_model)
         self.chunk_map = {chunk.chunk_id: chunk for chunk in chunks}
+        self.point_id_to_chunk_id = {
+            self._qdrant_point_id(chunk.chunk_id): chunk.chunk_id for chunk in chunks
+        }
         self.idf = self._build_idf(chunks)
         self.row_records = self._build_row_records(chunks)
         self.known_categories = self._known_field_values("category")
@@ -126,14 +133,15 @@ class HybridRetriever:
         self.known_locations = self._known_field_values("location")
         self.known_primary_oems = self._known_field_values("primary_oems")
         self.role_terms = self._build_role_terms()
-        self.client = self._create_client(qdrant_path)
+        self.client = client or self._create_client(qdrant_path)
         self._index_chunks()
 
     def close(self) -> None:
-        try:
-            self.client.close()
-        except Exception:
-            pass
+        if self._owns_client:
+            try:
+                self.client.close()
+            except Exception:
+                pass
         if self._temp_dir is not None:
             self._temp_dir.cleanup()
             self._temp_dir = None
@@ -189,9 +197,10 @@ class HybridRetriever:
         for chunk, vector in zip(self.chunks, embeddings, strict=True):
             points.append(
                 PointStruct(
-                    id=chunk.chunk_id,
+                    id=self._qdrant_point_id(chunk.chunk_id),
                     vector=vector.tolist(),
                     payload={
+                        "chunk_id": chunk.chunk_id,
                         "text": chunk.text,
                         "metadata": chunk.metadata,
                     },
@@ -215,7 +224,9 @@ class HybridRetriever:
             if manifest is None:
                 return not self._persistent_collection_requested
             return (
-                manifest.get("fingerprint") == self.collection_fingerprint
+                int(manifest.get("manifest_version", -1)) == INDEX_MANIFEST_VERSION
+                and manifest.get("point_id_strategy") == "uuid5"
+                and manifest.get("fingerprint") == self.collection_fingerprint
                 and int(manifest.get("chunk_count", -1)) == len(self.chunks)
             )
         except Exception:
@@ -244,6 +255,8 @@ class HybridRetriever:
                     "fingerprint": self.collection_fingerprint,
                     "chunk_count": len(self.chunks),
                     "embedding_model": self.settings.embedding_model,
+                    "manifest_version": INDEX_MANIFEST_VERSION,
+                    "point_id_strategy": "uuid5",
                 },
                 indent=2,
                 sort_keys=True,
@@ -444,9 +457,12 @@ class HybridRetriever:
                 limit=self.settings.dense_top_k,
             ).points
             for rank, point in enumerate(dense_results, start=1):
-                point_id = str(point.id)
-                rank_scores[point_id] += 1.0 / (self.settings.rrf_k + rank)
-                raw_scores[point_id] = max(raw_scores.get(point_id, 0.0), float(point.score))
+                logical_chunk_id = self._logical_chunk_id(point)
+                rank_scores[logical_chunk_id] += 1.0 / (self.settings.rrf_k + rank)
+                raw_scores[logical_chunk_id] = max(
+                    raw_scores.get(logical_chunk_id, 0.0),
+                    float(point.score),
+                )
         dense_rank = {
             chunk_id: rank
             for rank, (chunk_id, _) in enumerate(
@@ -885,6 +901,19 @@ class HybridRetriever:
 
     def _collection_name(self, chunks: list[Chunk], embedding_model: str) -> str:
         return f"ev_compare_{build_collection_fingerprint(chunks, embedding_model)}"
+
+    def _qdrant_point_id(self, logical_chunk_id: str) -> str:
+        try:
+            return str(uuid.UUID(logical_chunk_id))
+        except (ValueError, AttributeError, TypeError):
+            return str(uuid.uuid5(uuid.NAMESPACE_URL, logical_chunk_id))
+
+    def _logical_chunk_id(self, point: Any) -> str:
+        payload = getattr(point, "payload", None) or {}
+        payload_chunk_id = payload.get("chunk_id")
+        if payload_chunk_id:
+            return str(payload_chunk_id)
+        return self.point_id_to_chunk_id.get(str(point.id), str(point.id))
 
     def _create_client(self, qdrant_path: Path) -> QdrantClient:
         if QdrantClient is None:

@@ -736,6 +736,7 @@ def main() -> int:
                 qdrant_path=config.runtime.qdrant_path,
                 collection_name="tavily",
                 force_reindex=args.reindex,
+                client=local_retriever.client if local_retriever is not None else None,
             )
             tavily_issues = [f"{issue.filepath}: {issue.reason}" for issue in tavily_docs.issues]
             print(
