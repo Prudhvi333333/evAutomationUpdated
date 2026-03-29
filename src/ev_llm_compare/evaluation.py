@@ -14,27 +14,51 @@ from .prompts import build_reference_prompt, compact_context_segments, format_co
 from .schemas import ModelResponse
 from .settings import ModelSpec, RuntimeSettings
 
-REPORT_METRIC_NAMES = [
+RAGAS_METRIC_NAMES = [
     "answer_accuracy",
     "faithfulness",
     "response_groundedness",
+    "context_precision",
+    "context_recall",
+]
+DIAGNOSTIC_METRIC_NAMES = [
     "grounded_claim_ratio",
     "unsupported_claim_ratio",
     "contradicted_claim_ratio",
 ]
+DERIVED_METRIC_NAMES = ["overall_metric_score_pct"]
+BASE_METRIC_NAMES = [*RAGAS_METRIC_NAMES, *DIAGNOSTIC_METRIC_NAMES]
+REPORT_METRIC_NAMES = [*BASE_METRIC_NAMES, *DERIVED_METRIC_NAMES]
 
-LLM_JUDGE_SYSTEM_PROMPT = """You are a strict evaluation judge for workbook question answering.
+OVERALL_SCORE_COMPONENTS: dict[str, tuple[float, bool]] = {
+    "answer_accuracy": (0.28, False),
+    "faithfulness": (0.20, False),
+    "response_groundedness": (0.16, False),
+    "context_precision": (0.12, False),
+    "context_recall": (0.12, False),
+    "grounded_claim_ratio": (0.04, False),
+    "unsupported_claim_ratio": (0.04, True),
+    "contradicted_claim_ratio": (0.04, True),
+}
+
+LLM_JUDGE_SCORE_SYSTEM_PROMPT = """You are a strict evaluation judge for workbook question answering.
 Return only one line in the form SCORE=<value>.
 Use a continuous score from 0.00 to 1.00 with exactly two decimal places.
 Do not add explanation, JSON, markdown, or extra text."""
-LLM_JUDGE_PACKET_SYSTEM_PROMPT = """You are a strict evaluation judge for workbook question answering.
-Return only the requested metric lines with no explanation, JSON, markdown, or extra text.
-Use continuous scores from 0.00 to 1.00 with exactly two decimal places."""
+LLM_JUDGE_RATING_SYSTEM_PROMPT = """You are a strict evaluation judge for workbook question answering.
+Return only one line in the form RATING=<value>.
+Use only the allowed discrete rating values described in the prompt.
+Do not add explanation, JSON, markdown, or extra text."""
 LLM_ATTRIBUTION_SYSTEM_PROMPT = """You are performing claim-level provenance attribution for workbook question answering.
+Return only valid JSON.
+Do not add markdown, explanation, or prose before or after the JSON."""
+LLM_JSON_SYSTEM_PROMPT = """You are a strict evaluation judge for workbook question answering.
 Return only valid JSON.
 Do not add markdown, explanation, or prose before or after the JSON."""
 
 ATTRIBUTION_BATCH_SIZE = 24
+CLAIM_CLASSIFICATION_BATCH_SIZE = 16
+CONTEXT_RELEVANCE_BATCH_SIZE = 10
 
 
 def _split_text_blocks(text: str) -> list[str]:
@@ -382,52 +406,80 @@ def _llm_judge_prompt_answer_accuracy(
     reference_answer: str,
 ) -> str:
     return (
-        "Task: score how well the candidate answer matches the reference answer for a workbook question.\n"
-        "Scoring rubric:\n"
-        "- 1.00 means fully correct, all major requested facts present, no material errors.\n"
-        "- Use the full continuous range 0.00 to 1.00; do not restrict yourself to quarter-step buckets.\n"
-        "- Prefer precise decimals like 0.13, 0.42, 0.68, or 0.91 when appropriate.\n"
-        "- For list, grouped, and count questions, score by factual coverage and precision.\n"
-        "- Missing requested items should reduce the score proportionally.\n"
-        "- Wrong extra entities or wrong numbers should reduce the score.\n"
-        "- If the answer explicitly says it lacks the workbook/dataset, gives a general method, or gives generic industry examples instead of the requested workbook answer, score 0.00.\n"
-        "- If the answer is largely a non-answer or refusal, score 0.00.\n\n"
+        "Task: rate how well the candidate answer matches the reference answer for a workbook question.\n"
+        "Use only these ratings:\n"
+        "- 0 = inaccurate, materially incomplete, or answering a different question.\n"
+        "- 2 = partially correct but missing requested facts, containing extra unsupported entities, or containing noticeable mistakes.\n"
+        "- 4 = fully aligned with the reference on the requested facts with no material mistakes.\n"
+        "Rules:\n"
+        "- For list, grouped, and count questions, judge factual coverage and precision.\n"
+        "- Missing requested items should lower the rating.\n"
+        "- Wrong extra entities or wrong numbers should lower the rating.\n"
+        "- If the answer is mostly a refusal, generic method, or off-task, use 0.\n\n"
         f"Question:\n{question}\n\n"
         f"Reference answer:\n{reference_answer}\n\n"
         f"Candidate answer:\n{answer}\n\n"
-        "Return exactly one line: SCORE=<0.00-1.00>"
+        "Return exactly one line: RATING=<0|2|4>"
     )
 
 
-def _llm_judge_prompt_grounding_packet(
+def _llm_judge_prompt_answer_accuracy_reverse(
+    question: str,
+    answer: str,
+    reference_answer: str,
+) -> str:
+    return (
+        "Task: independently re-evaluate answer accuracy by swapping roles.\n"
+        "Rate how well the reference answer covers and matches the candidate answer for the same workbook question.\n"
+        "Use only these ratings:\n"
+        "- 0 = the candidate and reference do not materially align.\n"
+        "- 2 = there is partial overlap but material gaps or mistakes remain.\n"
+        "- 4 = the two answers materially align on the requested facts.\n"
+        "This prompt intentionally swaps the roles to reduce judge-position bias.\n\n"
+        f"Question:\n{question}\n\n"
+        f"Candidate answer:\n{reference_answer}\n\n"
+        f"Reference answer:\n{answer}\n\n"
+        "Return exactly one line: RATING=<0|2|4>"
+    )
+
+
+def _llm_judge_prompt_response_groundedness(
     question: str,
     answer: str,
     retrieved_contexts: list[str],
 ) -> str:
     context = "\n\n".join(retrieved_contexts)
     return (
-        "Task: evaluate the candidate answer against the retrieved workbook evidence.\n"
-        "Use continuous scores from 0.00 to 1.00 with exactly two decimal places.\n"
-        "Definitions:\n"
-        "- FAITHFULNESS: how free the answer is from claims contradicted by evidence.\n"
-        "- RESPONSE_GROUNDEDNESS: how much of the answer is grounded in evidence.\n"
-        "- GROUNDED_CLAIM_RATIO: fraction of substantive claims supported by evidence.\n"
-        "- UNSUPPORTED_CLAIM_RATIO: fraction of substantive claims not supported by evidence.\n"
-        "- CONTRADICTED_CLAIM_RATIO: fraction of substantive claims contradicted by evidence.\n"
-        "Consistency rules:\n"
-        "- Prefer precise decimals like 0.18, 0.37, 0.64, or 0.92 when appropriate.\n"
-        "- RESPONSE_GROUNDEDNESS should usually match GROUNDED_CLAIM_RATIO.\n"
-        "- Higher CONTRADICTED_CLAIM_RATIO should lower FAITHFULNESS.\n"
-        "- GROUNDED_CLAIM_RATIO, UNSUPPORTED_CLAIM_RATIO, and CONTRADICTED_CLAIM_RATIO should approximately sum to 1.\n\n"
+        "Task: rate how grounded the candidate answer is in the retrieved workbook evidence.\n"
+        "Use only these ratings:\n"
+        "- 0 = the answer is largely unsupported or contradicted by the evidence.\n"
+        "- 1 = the answer is partially grounded, but some material content is unsupported or unclear.\n"
+        "- 2 = the answer is well grounded in the retrieved evidence with no material unsupported content.\n"
+        "Focus on support from the retrieved evidence, not world knowledge.\n\n"
         f"Question:\n{question}\n\n"
         f"Retrieved evidence:\n{context}\n\n"
         f"Candidate answer:\n{answer}\n\n"
-        "Return exactly these five lines:\n"
-        "FAITHFULNESS=<0.00-1.00>\n"
-        "RESPONSE_GROUNDEDNESS=<0.00-1.00>\n"
-        "GROUNDED_CLAIM_RATIO=<0.00-1.00>\n"
-        "UNSUPPORTED_CLAIM_RATIO=<0.00-1.00>\n"
-        "CONTRADICTED_CLAIM_RATIO=<0.00-1.00>"
+        "Return exactly one line: RATING=<0|1|2>"
+    )
+
+
+def _llm_judge_prompt_response_groundedness_reverse(
+    question: str,
+    answer: str,
+    retrieved_contexts: list[str],
+) -> str:
+    context = "\n\n".join(retrieved_contexts)
+    return (
+        "Task: independently re-evaluate groundedness from the evidence side.\n"
+        "Ask whether the retrieved workbook evidence would justify producing the candidate answer without adding unstated facts.\n"
+        "Use only these ratings:\n"
+        "- 0 = the evidence would not justify the answer.\n"
+        "- 1 = the evidence justifies only part of the answer.\n"
+        "- 2 = the evidence materially justifies the answer.\n\n"
+        f"Question:\n{question}\n\n"
+        f"Retrieved evidence:\n{context}\n\n"
+        f"Candidate answer:\n{answer}\n\n"
+        "Return exactly one line: RATING=<0|1|2>"
     )
 
 
@@ -446,30 +498,16 @@ def _parse_llm_judge_score(raw_text: str) -> float | None:
     return round(score, 4)
 
 
-def _parse_llm_judge_packet(raw_text: str) -> dict[str, float] | None:
+def _parse_llm_judge_rating(raw_text: str, allowed_values: set[int]) -> int | None:
     if not raw_text:
         return None
-    metric_map = {
-        "FAITHFULNESS": "faithfulness",
-        "RESPONSE_GROUNDEDNESS": "response_groundedness",
-        "GROUNDED_CLAIM_RATIO": "grounded_claim_ratio",
-        "UNSUPPORTED_CLAIM_RATIO": "unsupported_claim_ratio",
-        "CONTRADICTED_CLAIM_RATIO": "contradicted_claim_ratio",
-    }
-    parsed: dict[str, float] = {}
-    for label, metric_name in metric_map.items():
-        match = re.search(
-            rf"{label}\s*=\s*(0(?:\.\d+)?|1(?:\.0+)?)\b",
-            raw_text,
-            flags=re.IGNORECASE,
-        )
-        if not match:
-            return None
-        score = float(match.group(1))
-        if not (0.0 <= score <= 1.0):
-            return None
-        parsed[metric_name] = round(score, 4)
-    return parsed
+    match = re.search(r"RATING\s*=\s*([0-9]+)\b", raw_text, flags=re.IGNORECASE)
+    if not match:
+        return None
+    rating = int(match.group(1))
+    if rating not in allowed_values:
+        return None
+    return rating
 
 
 def _llm_judge_metric(
@@ -483,7 +521,7 @@ def _llm_judge_metric(
             prompt,
             temperature=0.0,
             max_tokens=12,
-            system_prompt=LLM_JUDGE_SYSTEM_PROMPT,
+            system_prompt=LLM_JUDGE_SCORE_SYSTEM_PROMPT,
         )
         if not success:
             continue
@@ -493,25 +531,334 @@ def _llm_judge_metric(
     return None
 
 
-def _llm_judge_grounding_packet(
+def _llm_judge_rating(
     judge_client: LLMClient,
     prompt: str,
+    allowed_values: set[int],
     retries: int = 2,
-) -> dict[str, float] | None:
+) -> int | None:
     for _ in range(max(1, retries + 1)):
         answer, _, success, _ = safe_generate(
             judge_client,
             prompt,
             temperature=0.0,
-            max_tokens=80,
-            system_prompt=LLM_JUDGE_PACKET_SYSTEM_PROMPT,
+            max_tokens=8,
+            system_prompt=LLM_JUDGE_RATING_SYSTEM_PROMPT,
         )
         if not success:
             continue
-        parsed = _parse_llm_judge_packet(answer)
+        parsed = _parse_llm_judge_rating(answer, allowed_values=allowed_values)
         if parsed is not None:
             return parsed
     return None
+
+
+def _average(values: list[float]) -> float | None:
+    if not values:
+        return None
+    return round(sum(values) / len(values), 4)
+
+
+def _dual_judge_metric(
+    judge_client: LLMClient,
+    prompts: list[str],
+    allowed_values: set[int],
+    rating_scale: int,
+    retries: int,
+) -> float | None:
+    normalized_scores: list[float] = []
+    for prompt in prompts:
+        rating = _llm_judge_rating(
+            judge_client,
+            prompt,
+            allowed_values=allowed_values,
+            retries=retries,
+        )
+        if rating is None:
+            continue
+        normalized_scores.append(round(rating / rating_scale, 4))
+    return _average(normalized_scores)
+
+
+def _build_claim_classification_prompt(
+    question: str,
+    retrieved_contexts: list[str],
+    claim_batch: list[tuple[int, str]],
+) -> str:
+    context = "\n\n".join(retrieved_contexts) if retrieved_contexts else "No retrieved evidence."
+    claims_text = "\n".join(f"{claim_id}. {text}" for claim_id, text in claim_batch)
+    return (
+        "Task: classify each claim against the retrieved workbook evidence.\n"
+        "Labels:\n"
+        "- supported: the claim is directly supported by the evidence.\n"
+        "- unsupported: the evidence does not support the claim, or the claim goes beyond the evidence.\n"
+        "- contradicted: the evidence directly conflicts with the claim.\n"
+        "Rules:\n"
+        "- If a claim mixes supported and unsupported content, use unsupported.\n"
+        "- If you are uncertain, use unsupported.\n"
+        "- Preserve the claim ids exactly.\n\n"
+        f"Question:\n{question}\n\n"
+        f"Retrieved evidence:\n{context}\n\n"
+        f"Claims:\n{claims_text}\n\n"
+        'Return JSON in exactly this shape:\n{"labels":[{"claim_id":1,"label":"supported"}]}'
+    )
+
+
+def _parse_claim_labels(raw_text: str) -> dict[int, str] | None:
+    payload = _extract_json_payload(raw_text)
+    if not isinstance(payload, dict):
+        return None
+    labels = payload.get("labels")
+    if not isinstance(labels, list):
+        return None
+
+    parsed: dict[int, str] = {}
+    allowed = {"supported", "unsupported", "contradicted"}
+    for item in labels:
+        if not isinstance(item, dict):
+            return None
+        claim_id = item.get("claim_id")
+        label = str(item.get("label", "")).strip().lower()
+        if not isinstance(claim_id, int) or label not in allowed:
+            return None
+        parsed[claim_id] = label
+    return parsed
+
+
+def _llm_judge_claim_labels(
+    judge_client: LLMClient,
+    prompt: str,
+    retries: int = 2,
+) -> dict[int, str] | None:
+    for _ in range(max(1, retries + 1)):
+        answer, _, success, _ = safe_generate(
+            judge_client,
+            prompt,
+            temperature=0.0,
+            max_tokens=1200,
+            system_prompt=LLM_JSON_SYSTEM_PROMPT,
+        )
+        if not success:
+            continue
+        parsed = _parse_claim_labels(answer)
+        if parsed is not None:
+            return parsed
+    return None
+
+
+def _build_context_relevance_prompt(
+    question: str,
+    reference_answer: str,
+    ranked_contexts: list[tuple[int, str]],
+) -> str:
+    contexts_text = "\n\n".join(
+        f"{context_id}. {context_text}" for context_id, context_text in ranked_contexts
+    )
+    return (
+        "Task: judge whether each retrieved context chunk is relevant for answering the workbook question.\n"
+        "A context is relevant if it contains information that supports at least one material part of the reference answer or would directly help answer the question.\n"
+        "Labels:\n"
+        "- relevant\n"
+        "- irrelevant\n"
+        "Rules:\n"
+        "- Boilerplate, tangential details, and duplicate filler should be labeled irrelevant.\n"
+        "- If you are uncertain, label the context irrelevant.\n"
+        "- Preserve the context ids exactly.\n\n"
+        f"Question:\n{question}\n\n"
+        f"Reference answer:\n{reference_answer}\n\n"
+        f"Retrieved contexts:\n{contexts_text}\n\n"
+        'Return JSON in exactly this shape:\n{"labels":[{"context_id":1,"label":"relevant"}]}'
+    )
+
+
+def _parse_context_labels(raw_text: str) -> dict[int, bool] | None:
+    payload = _extract_json_payload(raw_text)
+    if not isinstance(payload, dict):
+        return None
+    labels = payload.get("labels")
+    if not isinstance(labels, list):
+        return None
+
+    parsed: dict[int, bool] = {}
+    for item in labels:
+        if not isinstance(item, dict):
+            return None
+        context_id = item.get("context_id")
+        label = str(item.get("label", "")).strip().lower()
+        if not isinstance(context_id, int) or label not in {"relevant", "irrelevant"}:
+            return None
+        parsed[context_id] = label == "relevant"
+    return parsed
+
+
+def _llm_judge_context_labels(
+    judge_client: LLMClient,
+    prompt: str,
+    retries: int = 2,
+) -> dict[int, bool] | None:
+    for _ in range(max(1, retries + 1)):
+        answer, _, success, _ = safe_generate(
+            judge_client,
+            prompt,
+            temperature=0.0,
+            max_tokens=1000,
+            system_prompt=LLM_JSON_SYSTEM_PROMPT,
+        )
+        if not success:
+            continue
+        parsed = _parse_context_labels(answer)
+        if parsed is not None:
+            return parsed
+    return None
+
+
+def _truncate_context_value(text: str, limit: int = 1200) -> str:
+    compact = re.sub(r"\s+", " ", text or "").strip()
+    if len(compact) <= limit:
+        return compact
+    return compact[: max(0, limit - 3)].rstrip() + "..."
+
+
+def _classify_claims_against_context(
+    judge_client: LLMClient,
+    question: str,
+    retrieved_contexts: list[str],
+    claims: list[str],
+    retries: int,
+) -> dict[int, str]:
+    labels_by_id: dict[int, str] = {}
+    indexed_claims = list(enumerate(claims, start=1))
+    for start in range(0, len(indexed_claims), CLAIM_CLASSIFICATION_BATCH_SIZE):
+        batch = indexed_claims[start : start + CLAIM_CLASSIFICATION_BATCH_SIZE]
+        prompt = _build_claim_classification_prompt(
+            question=question,
+            retrieved_contexts=retrieved_contexts,
+            claim_batch=batch,
+        )
+        parsed = _llm_judge_claim_labels(
+            judge_client,
+            prompt,
+            retries=retries,
+        )
+        batch_ids = {claim_id for claim_id, _ in batch}
+        if parsed is None or not batch_ids.issubset(parsed):
+            for claim_id in batch_ids:
+                labels_by_id[claim_id] = "unsupported"
+            continue
+        labels_by_id.update({claim_id: parsed[claim_id] for claim_id in batch_ids})
+    return labels_by_id
+
+
+def _compute_claim_ratios(labels_by_id: dict[int, str], claim_count: int) -> dict[str, float] | None:
+    if claim_count <= 0:
+        return None
+    supported = sum(1 for label in labels_by_id.values() if label == "supported")
+    unsupported = sum(1 for label in labels_by_id.values() if label == "unsupported")
+    contradicted = sum(1 for label in labels_by_id.values() if label == "contradicted")
+    grounded_ratio = round(supported / claim_count, 4)
+    unsupported_ratio = round(unsupported / claim_count, 4)
+    contradicted_ratio = round(contradicted / claim_count, 4)
+    return {
+        "faithfulness": grounded_ratio,
+        "grounded_claim_ratio": grounded_ratio,
+        "unsupported_claim_ratio": unsupported_ratio,
+        "contradicted_claim_ratio": contradicted_ratio,
+    }
+
+
+def _average_precision(relevance_flags: list[bool]) -> float | None:
+    if not relevance_flags:
+        return None
+    relevant_seen = 0
+    precision_values: list[float] = []
+    for index, is_relevant in enumerate(relevance_flags, start=1):
+        if not is_relevant:
+            continue
+        relevant_seen += 1
+        precision_values.append(relevant_seen / index)
+    if not precision_values:
+        return 0.0
+    return round(sum(precision_values) / len(precision_values), 4)
+
+
+def _evaluate_context_precision(
+    judge_client: LLMClient,
+    question: str,
+    reference_answer: str,
+    retrieved_chunks: list[Any],
+    retries: int,
+) -> float | None:
+    if not reference_answer.strip() or not retrieved_chunks:
+        return None
+
+    ranked_contexts = [
+        (index, _truncate_context_value(str(chunk.text)))
+        for index, chunk in enumerate(retrieved_chunks, start=1)
+        if str(chunk.text).strip()
+    ]
+    if not ranked_contexts:
+        return None
+
+    relevance_by_id: dict[int, bool] = {}
+    for start in range(0, len(ranked_contexts), CONTEXT_RELEVANCE_BATCH_SIZE):
+        batch = ranked_contexts[start : start + CONTEXT_RELEVANCE_BATCH_SIZE]
+        prompt = _build_context_relevance_prompt(
+            question=question,
+            reference_answer=reference_answer,
+            ranked_contexts=batch,
+        )
+        parsed = _llm_judge_context_labels(
+            judge_client,
+            prompt,
+            retries=retries,
+        )
+        batch_ids = {context_id for context_id, _ in batch}
+        if parsed is None or not batch_ids.issubset(parsed):
+            for context_id in batch_ids:
+                relevance_by_id[context_id] = False
+            continue
+        relevance_by_id.update({context_id: parsed[context_id] for context_id in batch_ids})
+
+    flags = [relevance_by_id.get(index, False) for index, _ in ranked_contexts]
+    return _average_precision(flags)
+
+
+def _evaluate_context_recall(
+    judge_client: LLMClient,
+    question: str,
+    reference_answer: str,
+    retrieved_contexts: list[str],
+    retries: int,
+) -> float | None:
+    reference_claims = _segment_response_units(reference_answer)
+    if not reference_claims:
+        return None
+    labels_by_id = _classify_claims_against_context(
+        judge_client=judge_client,
+        question=question,
+        retrieved_contexts=retrieved_contexts,
+        claims=reference_claims,
+        retries=retries,
+    )
+    supported = sum(1 for label in labels_by_id.values() if label == "supported")
+    return round(supported / len(reference_claims), 4)
+
+
+def _compute_overall_metric_score_pct(record: dict[str, Any]) -> float | None:
+    weighted_total = 0.0
+    available_weight = 0.0
+    for metric_name, (weight, invert) in OVERALL_SCORE_COMPONENTS.items():
+        raw_value = record.get(metric_name)
+        if raw_value is None or pd.isna(raw_value):
+            continue
+        value = float(raw_value)
+        value = 1.0 - value if invert else value
+        value = min(1.0, max(0.0, value))
+        weighted_total += weight * value
+        available_weight += weight
+    if available_weight <= 0:
+        return None
+    return (weighted_total / available_weight) * 100.0
 
 
 def _score_response_metrics(
@@ -530,13 +877,22 @@ def _score_response_metrics(
     }
     reference_answer = reference_answers.get(response.question, "")
     if response.success and reference_answer:
-        record["answer_accuracy"] = _llm_judge_metric(
-            judge_client,
-            _llm_judge_prompt_answer_accuracy(
-                response.question,
-                response.answer,
-                reference_answer,
-            ),
+        record["answer_accuracy"] = _dual_judge_metric(
+            judge_client=judge_client,
+            prompts=[
+                _llm_judge_prompt_answer_accuracy(
+                    response.question,
+                    response.answer,
+                    reference_answer,
+                ),
+                _llm_judge_prompt_answer_accuracy_reverse(
+                    response.question,
+                    response.answer,
+                    reference_answer,
+                ),
+            ],
+            allowed_values={0, 2, 4},
+            rating_scale=4,
             retries=max_retries,
         )
     if response.success and response.rag_enabled and response.retrieved_chunks:
@@ -550,17 +906,53 @@ def _score_response_metrics(
             if compact_context
             else [chunk.text for chunk in response.retrieved_chunks]
         )
-        grounding_packet = _llm_judge_grounding_packet(
-            judge_client,
-            _llm_judge_prompt_grounding_packet(
-                response.question,
-                response.answer,
-                retrieved_contexts,
-            ),
+        answer_claims = _segment_response_units(response.answer)
+        if answer_claims:
+            claim_labels = _classify_claims_against_context(
+                judge_client=judge_client,
+                question=response.question,
+                retrieved_contexts=retrieved_contexts,
+                claims=answer_claims,
+                retries=max_retries,
+            )
+            claim_metrics = _compute_claim_ratios(claim_labels, len(answer_claims))
+            if claim_metrics is not None:
+                record.update(claim_metrics)
+
+        record["response_groundedness"] = _dual_judge_metric(
+            judge_client=judge_client,
+            prompts=[
+                _llm_judge_prompt_response_groundedness(
+                    response.question,
+                    response.answer,
+                    retrieved_contexts,
+                ),
+                _llm_judge_prompt_response_groundedness_reverse(
+                    response.question,
+                    response.answer,
+                    retrieved_contexts,
+                ),
+            ],
+            allowed_values={0, 1, 2},
+            rating_scale=2,
             retries=max_retries,
         )
-        if grounding_packet is not None:
-            record.update(grounding_packet)
+        if reference_answer:
+            record["context_precision"] = _evaluate_context_precision(
+                judge_client=judge_client,
+                question=response.question,
+                reference_answer=reference_answer,
+                retrieved_chunks=response.retrieved_chunks,
+                retries=max_retries,
+            )
+            record["context_recall"] = _evaluate_context_recall(
+                judge_client=judge_client,
+                question=response.question,
+                reference_answer=reference_answer,
+                retrieved_contexts=retrieved_contexts,
+                retries=max_retries,
+            )
+    record["overall_metric_score_pct"] = _compute_overall_metric_score_pct(record)
     return record
 
 
@@ -603,7 +995,7 @@ def run_evaluation_metrics(
         per_run_df.groupby("run_name", dropna=False)
         .agg({metric_name: "mean" for metric_name in REPORT_METRIC_NAMES})
         .reset_index()
-        .sort_values(by=REPORT_METRIC_NAMES[0], ascending=False, na_position="last")
+        .sort_values(by="overall_metric_score_pct", ascending=False, na_position="last")
     )
     return per_run_df, summary_df
 
@@ -629,7 +1021,7 @@ def export_results(
         raise TypeError(f"Unexpected keyword argument(s): {unknown}")
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    timestamp = pd.Timestamp.utcnow().strftime("%Y%m%d_%H%M%S")
+    timestamp = pd.Timestamp.now("UTC").strftime("%Y%m%d_%H%M%S")
     workbook_path = output_dir / f"{filename_prefix}_{timestamp}.xlsx"
 
     response_rows: list[dict[str, Any]] = []
@@ -714,7 +1106,7 @@ def export_metrics_workbook(
         return None
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    timestamp = pd.Timestamp.utcnow().strftime("%Y%m%d_%H%M%S")
+    timestamp = pd.Timestamp.now("UTC").strftime("%Y%m%d_%H%M%S")
     workbook_path = output_dir / f"{filename_prefix}_{timestamp}.xlsx"
     with pd.ExcelWriter(workbook_path, engine="openpyxl") as writer:
         if metrics_per_run is not None:
@@ -791,7 +1183,7 @@ def export_single_model_report(
             )
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    timestamp = pd.Timestamp.utcnow().strftime("%Y%m%d_%H%M%S")
+    timestamp = pd.Timestamp.now("UTC").strftime("%Y%m%d_%H%M%S")
     prefix = filename_prefix or f"{run_name}_single_model_report"
     workbook_path = output_dir / f"{prefix}_{timestamp}.xlsx"
 

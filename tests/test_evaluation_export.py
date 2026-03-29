@@ -106,9 +106,12 @@ class EvaluationExportTests(unittest.TestCase):
                         "answer_accuracy": 0.95,
                         "faithfulness": 0.9,
                         "response_groundedness": 0.85,
+                        "context_precision": 0.8,
+                        "context_recall": 0.75,
                         "grounded_claim_ratio": 0.85,
                         "unsupported_claim_ratio": 0.1,
                         "contradicted_claim_ratio": 0.05,
+                        "overall_metric_score_pct": 87.6,
                     },
                     {
                         "run_name": "qwen_no_rag",
@@ -116,9 +119,12 @@ class EvaluationExportTests(unittest.TestCase):
                         "answer_accuracy": 0.8,
                         "faithfulness": None,
                         "response_groundedness": None,
+                        "context_precision": None,
+                        "context_recall": None,
                         "grounded_claim_ratio": None,
                         "unsupported_claim_ratio": None,
                         "contradicted_claim_ratio": None,
+                        "overall_metric_score_pct": 80.0,
                     },
                 ]
             )
@@ -145,15 +151,21 @@ class EvaluationExportTests(unittest.TestCase):
                     "qwen_rag_answer_accuracy",
                     "qwen_rag_faithfulness",
                     "qwen_rag_response_groundedness",
+                    "qwen_rag_context_precision",
+                    "qwen_rag_context_recall",
                     "qwen_rag_grounded_claim_ratio",
                     "qwen_rag_unsupported_claim_ratio",
                     "qwen_rag_contradicted_claim_ratio",
+                    "qwen_rag_overall_metric_score_pct",
                     "qwen_no_rag_answer_accuracy",
                     "qwen_no_rag_faithfulness",
                     "qwen_no_rag_response_groundedness",
+                    "qwen_no_rag_context_precision",
+                    "qwen_no_rag_context_recall",
                     "qwen_no_rag_grounded_claim_ratio",
                     "qwen_no_rag_unsupported_claim_ratio",
                     "qwen_no_rag_contradicted_claim_ratio",
+                    "qwen_no_rag_overall_metric_score_pct",
                     "qwen_rag_latency_seconds",
                     "qwen_no_rag_latency_seconds",
                     "qwen_rag_prompt_tokens_estimate",
@@ -167,7 +179,9 @@ class EvaluationExportTests(unittest.TestCase):
             self.assertEqual(df.iloc[0]["qwen_no_rag"], "Answer A without RAG")
             self.assertAlmostEqual(df.iloc[0]["qwen_rag_answer_accuracy"], 0.95)
             self.assertAlmostEqual(df.iloc[0]["qwen_rag_faithfulness"], 0.9)
+            self.assertAlmostEqual(df.iloc[0]["qwen_rag_context_precision"], 0.8)
             self.assertAlmostEqual(df.iloc[0]["qwen_rag_grounded_claim_ratio"], 0.85)
+            self.assertAlmostEqual(df.iloc[0]["qwen_rag_overall_metric_score_pct"], 87.6)
             self.assertAlmostEqual(df.iloc[0]["qwen_no_rag_answer_accuracy"], 0.8)
             self.assertTrue(pd.isna(df.iloc[0]["qwen_no_rag_faithfulness"]))
             self.assertAlmostEqual(df.iloc[0]["qwen_rag_latency_seconds"], 1.1)
@@ -187,16 +201,22 @@ class EvaluationExportTests(unittest.TestCase):
                     "qwen_rag_answer_accuracy",
                     "qwen_rag_faithfulness",
                     "qwen_rag_response_groundedness",
+                    "qwen_rag_context_precision",
+                    "qwen_rag_context_recall",
                     "qwen_rag_grounded_claim_ratio",
                     "qwen_rag_unsupported_claim_ratio",
                     "qwen_rag_contradicted_claim_ratio",
+                    "qwen_rag_overall_metric_score_pct",
                     "qwen_no_rag",
                     "qwen_no_rag_answer_accuracy",
                     "qwen_no_rag_faithfulness",
                     "qwen_no_rag_response_groundedness",
+                    "qwen_no_rag_context_precision",
+                    "qwen_no_rag_context_recall",
                     "qwen_no_rag_grounded_claim_ratio",
                     "qwen_no_rag_unsupported_claim_ratio",
                     "qwen_no_rag_contradicted_claim_ratio",
+                    "qwen_no_rag_overall_metric_score_pct",
                 ],
             )
 
@@ -225,22 +245,14 @@ class EvaluationExportTests(unittest.TestCase):
 
         answers = iter(
             [
-                ("not-a-score", 0.01, True, None),
-                ("SCORE=0.80", 0.01, True, None),
-                (
-                    "\n".join(
-                        [
-                            "FAITHFULNESS=0.90",
-                            "RESPONSE_GROUNDEDNESS=0.85",
-                            "GROUNDED_CLAIM_RATIO=0.85",
-                            "UNSUPPORTED_CLAIM_RATIO=0.10",
-                            "CONTRADICTED_CLAIM_RATIO=0.05",
-                        ]
-                    ),
-                    0.01,
-                    True,
-                    None,
-                ),
+                ("not-a-rating", 0.01, True, None),
+                ("RATING=4", 0.01, True, None),
+                ("RATING=2", 0.01, True, None),
+                ('{"labels":[{"claim_id":1,"label":"supported"}]}', 0.01, True, None),
+                ("RATING=2", 0.01, True, None),
+                ("RATING=1", 0.01, True, None),
+                ('{"labels":[{"context_id":1,"label":"relevant"}]}', 0.01, True, None),
+                ('{"labels":[{"claim_id":1,"label":"supported"}]}', 0.01, True, None),
             ]
         )
 
@@ -261,12 +273,15 @@ class EvaluationExportTests(unittest.TestCase):
                 context_char_budget=1000,
             )
 
-        self.assertEqual(mocked_generate.call_count, 3)
-        self.assertAlmostEqual(metrics_per_run.iloc[0]["answer_accuracy"], 0.8)
-        self.assertAlmostEqual(metrics_per_run.iloc[0]["faithfulness"], 0.9)
-        self.assertAlmostEqual(metrics_per_run.iloc[0]["response_groundedness"], 0.85)
-        self.assertAlmostEqual(metrics_per_run.iloc[0]["contradicted_claim_ratio"], 0.05)
-        self.assertAlmostEqual(metrics_summary.iloc[0]["answer_accuracy"], 0.8)
+        self.assertEqual(mocked_generate.call_count, 8)
+        self.assertAlmostEqual(metrics_per_run.iloc[0]["answer_accuracy"], 0.75)
+        self.assertAlmostEqual(metrics_per_run.iloc[0]["faithfulness"], 1.0)
+        self.assertAlmostEqual(metrics_per_run.iloc[0]["response_groundedness"], 0.75)
+        self.assertAlmostEqual(metrics_per_run.iloc[0]["context_precision"], 1.0)
+        self.assertAlmostEqual(metrics_per_run.iloc[0]["context_recall"], 1.0)
+        self.assertAlmostEqual(metrics_per_run.iloc[0]["contradicted_claim_ratio"], 0.0)
+        self.assertAlmostEqual(metrics_per_run.iloc[0]["overall_metric_score_pct"], 89.0)
+        self.assertAlmostEqual(metrics_summary.iloc[0]["answer_accuracy"], 0.75)
 
     def test_attribute_response_sources_treats_no_rag_response_as_pretrained(self) -> None:
         response = ModelResponse(
@@ -322,9 +337,12 @@ class EvaluationExportTests(unittest.TestCase):
                         "answer_accuracy": 0.85,
                         "faithfulness": 0.9,
                         "response_groundedness": 0.5,
+                        "context_precision": 0.7,
+                        "context_recall": 0.6,
                         "grounded_claim_ratio": 0.5,
                         "unsupported_claim_ratio": 0.5,
                         "contradicted_claim_ratio": 0.0,
+                        "overall_metric_score_pct": 73.4,
                     }
                 ]
             )
@@ -364,9 +382,12 @@ class EvaluationExportTests(unittest.TestCase):
                     "answer_accuracy",
                     "faithfulness",
                     "response_groundedness",
+                    "context_precision",
+                    "context_recall",
                     "grounded_claim_ratio",
                     "unsupported_claim_ratio",
                     "contradicted_claim_ratio",
+                    "overall_metric_score_pct",
                 ],
             )
             self.assertEqual(report_df.iloc[0]["knowledge_source_data"], "Company A is in Atlanta.")

@@ -56,6 +56,41 @@ export EVALUATION_MAX_RETRIES=2
 ```
 
 Legacy `RAGAS_*` environment variables are still accepted as compatibility aliases, but the evaluation layer is now documented as judge-based metrics because it does not call the `ragas` Python API directly.
+The implementation now keeps a local-judge workflow while mirroring the structure of key RAGAS-style metrics more closely:
+
+- dual-pass `answer_accuracy`
+- claim-based `faithfulness`
+- dual-pass `response_groundedness`
+- `context_precision`
+- `context_recall`
+
+Custom claim-ratio diagnostics are still exported separately:
+
+- `grounded_claim_ratio`
+- `unsupported_claim_ratio`
+- `contradicted_claim_ratio`
+
+The exported workbooks also include a derived aggregate field:
+
+- `overall_metric_score_pct`
+
+Formula:
+
+```text
+overall_metric_score_pct =
+100 * (
+  0.28 * answer_accuracy
++ 0.20 * faithfulness
++ 0.16 * response_groundedness
++ 0.12 * context_precision
++ 0.12 * context_recall
++ 0.04 * grounded_claim_ratio
++ 0.04 * (1 - unsupported_claim_ratio)
++ 0.04 * (1 - contradicted_claim_ratio)
+)
+```
+
+If some metrics are unavailable for a row, the score is normalized over the available weights only. The raw decimal value is kept; it is not rounded to an integer percentage.
 
 Make sure the local Ollama models are pulled if you are using Ollama-backed runs:
 
@@ -105,6 +140,22 @@ python main.py \
   --output-dir "artifacts/results/qwen_single_model" \
   --single-model-report
 ```
+
+Calibrate the local judge on a small human-labeled set before trusting the metric scores:
+
+```bash
+python calibrate_local_judge.py \
+  --input "artifacts/judge_calibration/calibration_set.xlsx" \
+  --output-dir "artifacts/judge_calibration"
+```
+
+The calibration file should contain:
+
+- `question`
+- `answer` or `model_response`
+- `reference_answer`
+- optional `retrieved_contexts`
+- optional human-labeled columns like `expected_answer_accuracy`, `expected_faithfulness`, `expected_response_groundedness`, `expected_context_precision`, `expected_context_recall`
 
 To skip evaluation while validating model access:
 
@@ -160,13 +211,18 @@ That sheet includes:
 - `reference_answer`
 - `reference_source`
 - one response column per model
-- six metric columns per model:
+- five primary local-judge metric columns per model:
   - `answer_accuracy`
   - `faithfulness`
   - `response_groundedness`
+  - `context_precision`
+  - `context_recall`
+- plus three diagnostic columns per model:
   - `grounded_claim_ratio`
   - `unsupported_claim_ratio`
   - `contradicted_claim_ratio`
+- plus one derived percentage column per model:
+  - `overall_metric_score_pct`
 
 Per-run response exports are written to `artifacts/correct_responses/` by default:
 
@@ -188,5 +244,7 @@ When `--single-model-report` is used with exactly one run, an additional workboo
 - The pipeline is workbook-driven, so you can point it at updated Excel files without changing code.
 - If `artifacts/Golden_answers.xlsx` exists, it is used automatically for `answer_accuracy`.
 - Any question missing from the golden workbook falls back to generated reference answers.
-- Non-RAG runs only receive `answer_accuracy`; grounding metrics are reserved for RAG runs with retrieved context.
+- Non-RAG runs only receive `answer_accuracy`; grounding and retrieval metrics are reserved for RAG runs with retrieved context.
+- `context_precision` and `context_recall` depend on reference answers, so they are strongest when human golden answers are available.
+- The calibration workbook is the recommended way to check whether a local judge model is trustworthy enough before comparing full runs.
 - The checked-in sample assets are aligned: the source workbook, 100-question workbook, and 100-answer golden workbook are all ready for local comparisons.
