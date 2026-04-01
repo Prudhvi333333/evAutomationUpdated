@@ -4,6 +4,7 @@ import hashlib
 import re
 import uuid
 
+from .excel_loader import preferred_location
 from .schemas import Chunk, TableRow, WorkbookNote
 from .settings import RetrievalSettings
 
@@ -78,7 +79,7 @@ class ExcelChunkBuilder:
                 "ev_supply_chain_role": row.values.get("EV Supply Chain Role", ""),
                 "product_service": row.values.get("Product / Service", ""),
                 "primary_oems": row.values.get("Primary OEMs", ""),
-                "location": row.values.get("Location", ""),
+                "location": preferred_location(row.values),
                 "primary_facility_type": row.values.get("Primary Facility Type", ""),
                 "supplier_or_affiliation_type": row.values.get("Supplier or Affiliation Type", ""),
                 "classification_method": row.values.get("Classification Method", ""),

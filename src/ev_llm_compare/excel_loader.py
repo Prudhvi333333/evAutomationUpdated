@@ -16,6 +16,13 @@ def normalize_cell(value: object) -> str:
     return re.sub(r"\s+", " ", str(value)).strip()
 
 
+def preferred_location(values: dict[str, object]) -> str:
+    updated = normalize_cell(values.get("Updated Location"))
+    if updated:
+        return updated
+    return normalize_cell(values.get("Location"))
+
+
 def _is_tabular_sheet(df: pd.DataFrame) -> bool:
     populated_columns = [
         column for column in df.columns if normalize_cell(column) and not str(column).startswith("Unnamed")
@@ -135,6 +142,8 @@ def load_reference_answers(
             "reference answer",
             "reference",
             "answer",
+            "human validated answers",
+            "human validated answer",
             "golden_summary",
             "golden summary",
         }

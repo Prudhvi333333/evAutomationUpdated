@@ -23,7 +23,7 @@ FIELD_LABELS = {
     "ev_supply_chain_role": "EV Supply Chain Role",
     "product_service": "Product / Service",
     "primary_oems": "Primary OEMs",
-    "location": "Location",
+    "location": "Updated Location",
     "primary_facility_type": "Primary Facility Type",
     "employment": "Employment",
     "ev_battery_relevant": "EV / Battery Relevant",

@@ -8,6 +8,7 @@ import uuid
 import pandas as pd
 
 from .chunking import tokenize
+from .excel_loader import preferred_location
 from .schemas import Chunk, TableRow
 
 ATLANTA_CORE_COUNTIES = {
@@ -153,7 +154,7 @@ def _rows_to_frame(rows: list[TableRow]) -> pd.DataFrame:
     records: list[dict[str, object]] = []
     for row in rows:
         values = row.values
-        location = str(values.get("Location", "")).strip()
+        location = preferred_location(values)
         records.append(
             {
                 "company": str(values.get("Company", "")).strip(),
