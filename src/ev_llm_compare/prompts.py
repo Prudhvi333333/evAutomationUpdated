@@ -114,7 +114,7 @@ def format_context(
 def build_rag_prompt(question: str, context: str) -> str:
     return (
         "Answer the user question using only the retrieved workbook evidence.\n"
-        "If a structured workbook match summary is present, treat it as the primary evidence.\n"
+        "If a structured workbook match summary is present, use it as a guide but verify it against the supporting rows when they are available.\n"
         "The evidence may be compacted to only the most relevant rows and fields.\n\n"
         f"Retrieved evidence:\n{context}\n\n"
         f"Question: {question}\n\n"
@@ -126,6 +126,7 @@ def build_rag_prompt(question: str, context: str) -> str:
         "- When listing companies, preserve names exactly.\n"
         "- Answer with the requested fields only; do not substitute Product / Service for Industry Group or omit Primary Facility Type when it is provided.\n"
         "- Include all supported matches from the evidence, not just one example.\n"
+        "- For questions asking for all entries, a full set, a network, or items connected to each other, prefer coverage and completeness over brevity.\n"
         "- If the evidence already groups companies by EV Supply Chain Role, copy that grouping directly.\n"
         "- Group results when the question asks for grouping.\n"
         "- Do not repeat evidence headers such as [Evidence 1].\n"
@@ -177,6 +178,7 @@ def _select_compact_results(
     max_results: int,
 ) -> list[RetrievalResult]:
     analytic_question = _is_analytic_question(normalized_question)
+    broad_context_required = _needs_broad_context(normalized_question)
     grouped_listing_question = (
         "ev supply chain role" in normalized_question
         and "group" in normalized_question
@@ -190,7 +192,9 @@ def _select_compact_results(
         (result for result in results if _chunk_type(result) == "structured_match_summary"),
         None,
     )
-    if (
+    if broad_context_required:
+        result_limit = max_results
+    elif (
         (analytic_question or grouped_listing_question)
         and summary_result
         and _summary_is_self_sufficient(summary_result.text)
@@ -232,6 +236,26 @@ def _select_compact_results(
         if len(selected) >= result_limit:
             break
     return selected
+
+
+def _needs_broad_context(normalized_question: str) -> bool:
+    padded_question = f" {normalized_question} "
+    return any(
+        term in padded_question
+        for term in {
+            " all entries ",
+            " all companies ",
+            " all suppliers ",
+            "full set",
+            "supplier network",
+            "network",
+            "connected to each",
+            "linked to each",
+            "broken down by",
+            "map all",
+            "identify all",
+        }
+    )
 
 
 def _compact_priority(normalized_question: str, result: RetrievalResult) -> float:

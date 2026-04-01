@@ -106,6 +106,26 @@ class RetrievalTests(unittest.TestCase):
 
         self.assertEqual(plan.matched_categories, [])
 
+    def test_match_locations_skips_generic_georgia(self) -> None:
+        retriever = HybridRetriever.__new__(HybridRetriever)
+        retriever.known_locations = ["Georgia", "Lawrenceville, Gwinnett County"]
+
+        matches = HybridRetriever._match_locations(
+            retriever,
+            "map all thermal management suppliers in georgia",
+        )
+
+        self.assertEqual(matches, [])
+
+    def test_is_exhaustive_question_detects_network_style_prompt(self) -> None:
+        retriever = HybridRetriever.__new__(HybridRetriever)
+        plan = HybridRetriever._plan_query(
+            self._seed_retriever_for_summary(retriever),
+            "Show all Vehicle Assembly OEMs in Georgia and the full set of Tier 1 suppliers connected to each within the state.",
+        )
+
+        self.assertTrue(HybridRetriever._is_exhaustive_question(retriever, plan))
+
     def _seed_retriever_for_summary(self, retriever: HybridRetriever) -> HybridRetriever:
         retriever.known_categories = ["Tier 1"]
         retriever.known_companies = []

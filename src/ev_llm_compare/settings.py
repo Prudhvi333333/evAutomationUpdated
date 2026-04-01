@@ -15,7 +15,7 @@ except ImportError:
 class RetrievalSettings:
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     dense_top_k: int = 18
-    final_top_k: int = 8
+    final_top_k: int = 12
     batch_size: int = 64
     lexical_weight: float = 0.45
     dense_weight: float = 0.55
@@ -30,10 +30,10 @@ class RetrievalSettings:
     structured_summary_limit: int = 8
     structured_exhaustive_limit: int = 150
     compact_context_enabled: bool = True
-    generation_context_result_limit: int = 5
-    generation_context_char_budget: int = 4200
-    evaluation_context_result_limit: int = 4
-    evaluation_context_char_budget: int = 2600
+    generation_context_result_limit: int = 8
+    generation_context_char_budget: int = 8000
+    evaluation_context_result_limit: int = 6
+    evaluation_context_char_budget: int = 4200
 
 
 @dataclass(slots=True)

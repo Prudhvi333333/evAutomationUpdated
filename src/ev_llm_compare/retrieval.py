@@ -812,7 +812,21 @@ class HybridRetriever:
 
     def _is_exhaustive_question(self, query_plan: QueryPlan) -> bool:
         question = query_plan.normalized_question
-        if any(term in question for term in {"list all", "show all", "provide the matching companies"}):
+        if any(
+            term in question
+            for term in {
+                "list all",
+                "show all",
+                "identify all",
+                "map all",
+                "provide the matching companies",
+                "full set",
+                "network",
+                "connected to each",
+                "linked to each",
+                "broken down by tier",
+            }
+        ):
             return True
         if "include their" in question or "summarize their" in question:
             return True
@@ -1405,6 +1419,11 @@ class HybridRetriever:
         for location in getattr(self, "known_locations", []):
             normalized_location = normalize_text(location)
             if not normalized_location or normalized_location in seen:
+                continue
+            # Treat bare "Georgia" as a generic statewide mention, not as an exact
+            # location filter, otherwise structured matching collapses to rows whose
+            # Updated Location literally equals "Georgia".
+            if normalized_location == "georgia":
                 continue
             county_fragment = ""
             if "," in location:
