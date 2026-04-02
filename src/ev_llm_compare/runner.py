@@ -198,6 +198,18 @@ class ComparisonRunner:
                         )
                         self._log(f"Checkpoint workbook written to {checkpoint_path}")
                     self._log("Running evaluation metrics")
+                    last_metric_progress = 0
+
+                    def log_metric_progress(completed: int, total: int, response: ModelResponse) -> None:
+                        nonlocal last_metric_progress
+                        if completed == total or completed - last_metric_progress >= 5:
+                            self._log(
+                                "Evaluation progress: "
+                                f"{completed}/{total} "
+                                f"({response.run_name}: {response.question[:80]})"
+                            )
+                            last_metric_progress = completed
+
                     metrics_per_run, metrics_summary = run_evaluation_metrics(
                         responses=responses,
                         reference_answers=references,
@@ -207,6 +219,8 @@ class ComparisonRunner:
                         context_result_limit=self.config.retrieval.evaluation_context_result_limit,
                         context_char_budget=self.config.retrieval.evaluation_context_char_budget,
                         compact_context=self.config.retrieval.compact_context_enabled,
+                        parallelism=self.config.evaluation.parallelism,
+                        progress_callback=log_metric_progress,
                     )
                 except Exception as exc:
                     self._log(
@@ -231,6 +245,18 @@ class ComparisonRunner:
                         "--single-model-report requires exactly one selected run. "
                         "Use --run-name once."
                     )
+                last_report_progress = 0
+
+                def log_report_progress(completed: int, total: int, response: ModelResponse) -> None:
+                    nonlocal last_report_progress
+                    if completed == total or completed - last_report_progress >= 5:
+                        self._log(
+                            "Single-model report progress: "
+                            f"{completed}/{total} "
+                            f"({response.run_name}: {response.question[:80]})"
+                        )
+                        last_report_progress = completed
+
                 single_model_path = export_single_model_report(
                     output_dir=self.config.runtime.output_dir,
                     responses=responses,
@@ -243,6 +269,8 @@ class ComparisonRunner:
                     context_char_budget=self.config.retrieval.evaluation_context_char_budget,
                     compact_context=self.config.retrieval.compact_context_enabled,
                     metrics_per_run=metrics_per_run,
+                    parallelism=self.config.evaluation.parallelism,
+                    progress_callback=log_report_progress,
                 )
                 self._log(f"Single-model report written to {single_model_path}")
 

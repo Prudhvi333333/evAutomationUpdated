@@ -1,5 +1,6 @@
 from pathlib import Path
 import tempfile
+import time
 import unittest
 from unittest.mock import patch
 
@@ -288,6 +289,84 @@ class EvaluationExportTests(unittest.TestCase):
         self.assertAlmostEqual(metrics_per_run.iloc[0]["contradicted_claim_ratio"], 0.0)
         self.assertAlmostEqual(metrics_per_run.iloc[0]["overall_metric_score_pct"], 90.0)
         self.assertAlmostEqual(metrics_summary.iloc[0]["answer_accuracy"], 0.8)
+
+    def test_run_evaluation_metrics_parallelism_preserves_input_order(self) -> None:
+        responses = [
+            ModelResponse(
+                run_name="qwen_rag",
+                provider="ollama",
+                model_name="qwen3:8b",
+                rag_enabled=False,
+                question="Question 1",
+                answer="Answer 1",
+                latency_seconds=0.1,
+                retrieved_chunks=[],
+                prompt_tokens_estimate=10,
+                success=True,
+            ),
+            ModelResponse(
+                run_name="qwen_rag",
+                provider="ollama",
+                model_name="qwen3:8b",
+                rag_enabled=False,
+                question="Question 2",
+                answer="Answer 2",
+                latency_seconds=0.1,
+                retrieved_chunks=[],
+                prompt_tokens_estimate=10,
+                success=True,
+            ),
+        ]
+        progress_events: list[tuple[int, int, str]] = []
+
+        def fake_score(
+            *,
+            response: ModelResponse,
+            reference_answers: dict[str, str],
+            judge_client: LLMClient,
+            max_retries: int,
+            context_result_limit: int,
+            context_char_budget: int,
+            compact_context: bool,
+        ) -> dict[str, object]:
+            if response.question == "Question 1":
+                time.sleep(0.05)
+            return {
+                "run_name": response.run_name,
+                "question": response.question,
+                "answer_accuracy": 0.9 if response.question == "Question 1" else 0.7,
+                "faithfulness": None,
+                "response_groundedness": None,
+                "context_precision": None,
+                "context_recall": None,
+                "grounded_claim_ratio": None,
+                "unsupported_claim_ratio": None,
+                "contradicted_claim_ratio": None,
+                "overall_metric_score_pct": 90.0 if response.question == "Question 1" else 70.0,
+            }
+
+        with patch(
+            "src.ev_llm_compare.evaluation._make_judge_client",
+            return_value=_DummyJudgeClient(),
+        ), patch(
+            "src.ev_llm_compare.evaluation._score_response_metrics",
+            side_effect=fake_score,
+        ):
+            metrics_per_run, _ = run_evaluation_metrics(
+                responses=responses,
+                reference_answers={"Question 1": "Ref 1", "Question 2": "Ref 2"},
+                judge_provider="gemini",
+                judge_model="judge-model",
+                parallelism=2,
+                progress_callback=lambda completed, total, response: progress_events.append(
+                    (completed, total, response.question)
+                ),
+            )
+
+        self.assertEqual(metrics_per_run["question"].tolist(), ["Question 1", "Question 2"])
+        self.assertEqual(metrics_per_run["answer_accuracy"].tolist(), [0.9, 0.7])
+        self.assertEqual(len(progress_events), 2)
+        self.assertEqual(progress_events[-1][0], 2)
 
     def test_partial_claim_labels_only_default_missing_claims(self) -> None:
         with patch(

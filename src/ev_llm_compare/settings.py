@@ -59,6 +59,7 @@ class EvaluationSettings:
     judge_provider: str = "ollama"
     judge_model: str = "mistral-small3.2:24b"
     max_retries: int = 2
+    parallelism: int = 1
 
 
 @dataclass(slots=True)
@@ -235,4 +236,9 @@ def load_config(*, dotenv_enabled: bool = True) -> AppConfig:
             default=str(config.evaluation.max_retries),
         )
     )
+    parallelism_value = os.getenv("EVALUATION_PARALLELISM") or os.getenv("RAGAS_PARALLELISM")
+    if parallelism_value is not None:
+        config.evaluation.parallelism = max(1, int(parallelism_value))
+    else:
+        config.evaluation.parallelism = 1 if config.evaluation.judge_provider == "ollama" else 4
     return config

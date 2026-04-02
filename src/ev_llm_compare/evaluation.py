@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import json
 import os
 from pathlib import Path
 import re
+import threading
 from typing import Any
 
 import pandas as pd
@@ -69,6 +71,8 @@ Do not add markdown, explanation, or prose before or after the JSON."""
 ATTRIBUTION_BATCH_SIZE = 24
 CLAIM_CLASSIFICATION_BATCH_SIZE = 16
 CONTEXT_RELEVANCE_BATCH_SIZE = 10
+
+_THREAD_LOCAL_STATE = threading.local()
 
 
 def _split_text_blocks(text: str) -> list[str]:
@@ -478,6 +482,19 @@ def _make_judge_client(provider: str, model: str) -> LLMClient:
         rag_enabled=False,
     )
     return create_client(spec, runtime)
+
+
+def _thread_local_judge_client(provider: str, model: str) -> LLMClient:
+    cache = getattr(_THREAD_LOCAL_STATE, "judge_clients", None)
+    if cache is None:
+        cache = {}
+        _THREAD_LOCAL_STATE.judge_clients = cache
+    key = (provider, model)
+    client = cache.get(key)
+    if client is None:
+        client = _make_judge_client(provider, model)
+        cache[key] = client
+    return client
 
 
 def _llm_judge_prompt_answer_accuracy(
@@ -1081,12 +1098,14 @@ def run_evaluation_metrics(
     context_result_limit: int = 4,
     context_char_budget: int = 2600,
     compact_context: bool = True,
+    parallelism: int = 1,
+    progress_callback: Any | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    judge_client = _make_judge_client(judge_provider, judge_model)
+    total = len(responses)
 
-    record_lookup: dict[tuple[str, str], dict[str, Any]] = {}
-    for response in responses:
-        record_lookup[(response.run_name, response.question)] = _score_response_metrics(
+    def score_one(response: ModelResponse) -> dict[str, Any]:
+        judge_client = _thread_local_judge_client(judge_provider, judge_model)
+        return _score_response_metrics(
             response=response,
             reference_answers=reference_answers,
             judge_client=judge_client,
@@ -1096,10 +1115,40 @@ def run_evaluation_metrics(
             compact_context=compact_context,
         )
 
-    per_run_records = [
-        record_lookup[(response.run_name, response.question)]
-        for response in responses
-    ]
+    per_run_records: list[dict[str, Any]]
+    if parallelism <= 1 or total <= 1:
+        judge_client = _make_judge_client(judge_provider, judge_model)
+        _THREAD_LOCAL_STATE.judge_clients = {(judge_provider, judge_model): judge_client}
+        per_run_records = []
+        for index, response in enumerate(responses, start=1):
+            per_run_records.append(
+                _score_response_metrics(
+                    response=response,
+                    reference_answers=reference_answers,
+                    judge_client=judge_client,
+                    max_retries=max_retries,
+                    context_result_limit=context_result_limit,
+                    context_char_budget=context_char_budget,
+                    compact_context=compact_context,
+                )
+            )
+            if progress_callback is not None:
+                progress_callback(index, total, response)
+    else:
+        records_by_index: list[dict[str, Any] | None] = [None] * total
+        completed = 0
+        with ThreadPoolExecutor(max_workers=max(1, parallelism)) as executor:
+            future_to_index = {
+                executor.submit(score_one, response): index
+                for index, response in enumerate(responses)
+            }
+            for future in as_completed(future_to_index):
+                index = future_to_index[future]
+                records_by_index[index] = future.result()
+                completed += 1
+                if progress_callback is not None:
+                    progress_callback(completed, total, responses[index])
+        per_run_records = [record for record in records_by_index if record is not None]
 
     per_run_df = pd.DataFrame(
         per_run_records,
@@ -1245,6 +1294,8 @@ def export_single_model_report(
     compact_context: bool = True,
     metrics_per_run: pd.DataFrame | None = None,
     filename_prefix: str | None = None,
+    parallelism: int = 1,
+    progress_callback: Any | None = None,
 ) -> Path:
     if not responses:
         raise ValueError("Cannot export a single-model report with no responses.")
@@ -1258,14 +1309,13 @@ def export_single_model_report(
         )
 
     run_name = run_names[0]
-    judge_client = None
-    if any(response.rag_enabled and response.retrieved_chunks for response in responses):
-        judge_client = _make_judge_client(judge_provider, judge_model)
-
     metric_lookup = _metric_lookup(metrics_per_run)
-    report_rows: list[dict[str, Any]] = []
-    attribution_rows: list[dict[str, Any]] = []
-    for response in responses:
+    needs_judge = any(response.rag_enabled and response.retrieved_chunks for response in responses)
+
+    def build_one(response: ModelResponse) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+        judge_client = None
+        if needs_judge and response.rag_enabled and response.retrieved_chunks:
+            judge_client = _thread_local_judge_client(judge_provider, judge_model)
         attribution = attribute_response_sources(
             response,
             judge_client=judge_client,
@@ -1285,18 +1335,55 @@ def export_single_model_report(
         }
         for metric_name in REPORT_METRIC_NAMES:
             report_row[metric_name] = metrics.get(metric_name)
-        report_rows.append(report_row)
 
-        for unit in attribution["attribution_units"]:
-            attribution_rows.append(
-                {
-                    "question": response.question,
-                    "run_name": response.run_name,
-                    "unit_id": unit["unit_id"],
-                    "label": unit["label"],
-                    "unit_text": unit["unit_text"],
-                }
-            )
+        attribution_entries = [
+            {
+                "question": response.question,
+                "run_name": response.run_name,
+                "unit_id": unit["unit_id"],
+                "label": unit["label"],
+                "unit_text": unit["unit_text"],
+            }
+            for unit in attribution["attribution_units"]
+        ]
+        return report_row, attribution_entries
+
+    report_rows: list[dict[str, Any]]
+    attribution_rows: list[dict[str, Any]]
+    if parallelism <= 1 or len(responses) <= 1:
+        if needs_judge:
+            judge_client = _make_judge_client(judge_provider, judge_model)
+            _THREAD_LOCAL_STATE.judge_clients = {(judge_provider, judge_model): judge_client}
+        report_rows = []
+        attribution_rows = []
+        for index, response in enumerate(responses, start=1):
+            report_row, attribution_entries = build_one(response)
+            report_rows.append(report_row)
+            attribution_rows.extend(attribution_entries)
+            if progress_callback is not None:
+                progress_callback(index, len(responses), response)
+    else:
+        ordered_reports: list[dict[str, Any] | None] = [None] * len(responses)
+        ordered_attribution: list[list[dict[str, Any]] | None] = [None] * len(responses)
+        completed = 0
+        with ThreadPoolExecutor(max_workers=max(1, parallelism)) as executor:
+            future_to_index = {
+                executor.submit(build_one, response): index
+                for index, response in enumerate(responses)
+            }
+            for future in as_completed(future_to_index):
+                index = future_to_index[future]
+                report_row, attribution_entries = future.result()
+                ordered_reports[index] = report_row
+                ordered_attribution[index] = attribution_entries
+                completed += 1
+                if progress_callback is not None:
+                    progress_callback(completed, len(responses), responses[index])
+        report_rows = [row for row in ordered_reports if row is not None]
+        attribution_rows = []
+        for entries in ordered_attribution:
+            if entries:
+                attribution_rows.extend(entries)
 
     output_dir.mkdir(parents=True, exist_ok=True)
     timestamp = pd.Timestamp.now("UTC").strftime("%Y%m%d_%H%M%S")
