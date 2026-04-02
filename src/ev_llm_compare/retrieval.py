@@ -92,6 +92,8 @@ class QueryPlan:
     matched_role_terms: list[str]
     group_by_role: bool
     prefer_structured: bool
+    broad_context_required: bool
+    relationship_heavy: bool
 
 
 class HybridRetriever:
@@ -327,6 +329,36 @@ class HybridRetriever:
 
     def _plan_query(self, question: str) -> QueryPlan:
         normalized_question = normalize_text(question)
+        broad_context_required = any(
+            term in normalized_question
+            for term in {
+                "all entries",
+                "all companies",
+                "all suppliers",
+                "full set",
+                "network",
+                "connected to each",
+                "linked to each",
+                "for each",
+                "broken down by",
+                "map all",
+                "identify all",
+            }
+        )
+        relationship_heavy = any(
+            term in normalized_question
+            for term in {
+                "linked to",
+                "suppliers linked to",
+                "connected to",
+                "connected to each",
+                "linked to each",
+                "supplier network",
+                "supply to",
+                "for each",
+                "full set",
+            }
+        )
         exact_category = self._extract_exact_category_filter(question)
         classification_focused = any(
             term in normalized_question for term in {"classified as", "classification method"}
@@ -428,6 +460,25 @@ class HybridRetriever:
         )
         if filters:
             dense_queries.append(" | ".join(dict.fromkeys(filters)))
+        if relationship_heavy:
+            relationship_filters = list(
+                dict.fromkeys(
+                    matched_categories
+                    + matched_primary_oems
+                    + matched_companies
+                    + matched_locations
+                    + matched_role_terms
+                )
+            )
+            if relationship_filters:
+                dense_queries.append("relationship map | " + " | ".join(relationship_filters))
+            for oem in matched_primary_oems:
+                supplier_category = matched_categories[0] if matched_categories else "supplier"
+                dense_queries.append(f"{supplier_category} linked to {oem}")
+            for company in matched_companies:
+                dense_queries.append(f"linked suppliers for {company}")
+            if matched_role_terms:
+                dense_queries.append(" | ".join(dict.fromkeys(matched_role_terms + matched_primary_oems)))
 
         return QueryPlan(
             question=question,
@@ -444,7 +495,10 @@ class HybridRetriever:
             prefer_structured=analytic_requested or (
                 bool(filters) and intent in {"aggregation", "comparison", "fact"}
             ),
+            broad_context_required=broad_context_required,
+            relationship_heavy=relationship_heavy,
         )
+
 
     def _rank_dense(self, dense_queries: list[str]) -> tuple[dict[str, int], dict[str, float]]:
         rank_scores: defaultdict[str, float] = defaultdict(float)
@@ -521,10 +575,26 @@ class HybridRetriever:
     def _metadata_boost(self, question: str, metadata: dict[str, Any]) -> float:
         boost = 0.0
         question_lower = normalize_text(question)
+        relationship_heavy = any(
+            term in question_lower
+            for term in {
+                "linked to",
+                "suppliers linked to",
+                "connected to",
+                "connected to each",
+                "linked to each",
+                "supplier network",
+                "supply to",
+                "for each",
+                "full set",
+            }
+        )
         company = normalize_text(str(metadata.get("company", "")))
         category = normalize_text(str(metadata.get("category", "")))
         role = normalize_text(str(metadata.get("ev_supply_chain_role", "")))
         product_service = normalize_text(str(metadata.get("product_service", "")))
+        primary_oems = normalize_text(str(metadata.get("primary_oems", "")))
+        location = normalize_text(str(metadata.get("location", "")))
         chunk_type = str(metadata.get("chunk_type", ""))
         if company and company in question_lower:
             boost += 0.04
@@ -544,6 +614,15 @@ class HybridRetriever:
         if any(term in question_lower for term in {"oem", "hyundai", "kia", "rivian", "mercedes"}):
             if chunk_type == "supply_chain_theme":
                 boost += 0.015
+        if relationship_heavy:
+            if chunk_type == "supply_chain_theme":
+                boost += 0.03
+            if primary_oems:
+                boost += 0.025
+            if category == "oem":
+                boost += 0.02
+            if "within the state" in question_lower and location:
+                boost += 0.01
         if chunk_type == "note_reference" and any(term in question_lower for term in {"define", "definition", "methodology"}):
             boost += 0.03
         if chunk_type == "derived_analytic_summary":
@@ -607,7 +686,10 @@ class HybridRetriever:
             )
         ]
 
-        row_limit = min(self.settings.structured_summary_limit, max(2, self.settings.final_top_k - 2))
+        row_limit = max(2, self.settings.final_top_k - 2)
+        if query_plan.relationship_heavy or query_plan.broad_context_required:
+            row_limit = max(row_limit, self.settings.final_top_k)
+        row_limit = min(self.settings.structured_exhaustive_limit, row_limit)
         for row in matched_rows[:row_limit]:
             results.append(
                 RetrievalResult(
@@ -616,6 +698,18 @@ class HybridRetriever:
                     metadata={
                         "chunk_type": "structured_row_match",
                         "company": row["company"],
+                        "category": row.get("category", ""),
+                        "industry_group": row.get("industry_group", ""),
+                        "ev_supply_chain_role": row.get("ev_supply_chain_role", ""),
+                        "product_service": row.get("product_service", ""),
+                        "primary_oems": row.get("primary_oems", ""),
+                        "location": row.get("location", ""),
+                        "primary_facility_type": row.get("primary_facility_type", ""),
+                        "supplier_or_affiliation_type": row.get("supplier_or_affiliation_type", ""),
+                        "classification_method": row.get("classification_method", ""),
+                        "employment": row.get("employment", ""),
+                        "ev_battery_relevant": row.get("ev_battery_relevant", ""),
+                        "row_summary": row.get("row_summary", ""),
                         "source_file": row["source_file"],
                         "sheet_name": row["sheet_name"],
                         "row_number": row["row_number"],
@@ -658,6 +752,8 @@ class HybridRetriever:
                 return False
         if query_plan.matched_role_terms:
             role_match = any(term in row_role for term in query_plan.matched_role_terms)
+            if query_plan.relationship_heavy and row_category != "oem":
+                role_match = True
             if not role_match:
                 allow_product_match = any(
                     term in query_plan.normalized_question
@@ -909,9 +1005,19 @@ class HybridRetriever:
         )
 
         result_limit = limit or self.settings.final_top_k
+        if limit is None and (query_plan.relationship_heavy or query_plan.broad_context_required):
+            result_limit = max(result_limit, min(self.settings.final_top_k, 10))
         selected: list[RetrievalResult] = []
         seen_keys: set[str] = set()
         company_counts: defaultdict[str, int] = defaultdict(int)
+        company_cap = self.settings.max_chunks_per_company
+        if query_plan.relationship_heavy or query_plan.broad_context_required:
+            company_cap = max(company_cap, 4)
+        elif any(
+            term in query_plan.normalized_question
+            for term in {"location", "each location", "primary facility type", "appear multiple times"}
+        ):
+            company_cap = max(company_cap, 3)
 
         for result in structured_results[:1]:
             selected.append(result)
@@ -922,7 +1028,7 @@ class HybridRetriever:
             if unique_key in seen_keys:
                 continue
             company = str(result.metadata.get("company", "")).strip()
-            if company and company_counts[company] >= self.settings.max_chunks_per_company:
+            if company and company_counts[company] >= company_cap:
                 continue
             selected.append(result)
             seen_keys.add(unique_key)
@@ -942,6 +1048,17 @@ class HybridRetriever:
             return 1.7
         if query_plan.intent == "definition" and chunk_type == "note_reference":
             return 2.5
+        if query_plan.relationship_heavy:
+            if chunk_type == "supply_chain_theme":
+                return 2.8
+            if chunk_type == "structured_row_match":
+                return 2.5
+            if chunk_type == "location_theme":
+                return 2.1
+            if chunk_type in {"company_profile", "row_full"}:
+                if str(result.metadata.get("primary_oems", "")).strip() or str(result.metadata.get("category", "")).strip().lower() == "oem":
+                    return 1.9
+                return 1.6
         if chunk_type in {"structured_row_match", "company_profile", "row_full"}:
             return 1.5
         if chunk_type == "note_reference":

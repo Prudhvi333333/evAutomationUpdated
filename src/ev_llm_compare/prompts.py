@@ -42,7 +42,15 @@ def compact_context_segments(
         return ["No retrieved evidence."]
 
     normalized_question = _normalize_question(question)
-    selected = _select_compact_results(normalized_question, results, max_results)
+    effective_max_results = _effective_compact_result_limit(
+        normalized_question,
+        max_results,
+    )
+    selected = _select_compact_results(
+        normalized_question,
+        results,
+        effective_max_results,
+    )
     blocks: list[str] = []
     char_budget = max(600, max_chars)
     reserved_summary_budget = int(char_budget * 0.62)
@@ -73,7 +81,7 @@ def compact_context_segments(
         if len(block) > remaining:
             block = block[: max(0, remaining - 3)].rstrip() + "..."
         blocks.append(block)
-        if len(blocks) >= max_results:
+        if len(blocks) >= effective_max_results:
             break
 
     return blocks or ["No retrieved evidence."]
@@ -179,6 +187,7 @@ def _select_compact_results(
 ) -> list[RetrievalResult]:
     analytic_question = _is_analytic_question(normalized_question)
     broad_context_required = _needs_broad_context(normalized_question)
+    relationship_heavy = _is_relationship_heavy_question(normalized_question)
     grouped_listing_question = (
         "ev supply chain role" in normalized_question
         and "group" in normalized_question
@@ -192,7 +201,7 @@ def _select_compact_results(
         (result for result in results if _chunk_type(result) == "structured_match_summary"),
         None,
     )
-    if broad_context_required:
+    if broad_context_required or relationship_heavy:
         result_limit = max_results
     elif (
         (analytic_question or grouped_listing_question)
@@ -213,6 +222,7 @@ def _select_compact_results(
     seen_rows: set[str] = set()
     seen_companies: set[str] = set()
     note_used = False
+    allow_repeated_company_rows = _needs_multi_record_context(normalized_question)
 
     for result in ranked:
         chunk_type = _chunk_type(result)
@@ -224,7 +234,12 @@ def _select_compact_results(
             continue
         if row_key and row_key in seen_rows:
             continue
-        if company and company in seen_companies and chunk_type in {"row_full", "company_profile"}:
+        if (
+            company
+            and company in seen_companies
+            and chunk_type in {"row_full", "company_profile", "supply_chain_theme", "location_theme"}
+            and not allow_repeated_company_rows
+        ):
             continue
         selected.append(result)
         if row_key:
@@ -251,6 +266,11 @@ def _needs_broad_context(normalized_question: str) -> bool:
             "network",
             "connected to each",
             "linked to each",
+            "linked suppliers",
+            "suppliers linked to",
+            "for each oem",
+            "for each company",
+            "for each location",
             "broken down by",
             "map all",
             "identify all",
@@ -258,16 +278,66 @@ def _needs_broad_context(normalized_question: str) -> bool:
     )
 
 
+def _is_relationship_heavy_question(normalized_question: str) -> bool:
+    padded_question = f" {normalized_question} "
+    return any(
+        term in padded_question
+        for term in {
+            " connected to ",
+            " linked to ",
+            " linked suppliers ",
+            " supply to ",
+            " supplier network ",
+            " full set ",
+            " for each ",
+            " relationship ",
+            " connected with ",
+        }
+    )
+
+
+def _needs_multi_record_context(normalized_question: str) -> bool:
+    if _needs_broad_context(normalized_question) or _is_relationship_heavy_question(normalized_question):
+        return True
+    return any(
+        term in normalized_question
+        for term in {
+            "locations",
+            "each location",
+            "primary facility type",
+            "multiple times",
+            "appear multiple times",
+            "county",
+            "cities",
+        }
+    )
+
+
+def _effective_compact_result_limit(normalized_question: str, max_results: int) -> int:
+    if _needs_broad_context(normalized_question) or _is_relationship_heavy_question(normalized_question):
+        return max(max_results, 6)
+    return max_results
+
+
 def _compact_priority(normalized_question: str, result: RetrievalResult) -> float:
     chunk_type = _chunk_type(result)
     if chunk_type == "structured_match_summary":
         return 4.0
     if chunk_type == "structured_row_match":
-        return 3.2
+        return 3.3
     if chunk_type == "note_reference":
         return 3.0 if any(
             term in normalized_question for term in {"methodology", "define", "definition", "meaning"}
         ) else -1.0
+    if _is_relationship_heavy_question(normalized_question):
+        if chunk_type == "supply_chain_theme":
+            return 3.1
+        if chunk_type == "location_theme":
+            return 2.8
+        if chunk_type in {"company_profile", "row_full"}:
+            if str(result.metadata.get("primary_oems", "")).strip():
+                return 2.7
+            return 2.3
     if chunk_type in {"location_theme", "identity_theme", "supply_chain_theme", "product_theme"}:
         return 2.4
     if chunk_type == "company_profile":
@@ -305,10 +375,12 @@ def _render_compact_block(
     chunk_type = _chunk_type(result)
     if chunk_type == "note_reference":
         body = result.text
+    elif _should_use_rich_row_context(normalized_question, result):
+        body = str(result.metadata.get("row_summary", "")).strip() or result.text
     else:
         body = _compact_metadata_line(normalized_question, result)
-    if not body:
-        body = result.text
+    if not body or _looks_sparse_compact_body(body, result):
+        body = str(result.metadata.get("row_summary", "")).strip() or result.text
     allowance = max(120, budget - len(header) - 1)
     if len(body) > allowance:
         body = body[: max(0, allowance - 3)].rstrip() + "..."
@@ -343,6 +415,37 @@ def _compact_metadata_line(normalized_question: str, result: RetrievalResult) ->
     return " | ".join(dict.fromkeys(parts))
 
 
+def _should_use_rich_row_context(normalized_question: str, result: RetrievalResult) -> bool:
+    chunk_type = _chunk_type(result)
+    if chunk_type == "structured_row_match":
+        return True
+    if _is_relationship_heavy_question(normalized_question):
+        return chunk_type in {
+            "row_full",
+            "company_profile",
+            "supply_chain_theme",
+            "location_theme",
+            "structured_row_match",
+        }
+    if _needs_multi_record_context(normalized_question):
+        return chunk_type in {"row_full", "company_profile", "location_theme"}
+    return False
+
+
+def _looks_sparse_compact_body(body: str, result: RetrievalResult) -> bool:
+    normalized_body = " ".join(body.split()).strip().lower()
+    if not normalized_body:
+        return True
+    company = str(result.metadata.get("company", "")).strip().lower()
+    if company and normalized_body == f"company: {company}":
+        return True
+    parts = [part.strip() for part in body.split("|") if part.strip()]
+    informative_parts = [
+        part for part in parts if not part.lower().startswith("company:")
+    ]
+    return len(informative_parts) == 0
+
+
 def _requested_fields(normalized_question: str, chunk_type: str) -> list[str]:
     fields: list[str] = []
     if "category" in normalized_question:
@@ -367,8 +470,20 @@ def _requested_fields(normalized_question: str, chunk_type: str) -> list[str]:
         fields.append("supplier_or_affiliation_type")
     if "classification method" in normalized_question:
         fields.append("classification_method")
+    if _is_relationship_heavy_question(normalized_question):
+        fields.extend(
+            [
+                "category",
+                "ev_supply_chain_role",
+                "primary_oems",
+                "location",
+                "primary_facility_type",
+                "employment",
+                "supplier_or_affiliation_type",
+            ]
+        )
     if fields:
-        return fields
+        return list(dict.fromkeys(fields))
     if chunk_type == "location_theme":
         return ["location", "primary_facility_type", "employment"]
     if chunk_type == "identity_theme":

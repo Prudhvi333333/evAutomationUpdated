@@ -36,23 +36,33 @@ OVERALL_SCORE_COMPONENTS: dict[str, tuple[float, bool]] = {
     "response_groundedness": (0.16, False),
     "context_precision": (0.12, False),
     "context_recall": (0.12, False),
-    "grounded_claim_ratio": (0.04, False),
     "unsupported_claim_ratio": (0.04, True),
     "contradicted_claim_ratio": (0.04, True),
 }
 
 LLM_JUDGE_SCORE_SYSTEM_PROMPT = """You are a strict evaluation judge for workbook question answering.
+Judge only from the texts provided in the user prompt.
+Do not use world knowledge, prior knowledge, or unstated assumptions.
+Be conservative: if support is incomplete or uncertain, choose the lower score.
 Return only one line in the form SCORE=<value>.
 Use a continuous score from 0.00 to 1.00 with exactly two decimal places.
 Do not add explanation, JSON, markdown, or extra text."""
 LLM_JUDGE_RATING_SYSTEM_PROMPT = """You are a strict evaluation judge for workbook question answering.
+Judge only from the texts provided in the user prompt.
+Do not use world knowledge, prior knowledge, or unstated assumptions.
+Be conservative: if support is incomplete or uncertain, choose the lower rating.
 Return only one line in the form RATING=<value>.
 Use only the allowed discrete rating values described in the prompt.
 Do not add explanation, JSON, markdown, or extra text."""
 LLM_ATTRIBUTION_SYSTEM_PROMPT = """You are performing claim-level provenance attribution for workbook question answering.
+Judge only from the retrieved evidence and response units provided in the prompt.
+Do not use world knowledge, prior knowledge, or unstated assumptions.
 Return only valid JSON.
 Do not add markdown, explanation, or prose before or after the JSON."""
 LLM_JSON_SYSTEM_PROMPT = """You are a strict evaluation judge for workbook question answering.
+Judge only from the texts provided in the user prompt.
+Do not use world knowledge, prior knowledge, or unstated assumptions.
+Be conservative: if support is incomplete or uncertain, prefer the lower-support label.
 Return only valid JSON.
 Do not add markdown, explanation, or prose before or after the JSON."""
 
@@ -144,6 +154,58 @@ def _sentence_units(text: str) -> list[str]:
     return units
 
 
+def _clean_segmented_unit(text: str) -> str:
+    cleaned = re.sub(r"^\s*(?:[-*]\s+|\d+[.)]\s+)", "", text.strip())
+    return cleaned.strip()
+
+
+def _split_structured_catalog_units(text: str) -> list[str]:
+    normalized = " ".join((text or "").split())
+    if not normalized:
+        return []
+
+    prefix_units: list[str] = []
+    tail_text = normalized
+    prefix_match = re.match(r"^(.*?\.)(?=\s+[A-Z0-9&].*\[[^\]]+\]\s*\|)", normalized)
+    if prefix_match:
+        prefix_units = _sentence_units(prefix_match.group(1).strip())
+        tail_text = normalized[prefix_match.end() :].strip()
+
+    if tail_text.count(";") >= 1:
+        candidates = [segment.strip() for segment in re.split(r"\s*;\s*", tail_text) if segment.strip()]
+        if (
+            len(candidates) >= 2
+            and sum("|" in segment for segment in candidates) >= len(candidates) - 1
+            and any("Company:" in segment or "[" in segment for segment in candidates)
+        ):
+            return prefix_units + candidates
+
+    company_token = r"[A-Z0-9&(][A-Za-z0-9&/().,'-]*"
+    company_connector = r"(?:of|and|the|for|&)"
+    company_name_pattern = rf"{company_token}(?:\s+(?:{company_token}|{company_connector})){{0,11}}"
+    start_patterns = [
+        rf"(?<!\S){company_name_pattern}\s*\[[^\]]+\]\s*\|\s*(?:Role|Category|EV Supply Chain Role|Primary OEMs|Updated Location|Location|Primary Facility Type|Employment|Product(?:\s*/\s*Service)?)\s*:",
+        rf"(?<!\S)(?:Company:\s*)?{company_name_pattern}\s*\|\s*(?:Category|EV Supply Chain Role|Role|Primary OEMs|Updated Location|Location|Primary Facility Type|Employment|Product(?:\s*/\s*Service)?)\s*:",
+    ]
+    for pattern in start_patterns:
+        matches = list(re.finditer(pattern, tail_text))
+        if len(matches) < 2:
+            continue
+        units: list[str] = list(prefix_units)
+        for index, match in enumerate(matches):
+            end_index = matches[index + 1].start() if index + 1 < len(matches) else len(tail_text)
+            segment = tail_text[match.start() : end_index].strip(" ;,-")
+            if segment:
+                units.append(segment)
+        return units
+
+    if tail_text.count("|") >= 4 and tail_text.count(";") >= 1:
+        candidates = [segment.strip() for segment in re.split(r"\s*;\s*", tail_text) if segment.strip()]
+        if len(candidates) >= 2 and sum("|" in segment for segment in candidates) >= len(candidates) - 1:
+            return prefix_units + candidates
+
+    return []
+
 def _segment_response_units(answer: str) -> list[str]:
     text = (answer or "").replace("\r\n", "\n").strip()
     if not text:
@@ -154,15 +216,32 @@ def _segment_response_units(answer: str) -> list[str]:
         lines = [line.strip() for line in block.split("\n") if line.strip()]
         if not lines:
             continue
-        if len(lines) > 1 and sum(1 for line in lines if _is_list_like_line(line)) >= max(1, len(lines) // 2):
-            units.extend(lines)
-            continue
-        if len(lines) > 1 and all(len(line) <= 140 for line in lines):
-            units.extend(lines)
-            continue
-        units.extend(_sentence_units(" ".join(lines)))
-    return [unit for unit in units if unit.strip()]
 
+        expanded_lines: list[str] = []
+        structured_line_found = False
+        for line in lines:
+            structured_units = _split_structured_catalog_units(line)
+            if structured_units:
+                expanded_lines.extend(structured_units)
+                structured_line_found = True
+            else:
+                expanded_lines.append(line)
+
+        if len(expanded_lines) > 1 and sum(1 for line in expanded_lines if _is_list_like_line(line)) >= max(1, len(expanded_lines) // 2):
+            units.extend(expanded_lines)
+            continue
+        if len(expanded_lines) > 1 and (structured_line_found or all(len(line) <= 180 for line in expanded_lines)):
+            units.extend(expanded_lines)
+            continue
+
+        for line in expanded_lines:
+            if " | " in line and (":" in line or line.count("|") >= 2):
+                units.append(line)
+            else:
+                units.extend(_sentence_units(line))
+
+    cleaned_units = [_clean_segmented_unit(unit) for unit in units if unit.strip()]
+    return [unit for unit in cleaned_units if unit]
 
 def _build_attribution_prompt(
     question: str,
@@ -334,11 +413,12 @@ def attribute_response_sources(
             retries=max_retries,
         )
         batch_ids = {unit_id for unit_id, _ in batch}
-        if parsed is None or not batch_ids.issubset(parsed):
+        if parsed is None:
             for unit_id in batch_ids:
                 labels_by_id[unit_id] = "pretrained"
             continue
-        labels_by_id.update({unit_id: parsed[unit_id] for unit_id in batch_ids})
+        for unit_id in batch_ids:
+            labels_by_id[unit_id] = parsed.get(unit_id, "pretrained")
 
     knowledge_units: list[str] = []
     pretrained_units: list[str] = []
@@ -406,20 +486,25 @@ def _llm_judge_prompt_answer_accuracy(
     reference_answer: str,
 ) -> str:
     return (
-        "Task: rate how well the candidate answer matches the reference answer for a workbook question.\n"
-        "Use only these ratings:\n"
-        "- 0 = inaccurate, materially incomplete, or answering a different question.\n"
-        "- 2 = partially correct but missing requested facts, containing extra unsupported entities, or containing noticeable mistakes.\n"
-        "- 4 = fully aligned with the reference on the requested facts with no material mistakes.\n"
+        "Task: score how well the candidate answer matches the reference answer for a workbook question.\n"
+        "Use a continuous score from 0.00 to 1.00.\n"
+        "Scoring guidance:\n"
+        "- 0.00 to 0.19 = inaccurate, off-task, or materially answering a different question.\n"
+        "- 0.20 to 0.49 = partially correct but with major omissions, wrong entities, or wrong numbers.\n"
+        "- 0.50 to 0.79 = mostly correct but still missing requested facts or containing noticeable mistakes.\n"
+        "- 0.80 to 0.94 = strong match with only minor omissions or formatting differences.\n"
+        "- 0.95 to 1.00 = fully aligned with the reference on the requested facts with no material mistakes.\n"
         "Rules:\n"
         "- For list, grouped, and count questions, judge factual coverage and precision.\n"
         "- Missing requested items should lower the rating.\n"
         "- Wrong extra entities or wrong numbers should lower the rating.\n"
-        "- If the answer is mostly a refusal, generic method, or off-task, use 0.\n\n"
+        "- Do not reward writing style, verbosity, or fluent paraphrasing.\n"
+        "- Do not infer missing facts that are not explicitly present in the candidate or reference.\n"
+        "- If the answer is mostly a refusal, generic method, or off-task, use a very low score.\n\n"
         f"Question:\n{question}\n\n"
         f"Reference answer:\n{reference_answer}\n\n"
         f"Candidate answer:\n{answer}\n\n"
-        "Return exactly one line: RATING=<0|2|4>"
+        "Return exactly one line: SCORE=<value>"
     )
 
 
@@ -430,16 +515,21 @@ def _llm_judge_prompt_answer_accuracy_reverse(
 ) -> str:
     return (
         "Task: independently re-evaluate answer accuracy by swapping roles.\n"
-        "Rate how well the reference answer covers and matches the candidate answer for the same workbook question.\n"
-        "Use only these ratings:\n"
-        "- 0 = the candidate and reference do not materially align.\n"
-        "- 2 = there is partial overlap but material gaps or mistakes remain.\n"
-        "- 4 = the two answers materially align on the requested facts.\n"
+        "Score how well the reference answer covers and matches the candidate answer for the same workbook question.\n"
+        "Use a continuous score from 0.00 to 1.00.\n"
+        "Scoring guidance:\n"
+        "- 0.00 to 0.19 = the answers do not materially align.\n"
+        "- 0.20 to 0.49 = there is only limited overlap with major gaps or mistakes.\n"
+        "- 0.50 to 0.79 = there is meaningful overlap but material gaps remain.\n"
+        "- 0.80 to 0.94 = the answers mostly align with minor gaps.\n"
+        "- 0.95 to 1.00 = the answers materially align on the requested facts.\n"
+        "- Do not reward writing style, verbosity, or fluent paraphrasing.\n"
+        "- Do not infer missing facts that are not explicitly present in the two answers.\n"
         "This prompt intentionally swaps the roles to reduce judge-position bias.\n\n"
         f"Question:\n{question}\n\n"
         f"Candidate answer:\n{reference_answer}\n\n"
         f"Reference answer:\n{answer}\n\n"
-        "Return exactly one line: RATING=<0|2|4>"
+        "Return exactly one line: SCORE=<value>"
     )
 
 
@@ -486,9 +576,18 @@ def _llm_judge_prompt_response_groundedness_reverse(
 def _parse_llm_judge_score(raw_text: str) -> float | None:
     if not raw_text:
         return None
-    match = re.search(r"(?<![\d.])(0(?:\.\d+)?|1(?:\.0+)?)\b", raw_text)
-    if not match:
+    stripped = raw_text.strip()
+
+    explicit_match = re.fullmatch(
+        r"SCORE\s*=\s*(0(?:\.\d+)?|1(?:\.0+)?)",
+        stripped,
+        flags=re.IGNORECASE,
+    )
+    bare_match = re.fullmatch(r"(0(?:\.\d+)?|1(?:\.0+)?)", stripped)
+    match = explicit_match or bare_match
+    if match is None:
         return None
+
     try:
         score = float(match.group(1))
     except ValueError:
@@ -578,6 +677,23 @@ def _dual_judge_metric(
             continue
         normalized_scores.append(round(rating / rating_scale, 4))
     return _average(normalized_scores)
+
+
+def _dual_judge_score_metric(
+    judge_client: LLMClient,
+    prompts: list[str],
+    retries: int,
+) -> float | None:
+    scores: list[float] = []
+    for prompt in prompts:
+        score = _llm_judge_metric(
+            judge_client,
+            prompt,
+            retries=retries,
+        )
+        if score is not None:
+            scores.append(score)
+    return _average(scores)
 
 
 def _build_claim_classification_prompt(
@@ -741,11 +857,12 @@ def _classify_claims_against_context(
             retries=retries,
         )
         batch_ids = {claim_id for claim_id, _ in batch}
-        if parsed is None or not batch_ids.issubset(parsed):
+        if parsed is None:
             for claim_id in batch_ids:
                 labels_by_id[claim_id] = "unsupported"
             continue
-        labels_by_id.update({claim_id: parsed[claim_id] for claim_id in batch_ids})
+        for claim_id in batch_ids:
+            labels_by_id[claim_id] = parsed.get(claim_id, "unsupported")
     return labels_by_id
 
 
@@ -785,16 +902,16 @@ def _evaluate_context_precision(
     judge_client: LLMClient,
     question: str,
     reference_answer: str,
-    retrieved_chunks: list[Any],
+    retrieved_contexts: list[str],
     retries: int,
 ) -> float | None:
-    if not reference_answer.strip() or not retrieved_chunks:
+    if not reference_answer.strip() or not retrieved_contexts:
         return None
 
     ranked_contexts = [
-        (index, _truncate_context_value(str(chunk.text)))
-        for index, chunk in enumerate(retrieved_chunks, start=1)
-        if str(chunk.text).strip()
+        (index, _truncate_context_value(str(context_text)))
+        for index, context_text in enumerate(retrieved_contexts, start=1)
+        if str(context_text).strip()
     ]
     if not ranked_contexts:
         return None
@@ -813,11 +930,12 @@ def _evaluate_context_precision(
             retries=retries,
         )
         batch_ids = {context_id for context_id, _ in batch}
-        if parsed is None or not batch_ids.issubset(parsed):
+        if parsed is None:
             for context_id in batch_ids:
                 relevance_by_id[context_id] = False
             continue
-        relevance_by_id.update({context_id: parsed[context_id] for context_id in batch_ids})
+        for context_id in batch_ids:
+            relevance_by_id[context_id] = parsed.get(context_id, False)
 
     flags = [relevance_by_id.get(index, False) for index, _ in ranked_contexts]
     return _average_precision(flags)
@@ -877,7 +995,7 @@ def _score_response_metrics(
     }
     reference_answer = reference_answers.get(response.question, "")
     if response.success and reference_answer:
-        record["answer_accuracy"] = _dual_judge_metric(
+        record["answer_accuracy"] = _dual_judge_score_metric(
             judge_client=judge_client,
             prompts=[
                 _llm_judge_prompt_answer_accuracy(
@@ -891,8 +1009,6 @@ def _score_response_metrics(
                     reference_answer,
                 ),
             ],
-            allowed_values={0, 2, 4},
-            rating_scale=4,
             retries=max_retries,
         )
     if response.success and response.rag_enabled and response.retrieved_chunks:
@@ -942,7 +1058,7 @@ def _score_response_metrics(
                 judge_client=judge_client,
                 question=response.question,
                 reference_answer=reference_answer,
-                retrieved_chunks=response.retrieved_chunks,
+                retrieved_contexts=retrieved_contexts,
                 retries=max_retries,
             )
             record["context_recall"] = _evaluate_context_recall(

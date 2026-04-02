@@ -58,7 +58,7 @@ export EVALUATION_MAX_RETRIES=2
 Legacy `RAGAS_*` environment variables are still accepted as compatibility aliases, but the evaluation layer is now documented as judge-based metrics because it does not call the `ragas` Python API directly.
 The implementation now keeps a local-judge workflow while mirroring the structure of key RAGAS-style metrics more closely:
 
-- dual-pass `answer_accuracy`
+- dual-pass continuous `answer_accuracy`
 - claim-based `faithfulness`
 - dual-pass `response_groundedness`
 - `context_precision`
@@ -84,7 +84,6 @@ overall_metric_score_pct =
 + 0.16 * response_groundedness
 + 0.12 * context_precision
 + 0.12 * context_recall
-+ 0.04 * grounded_claim_ratio
 + 0.04 * (1 - unsupported_claim_ratio)
 + 0.04 * (1 - contradicted_claim_ratio)
 )

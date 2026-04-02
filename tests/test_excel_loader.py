@@ -63,6 +63,23 @@ class ExcelLoaderTests(unittest.TestCase):
             references = load_reference_answers(path)
             self.assertEqual(references, {"What is A?": "Ref A", "What is B?": "Ref B"})
 
+    def test_load_reference_answers_preserves_multiline_structure(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            path = Path(tmp_dir) / "golden.xlsx"
+            pd.DataFrame(
+                {
+                    "Question": ["What is A?"],
+                    "Human validated answers": ["Summary line\n\n- Item A\n- Item B"],
+                }
+            ).to_excel(path, index=False)
+
+            references = load_reference_answers(path)
+
+            self.assertEqual(
+                references["What is A?"],
+                "Summary line\n\n- Item A\n- Item B",
+            )
+
     def test_preferred_location_uses_updated_location_before_location(self) -> None:
         values = {"Location": "Old County", "Updated Location": "New County"}
         self.assertEqual(preferred_location(values), "New County")

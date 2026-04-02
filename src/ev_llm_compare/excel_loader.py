@@ -16,6 +16,29 @@ def normalize_cell(value: object) -> str:
     return re.sub(r"\s+", " ", str(value)).strip()
 
 
+def normalize_reference_answer(value: object) -> str:
+    if pd.isna(value):
+        return ""
+    if isinstance(value, float) and value.is_integer():
+        text = str(int(value))
+    else:
+        text = str(value)
+
+    blocks: list[str] = []
+    current: list[str] = []
+    for line in text.replace("\r\n", "\n").split("\n"):
+        cleaned = re.sub(r"[ \t]+", " ", line).strip()
+        if cleaned:
+            current.append(cleaned)
+            continue
+        if current:
+            blocks.append("\n".join(current))
+            current = []
+    if current:
+        blocks.append("\n".join(current))
+    return "\n\n".join(blocks).strip()
+
+
 def preferred_location(values: dict[str, object]) -> str:
     updated = normalize_cell(values.get("Updated Location"))
     if updated:
@@ -163,7 +186,7 @@ def load_reference_answers(
     references: dict[str, str] = {}
     for _, row in df.iterrows():
         question = normalize_cell(row.get(question_column))
-        answer = normalize_cell(row.get(answer_column))
+        answer = normalize_reference_answer(row.get(answer_column))
         if len(question) < 5 or not answer:
             continue
         references[question] = answer
