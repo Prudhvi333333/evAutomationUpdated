@@ -8,6 +8,66 @@ import pandas as pd
 from .schemas import TableRow, WorkbookNote
 
 
+US_STATE_ABBREVIATIONS: dict[str, str] = {
+    "AL": "Alabama",
+    "AK": "Alaska",
+    "AZ": "Arizona",
+    "AR": "Arkansas",
+    "CA": "California",
+    "CO": "Colorado",
+    "CT": "Connecticut",
+    "DE": "Delaware",
+    "FL": "Florida",
+    "GA": "Georgia",
+    "HI": "Hawaii",
+    "ID": "Idaho",
+    "IL": "Illinois",
+    "IN": "Indiana",
+    "IA": "Iowa",
+    "KS": "Kansas",
+    "KY": "Kentucky",
+    "LA": "Louisiana",
+    "ME": "Maine",
+    "MD": "Maryland",
+    "MA": "Massachusetts",
+    "MI": "Michigan",
+    "MN": "Minnesota",
+    "MS": "Mississippi",
+    "MO": "Missouri",
+    "MT": "Montana",
+    "NE": "Nebraska",
+    "NV": "Nevada",
+    "NH": "New Hampshire",
+    "NJ": "New Jersey",
+    "NM": "New Mexico",
+    "NY": "New York",
+    "NC": "North Carolina",
+    "ND": "North Dakota",
+    "OH": "Ohio",
+    "OK": "Oklahoma",
+    "OR": "Oregon",
+    "PA": "Pennsylvania",
+    "RI": "Rhode Island",
+    "SC": "South Carolina",
+    "SD": "South Dakota",
+    "TN": "Tennessee",
+    "TX": "Texas",
+    "UT": "Utah",
+    "VT": "Vermont",
+    "VA": "Virginia",
+    "WA": "Washington",
+    "WV": "West Virginia",
+    "WI": "Wisconsin",
+    "WY": "Wyoming",
+    "DC": "District of Columbia",
+}
+US_STATE_NAMES = tuple(sorted(US_STATE_ABBREVIATIONS.values(), key=len, reverse=True))
+US_STATE_NAME_LOOKUP = {name.lower(): name for name in US_STATE_NAMES}
+STATE_ABBREVIATION_PATTERN = re.compile(
+    r"\b(" + "|".join(sorted(US_STATE_ABBREVIATIONS)) + r")\b(?:\s+\d{5}(?:-\d{4})?)?"
+)
+
+
 def normalize_cell(value: object) -> str:
     if pd.isna(value):
         return ""
@@ -37,6 +97,50 @@ def normalize_reference_answer(value: object) -> str:
     if current:
         blocks.append("\n".join(current))
     return "\n\n".join(blocks).strip()
+
+
+def _canonicalize_state_token(value: object) -> str:
+    cleaned = normalize_cell(value).strip(" ,")
+    if not cleaned:
+        return ""
+    if cleaned.upper() in US_STATE_ABBREVIATIONS:
+        return US_STATE_ABBREVIATIONS[cleaned.upper()]
+    return US_STATE_NAME_LOOKUP.get(cleaned.lower(), "")
+
+
+def extract_state_from_text(value: object) -> str:
+    cleaned = normalize_cell(value)
+    if not cleaned:
+        return ""
+
+    direct = _canonicalize_state_token(cleaned)
+    if direct:
+        return direct
+
+    lowered = cleaned.lower()
+    for state_name in US_STATE_NAMES:
+        if re.search(rf"\b{re.escape(state_name.lower())}\b", lowered):
+            return state_name
+
+    abbreviation_match = STATE_ABBREVIATION_PATTERN.search(cleaned)
+    if abbreviation_match:
+        return US_STATE_ABBREVIATIONS.get(abbreviation_match.group(1), "")
+
+    return ""
+
+
+def infer_state(values: dict[str, object]) -> str:
+    for field_name in (
+        "State",
+        "Updated State",
+        "Address",
+        "Updated Location",
+        "Location",
+    ):
+        inferred = extract_state_from_text(values.get(field_name))
+        if inferred:
+            return inferred
+    return ""
 
 
 def preferred_location(values: dict[str, object]) -> str:

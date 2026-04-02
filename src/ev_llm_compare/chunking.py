@@ -4,7 +4,7 @@ import hashlib
 import re
 import uuid
 
-from .excel_loader import preferred_location
+from .excel_loader import infer_state, preferred_location
 from .schemas import Chunk, TableRow, WorkbookNote
 from .settings import RetrievalSettings
 
@@ -53,6 +53,7 @@ class ExcelChunkBuilder:
         full_text = " | ".join(f"{column}: {row.values[column]}" for column in important_order)
         row_key = f"{row.workbook_path.name}::{row.sheet_name}::{row.row_number}"
         row_summary = self._row_summary_text(row)
+        state = infer_state(row.values)
 
         chunk_specs = [
             ("row_full", full_text),
@@ -80,6 +81,7 @@ class ExcelChunkBuilder:
                 "product_service": row.values.get("Product / Service", ""),
                 "primary_oems": row.values.get("Primary OEMs", ""),
                 "location": preferred_location(row.values),
+                "state": state,
                 "primary_facility_type": row.values.get("Primary Facility Type", ""),
                 "supplier_or_affiliation_type": row.values.get("Supplier or Affiliation Type", ""),
                 "classification_method": row.values.get("Classification Method", ""),

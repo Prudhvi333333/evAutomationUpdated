@@ -25,6 +25,7 @@ class RetrievalTests(unittest.TestCase):
         retriever = HybridRetriever.__new__(HybridRetriever)
         retriever.known_categories = ["Tier 1", "Tier 1/2"]
         retriever.known_companies = ["Acme EV"]
+        retriever.known_states = ["Georgia"]
         retriever.known_locations = []
         retriever.known_primary_oems = []
         retriever.role_terms = ["battery pack", "battery cell"]
@@ -45,6 +46,7 @@ class RetrievalTests(unittest.TestCase):
         retriever = HybridRetriever.__new__(HybridRetriever)
         retriever.known_categories = ["OEM", "Tier 1"]
         retriever.known_companies = []
+        retriever.known_states = ["Georgia"]
         retriever.known_locations = []
         retriever.known_primary_oems = []
         retriever.role_terms = ["vehicle assembly"]
@@ -123,6 +125,7 @@ class RetrievalTests(unittest.TestCase):
                 "product_service": "Coatings",
                 "primary_oems": "Kia Georgia Inc.",
                 "location": "Troup County",
+                "state": "Georgia",
                 "industry_group": "Coatings",
                 "primary_facility_type": "Manufacturing Plant",
                 "supplier_or_affiliation_type": "Supplier",
@@ -150,6 +153,7 @@ class RetrievalTests(unittest.TestCase):
         retriever = HybridRetriever.__new__(HybridRetriever)
         retriever.known_categories = ["OEM", "Tier 1", "Tier 2/3"]
         retriever.known_companies = []
+        retriever.known_states = ["Georgia"]
         retriever.known_locations = []
         retriever.known_primary_oems = []
         retriever.role_terms = ["dc fast charging"]
@@ -163,6 +167,7 @@ class RetrievalTests(unittest.TestCase):
 
     def test_match_locations_skips_generic_georgia(self) -> None:
         retriever = HybridRetriever.__new__(HybridRetriever)
+        retriever.known_states = ["Georgia"]
         retriever.known_locations = ["Georgia", "Lawrenceville, Gwinnett County"]
 
         matches = HybridRetriever._match_locations(
@@ -171,6 +176,59 @@ class RetrievalTests(unittest.TestCase):
         )
 
         self.assertEqual(matches, [])
+
+    def test_match_locations_skips_any_bare_state_name(self) -> None:
+        retriever = HybridRetriever.__new__(HybridRetriever)
+        retriever.known_states = ["Georgia", "Alabama"]
+        retriever.known_locations = ["Georgia", "Alabama", "Montgomery, Alabama"]
+
+        matches = HybridRetriever._match_locations(
+            retriever,
+            "map all suppliers in alabama",
+        )
+
+        self.assertEqual(matches, [])
+
+    def test_query_plan_matches_state_metadata_for_statewide_questions(self) -> None:
+        retriever = HybridRetriever.__new__(HybridRetriever)
+        retriever.known_categories = ["Tier 1", "OEM"]
+        retriever.known_companies = []
+        retriever.known_states = ["Georgia", "Alabama"]
+        retriever.known_locations = ["Georgia", "West Point, Troup County"]
+        retriever.known_primary_oems = []
+        retriever.role_terms = ["thermal management"]
+
+        plan = HybridRetriever._plan_query(
+            retriever,
+            "Map all thermal management suppliers in Georgia.",
+        )
+
+        self.assertEqual(plan.matched_states, ["Georgia"])
+        self.assertEqual(plan.matched_locations, [])
+
+    def test_row_matches_filters_respects_state_metadata(self) -> None:
+        retriever = HybridRetriever.__new__(HybridRetriever)
+        plan = HybridRetriever._plan_query(
+            self._seed_retriever_for_summary(retriever),
+            "Show all Tier 1 suppliers in Georgia.",
+        )
+        georgia_row = {
+            "company": "PPG Industries Inc.",
+            "category": "Tier 1",
+            "ev_supply_chain_role": "General Automotive",
+            "product_service": "Coatings",
+            "primary_oems": "Kia Georgia Inc.",
+            "location": "Troup County",
+            "state": "Georgia",
+        }
+        alabama_row = {
+            **georgia_row,
+            "company": "Montgomery Supplier",
+            "state": "Alabama",
+        }
+
+        self.assertTrue(HybridRetriever._row_matches_filters(retriever, georgia_row, plan))
+        self.assertFalse(HybridRetriever._row_matches_filters(retriever, alabama_row, plan))
 
     def test_is_exhaustive_question_detects_network_style_prompt(self) -> None:
         retriever = HybridRetriever.__new__(HybridRetriever)
@@ -205,6 +263,71 @@ class RetrievalTests(unittest.TestCase):
         learner_count = sum(1 for result in selected if result.metadata.get("company") == "Lear Corporation")
         self.assertEqual(learner_count, 4)
 
+    def test_select_context_results_prefers_state_scoped_derived_summary_over_global(self) -> None:
+        retriever = HybridRetriever.__new__(HybridRetriever)
+        retriever.settings = RetrievalSettings(final_top_k=4)
+        plan = HybridRetriever._plan_query(
+            self._seed_retriever_for_summary(retriever),
+            "Which county in Georgia has the highest total employment among Tier 1 suppliers only?",
+        )
+        candidates = [
+            RetrievalResult(
+                chunk_id="derived-global",
+                text="Derived analytic summary table: county supplier density.",
+                metadata={
+                    "chunk_type": "derived_analytic_summary",
+                    "analysis_type": "county_cluster_summary",
+                    "analysis_title": "Derived analytic summary table: county supplier density.",
+                    "analysis_scope": "global",
+                    "state": "",
+                },
+                dense_score=0.97,
+                lexical_score=0.97,
+                final_score=0.97,
+            ),
+            RetrievalResult(
+                chunk_id="derived-ga",
+                text="Derived analytic summary table for Georgia: county supplier density.",
+                metadata={
+                    "chunk_type": "derived_analytic_summary",
+                    "analysis_type": "county_cluster_summary",
+                    "analysis_title": "Derived analytic summary table for Georgia: county supplier density.",
+                    "analysis_scope": "state",
+                    "state": "Georgia",
+                },
+                dense_score=0.95,
+                lexical_score=0.95,
+                final_score=0.95,
+            ),
+            RetrievalResult(
+                chunk_id="derived-al",
+                text="Derived analytic summary table for Alabama: county supplier density.",
+                metadata={
+                    "chunk_type": "derived_analytic_summary",
+                    "analysis_type": "county_cluster_summary",
+                    "analysis_title": "Derived analytic summary table for Alabama: county supplier density.",
+                    "analysis_scope": "state",
+                    "state": "Alabama",
+                },
+                dense_score=0.96,
+                lexical_score=0.96,
+                final_score=0.96,
+            ),
+        ]
+
+        selected = HybridRetriever._select_context_results(
+            retriever,
+            query_plan=plan,
+            structured_results=[],
+            candidates=candidates,
+            limit=3,
+        )
+
+        selected_ids = {result.chunk_id for result in selected}
+        self.assertIn("derived-ga", selected_ids)
+        self.assertNotIn("derived-global", selected_ids)
+        self.assertNotIn("derived-al", selected_ids)
+
     def _make_result(
         self,
         row_key: str,
@@ -234,6 +357,7 @@ class RetrievalTests(unittest.TestCase):
     def _seed_retriever_for_summary(self, retriever: HybridRetriever) -> HybridRetriever:
         retriever.known_categories = ["Tier 1", "OEM"]
         retriever.known_companies = []
+        retriever.known_states = ["Georgia", "Alabama"]
         retriever.known_locations = []
         retriever.known_primary_oems = []
         retriever.role_terms = ["battery pack", "vehicle assembly"]

@@ -27,6 +27,7 @@ class SettingsTests(unittest.TestCase):
                 "EVALUATION_JUDGE_PROVIDER": "gemini",
                 "EVALUATION_JUDGE_MODEL": "gemini-2.5-flash",
                 "EVALUATION_MAX_RETRIES": "3",
+                "EVALUATION_PARALLELISM": "6",
             },
             clear=False,
         ):
@@ -35,6 +36,7 @@ class SettingsTests(unittest.TestCase):
         self.assertEqual(config.evaluation.judge_provider, "gemini")
         self.assertEqual(config.evaluation.judge_model, "gemini-2.5-flash")
         self.assertEqual(config.evaluation.max_retries, 3)
+        self.assertEqual(config.evaluation.parallelism, 6)
 
     def test_load_config_accepts_legacy_ragas_env_aliases(self) -> None:
         with patch.dict(
@@ -43,6 +45,7 @@ class SettingsTests(unittest.TestCase):
                 "RAGAS_JUDGE_PROVIDER": "gemini",
                 "RAGAS_JUDGE_MODEL": "gemini-2.5-pro",
                 "RAGAS_MAX_RETRIES": "4",
+                "RAGAS_PARALLELISM": "5",
             },
             clear=False,
         ):
@@ -51,6 +54,28 @@ class SettingsTests(unittest.TestCase):
         self.assertEqual(config.evaluation.judge_provider, "gemini")
         self.assertEqual(config.evaluation.judge_model, "gemini-2.5-pro")
         self.assertEqual(config.evaluation.max_retries, 4)
+        self.assertEqual(config.evaluation.parallelism, 5)
+
+    def test_load_config_defaults_parallelism_by_provider(self) -> None:
+        with patch.dict(
+            os.environ,
+            {
+                "EVALUATION_JUDGE_PROVIDER": "gemini",
+            },
+            clear=True,
+        ):
+            gemini_config = load_config(dotenv_enabled=False)
+        self.assertEqual(gemini_config.evaluation.parallelism, 4)
+
+        with patch.dict(
+            os.environ,
+            {
+                "EVALUATION_JUDGE_PROVIDER": "ollama",
+            },
+            clear=True,
+        ):
+            ollama_config = load_config(dotenv_enabled=False)
+        self.assertEqual(ollama_config.evaluation.parallelism, 1)
 
     def test_load_config_reads_retrieval_overrides(self) -> None:
         with patch.dict(
