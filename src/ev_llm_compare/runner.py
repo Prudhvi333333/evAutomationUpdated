@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from .chunking import ExcelChunkBuilder
+from .derived_analytics import build_derived_summary_chunks
 from .evaluation import (
     build_reference_answers,
     export_metrics_workbook,
@@ -68,6 +69,10 @@ class ComparisonRunner:
         self._log("Building structured chunks")
         chunk_builder = ExcelChunkBuilder(self.config.retrieval)
         chunks = chunk_builder.build(rows, notes)
+        derived_chunks = build_derived_summary_chunks(rows)
+        if derived_chunks:
+            chunks.extend(derived_chunks)
+            self._log(f"Added {len(derived_chunks)} derived analytic summary chunks")
         self._log(f"Built {len(chunks)} chunks")
         self._log("Initializing retriever and indexing chunks")
         retriever = HybridRetriever(

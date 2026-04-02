@@ -5,6 +5,7 @@ import unittest
 import pandas as pd
 
 from src.ev_llm_compare.excel_loader import (
+    infer_state,
     load_questions,
     load_reference_answers,
     load_workbook,
@@ -84,6 +85,18 @@ class ExcelLoaderTests(unittest.TestCase):
         values = {"Location": "Old County", "Updated Location": "New County"}
         self.assertEqual(preferred_location(values), "New County")
         self.assertEqual(preferred_location({"Location": "Old County"}), "Old County")
+
+    def test_infer_state_uses_address_abbreviation(self) -> None:
+        values = {"Address": "1 Kia Parkway, West Point, GA 31833"}
+        self.assertEqual(infer_state(values), "Georgia")
+
+    def test_infer_state_accepts_full_state_name(self) -> None:
+        values = {"Updated Location": "Montgomery, Alabama"}
+        self.assertEqual(infer_state(values), "Alabama")
+
+    def test_infer_state_returns_empty_when_missing(self) -> None:
+        values = {"Location": "Troup County"}
+        self.assertEqual(infer_state(values), "")
 
 
 if __name__ == "__main__":

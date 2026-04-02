@@ -8,7 +8,7 @@ import uuid
 import pandas as pd
 
 from .chunking import tokenize
-from .excel_loader import preferred_location
+from .excel_loader import infer_state, preferred_location
 from .schemas import Chunk, TableRow
 
 ATLANTA_CORE_COUNTIES = {
@@ -130,10 +130,46 @@ def build_derived_summary_chunks(rows: list[TableRow]) -> list[Chunk]:
     ]
 
     chunks: list[Chunk] = []
-    for analysis_type, title, body in summary_specs:
-        text = f"{title}\n\n{body}".strip()
-        chunk_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"{workbook_name}:{analysis_type}"))
-        chunks.append(
+    chunks.extend(_build_summary_chunks_for_scope(workbook_name, summary_specs, state="", frame=frame))
+
+    states = sorted(
+        {
+            str(state).strip()
+            for state in frame.get("state", pd.Series(dtype=str)).astype(str).tolist()
+            if str(state).strip()
+        }
+    )
+    for state in states:
+        state_frame = frame[frame["state"].astype(str).str.strip() == state].copy()
+        if state_frame.empty:
+            continue
+        chunks.extend(
+            _build_summary_chunks_for_scope(
+                workbook_name,
+                summary_specs,
+                state=state,
+                frame=state_frame,
+            )
+        )
+    return chunks
+
+
+def _build_summary_chunks_for_scope(
+    workbook_name: str,
+    summary_specs: list[tuple[str, str, str]],
+    *,
+    state: str,
+    frame: pd.DataFrame,
+) -> list[Chunk]:
+    scoped_chunks: list[Chunk] = []
+    scope_key = state or "global"
+    scope_label = f"{state} only" if state else "Workbook-wide across all states"
+    for analysis_type, title, _ in summary_specs:
+        scoped_title = _scope_analysis_title(title, state)
+        body = _summary_body_for_type(analysis_type, frame)
+        text = f"{scoped_title}\nScope: {scope_label}\n\n{body}".strip()
+        chunk_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"{workbook_name}:{scope_key}:{analysis_type}"))
+        scoped_chunks.append(
             Chunk(
                 chunk_id=chunk_id,
                 text=text,
@@ -142,12 +178,37 @@ def build_derived_summary_chunks(rows: list[TableRow]) -> list[Chunk]:
                     "sheet_name": "DerivedAnalytics",
                     "chunk_type": "derived_analytic_summary",
                     "analysis_type": analysis_type,
-                    "analysis_title": title,
+                    "analysis_title": scoped_title,
+                    "analysis_scope": "state" if state else "global",
+                    "state": state,
                 },
                 token_set=tokenize(text),
             )
         )
-    return chunks
+    return scoped_chunks
+
+
+def _scope_analysis_title(title: str, state: str) -> str:
+    if not state:
+        return title
+    prefix = "Derived analytic summary table"
+    if title.startswith(prefix):
+        return title.replace(prefix, f"{prefix} for {state}", 1)
+    return f"{title} ({state})"
+
+
+def _summary_body_for_type(analysis_type: str, frame: pd.DataFrame) -> str:
+    if analysis_type == "county_cluster_summary":
+        return _county_cluster_summary(frame)
+    if analysis_type == "role_category_concentration":
+        return _role_category_concentration_summary(frame)
+    if analysis_type == "capability_keyword_index":
+        return _capability_keyword_summary(frame)
+    if analysis_type == "oem_supplier_linkage":
+        return _oem_supplier_linkage_summary(frame)
+    if analysis_type == "battery_ecosystem_summary":
+        return _battery_ecosystem_summary(frame)
+    raise ValueError(f"Unknown analysis type: {analysis_type}")
 
 
 def _rows_to_frame(rows: list[TableRow]) -> pd.DataFrame:
@@ -161,6 +222,7 @@ def _rows_to_frame(rows: list[TableRow]) -> pd.DataFrame:
                 "category": str(values.get("Category", "")).strip(),
                 "industry_group": str(values.get("Industry Group", "")).strip(),
                 "location": location,
+                "state": infer_state(values),
                 "county": _extract_county(location),
                 "primary_facility_type": str(values.get("Primary Facility Type", "")).strip(),
                 "ev_supply_chain_role": str(values.get("EV Supply Chain Role", "")).strip(),

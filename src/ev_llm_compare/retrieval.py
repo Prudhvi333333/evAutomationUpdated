@@ -86,6 +86,7 @@ class QueryPlan:
     dense_queries: list[str]
     matched_categories: list[str]
     matched_companies: list[str]
+    matched_states: list[str]
     matched_locations: list[str]
     excluded_locations: list[str]
     matched_primary_oems: list[str]
@@ -132,6 +133,7 @@ class HybridRetriever:
         self.row_records = self._build_row_records(chunks)
         self.known_categories = self._known_field_values("category")
         self.known_companies = self._known_field_values("company")
+        self.known_states = self._known_field_values("state")
         self.known_locations = self._known_field_values("location")
         self.known_primary_oems = self._known_field_values("primary_oems")
         self.role_terms = self._build_role_terms()
@@ -291,6 +293,7 @@ class HybridRetriever:
                 "product_service": str(chunk.metadata.get("product_service", "")),
                 "primary_oems": str(chunk.metadata.get("primary_oems", "")),
                 "location": str(chunk.metadata.get("location", "")),
+                "state": str(chunk.metadata.get("state", "")),
                 "industry_group": str(chunk.metadata.get("industry_group", "")),
                 "primary_facility_type": str(chunk.metadata.get("primary_facility_type", "")),
                 "supplier_or_affiliation_type": str(
@@ -376,6 +379,10 @@ class HybridRetriever:
                 category for category in matched_categories if self._category_key(category) != "oem"
             ]
         matched_companies = self._match_known_values(normalized_question, self.known_companies)
+        matched_states = self._match_known_values(
+            normalized_question,
+            getattr(self, "known_states", []),
+        )
         matched_locations = self._match_locations(normalized_question)
         excluded_locations = self._extract_excluded_locations(question)
         if excluded_locations:
@@ -454,6 +461,7 @@ class HybridRetriever:
         filters = (
             matched_companies
             + matched_categories
+            + matched_states
             + matched_locations
             + matched_primary_oems
             + matched_role_terms
@@ -466,6 +474,7 @@ class HybridRetriever:
                     matched_categories
                     + matched_primary_oems
                     + matched_companies
+                    + matched_states
                     + matched_locations
                     + matched_role_terms
                 )
@@ -487,6 +496,7 @@ class HybridRetriever:
             dense_queries=list(dict.fromkeys(query for query in dense_queries if query.strip())),
             matched_categories=matched_categories,
             matched_companies=matched_companies,
+            matched_states=matched_states,
             matched_locations=matched_locations,
             excluded_locations=excluded_locations,
             matched_primary_oems=matched_primary_oems,
@@ -594,12 +604,17 @@ class HybridRetriever:
         role = normalize_text(str(metadata.get("ev_supply_chain_role", "")))
         product_service = normalize_text(str(metadata.get("product_service", "")))
         primary_oems = normalize_text(str(metadata.get("primary_oems", "")))
+        state = normalize_text(str(metadata.get("state", "")))
         location = normalize_text(str(metadata.get("location", "")))
         chunk_type = str(metadata.get("chunk_type", ""))
         if company and company in question_lower:
             boost += 0.04
         if category and category in question_lower:
             boost += 0.04
+        if state and state in question_lower:
+            boost += 0.03
+        if location and location in question_lower:
+            boost += 0.025
         if role:
             for role_term in self.role_terms:
                 if role_term in question_lower and role_term in role:
@@ -657,6 +672,7 @@ class HybridRetriever:
             [
                 query_plan.matched_categories,
                 query_plan.matched_companies,
+                query_plan.matched_states,
                 query_plan.matched_locations,
                 query_plan.matched_primary_oems,
                 query_plan.matched_role_terms,
@@ -704,6 +720,7 @@ class HybridRetriever:
                         "product_service": row.get("product_service", ""),
                         "primary_oems": row.get("primary_oems", ""),
                         "location": row.get("location", ""),
+                        "state": row.get("state", ""),
                         "primary_facility_type": row.get("primary_facility_type", ""),
                         "supplier_or_affiliation_type": row.get("supplier_or_affiliation_type", ""),
                         "classification_method": row.get("classification_method", ""),
@@ -728,6 +745,7 @@ class HybridRetriever:
         row_role = normalize_text(row.get("ev_supply_chain_role", ""))
         row_product = normalize_text(row.get("product_service", ""))
         row_location = normalize_text(row.get("location", ""))
+        row_state = normalize_text(row.get("state", ""))
         row_primary_oems = normalize_text(row.get("primary_oems", ""))
 
         if query_plan.matched_categories:
@@ -737,6 +755,10 @@ class HybridRetriever:
         if query_plan.matched_companies:
             company_filters = {normalize_text(value) for value in query_plan.matched_companies}
             if row_company not in company_filters:
+                return False
+        if query_plan.matched_states:
+            state_filters = {normalize_text(value) for value in query_plan.matched_states}
+            if row_state not in state_filters:
                 return False
         if query_plan.matched_locations:
             location_filters = {normalize_text(value) for value in query_plan.matched_locations}
@@ -772,6 +794,8 @@ class HybridRetriever:
             applied_filters.append(f"category in {query_plan.matched_categories}")
         if query_plan.matched_companies:
             applied_filters.append(f"company in {query_plan.matched_companies}")
+        if query_plan.matched_states:
+            applied_filters.append(f"state in {query_plan.matched_states}")
         if query_plan.matched_locations:
             applied_filters.append(f"location in {query_plan.matched_locations}")
         if query_plan.excluded_locations:
@@ -1010,6 +1034,15 @@ class HybridRetriever:
         selected: list[RetrievalResult] = []
         seen_keys: set[str] = set()
         company_counts: defaultdict[str, int] = defaultdict(int)
+        matched_states = {
+            normalize_text(state) for state in query_plan.matched_states if normalize_text(state)
+        }
+        state_specific_derived_types = {
+            normalize_text(str(result.metadata.get("analysis_type", "")))
+            for result in ordered_candidates
+            if str(result.metadata.get("chunk_type", "")) == "derived_analytic_summary"
+            and normalize_text(str(result.metadata.get("state", ""))) in matched_states
+        }
         company_cap = self.settings.max_chunks_per_company
         if query_plan.relationship_heavy or query_plan.broad_context_required:
             company_cap = max(company_cap, 4)
@@ -1027,6 +1060,12 @@ class HybridRetriever:
             unique_key = str(result.metadata.get("row_key", "")).strip() or result.chunk_id
             if unique_key in seen_keys:
                 continue
+            if self._should_skip_state_mismatched_derived_summary(
+                result,
+                matched_states=matched_states,
+                state_specific_derived_types=state_specific_derived_types,
+            ):
+                continue
             company = str(result.metadata.get("company", "")).strip()
             if company and company_counts[company] >= company_cap:
                 continue
@@ -1037,6 +1076,24 @@ class HybridRetriever:
             if len(selected) >= result_limit:
                 break
         return selected
+
+    def _should_skip_state_mismatched_derived_summary(
+        self,
+        result: RetrievalResult,
+        *,
+        matched_states: set[str],
+        state_specific_derived_types: set[str],
+    ) -> bool:
+        if not matched_states:
+            return False
+        if str(result.metadata.get("chunk_type", "")) != "derived_analytic_summary":
+            return False
+
+        result_state = normalize_text(str(result.metadata.get("state", "")))
+        analysis_type = normalize_text(str(result.metadata.get("analysis_type", "")))
+        if result_state:
+            return result_state not in matched_states
+        return analysis_type in state_specific_derived_types
 
     def _context_priority(self, result: RetrievalResult, query_plan: QueryPlan) -> float:
         chunk_type = str(result.metadata.get("chunk_type", ""))
@@ -1533,18 +1590,25 @@ class HybridRetriever:
         matches: list[str] = []
         seen: set[str] = set()
         padded_question = f" {normalized_question} "
+        normalized_states = {
+            normalize_text(state)
+            for state in getattr(self, "known_states", [])
+            if normalize_text(state)
+        }
         for location in getattr(self, "known_locations", []):
             normalized_location = normalize_text(location)
             if not normalized_location or normalized_location in seen:
                 continue
-            # Treat bare "Georgia" as a generic statewide mention, not as an exact
-            # location filter, otherwise structured matching collapses to rows whose
-            # Updated Location literally equals "Georgia".
-            if normalized_location == "georgia":
+            # Treat bare state names as generic statewide mentions, not as exact
+            # location filters, otherwise structured matching collapses to rows whose
+            # location literally equals the state name.
+            if normalized_location in normalized_states:
                 continue
             county_fragment = ""
             if "," in location:
                 county_fragment = normalize_text(location.split(",", 1)[1])
+                if county_fragment in normalized_states:
+                    county_fragment = ""
             if (
                 f" {normalized_location} " in padded_question
                 or (county_fragment and f" {county_fragment} " in padded_question)
