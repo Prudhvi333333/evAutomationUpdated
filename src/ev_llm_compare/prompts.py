@@ -34,11 +34,16 @@ RAG_SYSTEM_PROMPT = (
     "- ALWAYS attempt to answer using whatever relevant evidence is available, even if partial.\n"
     "- List ALL matching companies and data points found in the evidence — do not omit any.\n"
     "- Provide detailed, comprehensive answers. Include every relevant field: "
-    "company name, location, role, tier, employment, product/service, OEMs.\n"
+    "company name, Updated Location, role, tier, employment, product/service, OEMs.\n"
     "- Only say 'Insufficient evidence' if the evidence contains ZERO relevant information "
     "for the question. Partial evidence should produce a partial answer, not abstention.\n"
     "- Do not ask the user to upload files. Do not mention workbook filenames.\n"
-    "- Do not repeat the evidence headers verbatim."
+    "- Do not repeat the evidence headers verbatim.\n"
+    "- CRITICAL: Always use 'Updated Location' field values (NOT 'Location'). "
+    "Updated Location contains the corrected location data.\n"
+    "- CRITICAL: When analyzing Employment for Georgia questions, exclude global headcount "
+    "outliers (>100,000 employees) as these represent global corporate employment, "
+    "not local Georgia facility employment."
 )
 
 NON_RAG_SYSTEM_PROMPT = (
@@ -195,7 +200,13 @@ def build_rag_prompt(question: str, context: str) -> str:
         "- Do not invent values. Do not pad with general domain knowledge.\n"
         "- Give a thorough, detailed answer. Do not give one-line answers when the evidence "
         "supports a longer response.\n"
-        "- Start directly with the answer; do not repeat question text.\n\n"
+        "- Start directly with the answer; do not repeat question text.\n"
+        "- IMPORTANT: Always use 'Updated Location' field values (NOT the 'Location' field). "
+        "The Updated Location contains the corrected/most recent location data.\n"
+        "- IMPORTANT: When analyzing Employment data for Georgia-based questions, "
+        "exclude global headcount outliers (>100,000 employees). Companies like WIKA USA (250k) "
+        "and Yazaki (230k) report global corporate employment, not local Georgia facility employment. "
+        "For local employment analysis, only consider values under 100,000.\n\n"
         "Answer:"
     )
 

@@ -163,6 +163,7 @@ def _build_models() -> list[ModelSpec]:  # noqa: C901
 
     gemma27b_model = os.getenv("GEMMA27B_MODEL", "gemma3:27b")
     gemini_model   = os.getenv("GEMINI_MODEL",   "gemini-2.5-flash")
+    kimi_k25_model = os.getenv("KIMI_K25_MODEL", "kimi-k2.5:cloud")
 
     specs: list[ModelSpec] = [
         # ── Qwen 2.5 14B (Ollama) ─────────────────────────────────────────────
@@ -276,6 +277,24 @@ def _build_models() -> list[ModelSpec]:  # noqa: C901
             model_name=gemini_model,
             rag_enabled=False,
             enabled=_env_flag("ENABLE_GEMINI_FLASH_NO_RAG", False),
+            seed=global_seed,
+        ),
+        # ── Kimi K2.5 (Ollama) ────────────────────────────────────────────────
+        # Pull: ollama pull kimi-k2.5:cloud
+        ModelSpec(
+            run_name="kimi_k25_rag",
+            provider="ollama",
+            model_name=kimi_k25_model,
+            rag_enabled=True,
+            enabled=_env_flag("ENABLE_KIMI_K25_RAG", False),
+            seed=global_seed,
+        ),
+        ModelSpec(
+            run_name="kimi_k25_no_rag",
+            provider="ollama",
+            model_name=kimi_k25_model,
+            rag_enabled=False,
+            enabled=_env_flag("ENABLE_KIMI_K25_NO_RAG", False),
             seed=global_seed,
         ),
     ]

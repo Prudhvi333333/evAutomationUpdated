@@ -1560,6 +1560,8 @@ class HybridRetriever:
 
         if "median employment" in question:
             with_employment = frame.dropna(subset=["employment_num"])
+            # Exclude global headcount outliers (>100,000) for local employment analysis
+            with_employment = with_employment[~with_employment["is_global_outlier"]]
             if not with_employment.empty:
                 median_value = float(with_employment["employment_num"].median())
                 lines = [f"Median Employment: {median_value:.0f}"]
@@ -1575,6 +1577,8 @@ class HybridRetriever:
 
         if "range" in question and "employment" in question:
             with_employment = frame.dropna(subset=["employment_num"])
+            # Exclude global headcount outliers (>100,000) for local employment analysis
+            with_employment = with_employment[~with_employment["is_global_outlier"]]
             if not with_employment.empty:
                 min_row = with_employment.sort_values("employment_num", ascending=True).iloc[0]
                 max_row = with_employment.sort_values("employment_num", ascending=False).iloc[0]
@@ -1586,6 +1590,8 @@ class HybridRetriever:
 
         if ("highest employment" in question or "lowest employment" in question) and ("companies" in question or "company" in question):
             with_employment = frame.dropna(subset=["employment_num"])
+            # Exclude global headcount outliers (>100,000) for local employment analysis
+            with_employment = with_employment[~with_employment["is_global_outlier"]]
             if not with_employment.empty:
                 ascending = "lowest employment" in question
                 limit = self._extract_rank_limit(question, default=10)
@@ -1686,6 +1692,11 @@ class HybridRetriever:
         if frame.empty:
             return frame
         frame["employment_num"] = frame["employment"].apply(self._parse_employment)
+        # Filter out global headcount outliers (>100,000) for local Georgia employment analysis
+        # These represent global corporate employment, not local facility employment
+        frame["is_global_outlier"] = frame["employment_num"].apply(
+            lambda x: x is not None and x > 100000
+        )
         location_parts = frame["location"].apply(self._split_location)
         frame["city"] = [city for city, _ in location_parts]
         frame["county"] = [county for _, county in location_parts]
@@ -1779,6 +1790,8 @@ class HybridRetriever:
         if group_field is None or group_field not in frame.columns:
             return []
         numeric = frame.dropna(subset=["employment_num"])
+        # Exclude global headcount outliers (>100,000) for local employment analysis
+        numeric = numeric[~numeric["is_global_outlier"]]
         numeric = numeric[numeric[group_field].astype(str).str.strip().ne("")]
         if numeric.empty:
             return []
