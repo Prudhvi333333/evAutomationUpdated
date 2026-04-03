@@ -12,10 +12,18 @@ from .evaluation import (
     export_single_model_report,
     run_evaluation_metrics,
 )
-from .excel_loader import load_questions, load_reference_answers, load_workbook
+from .excel_loader import (
+    join_golden_answers,
+    load_eval_questions,
+    load_golden_answers,
+    load_questions,
+    load_reference_answers,
+    load_workbook,
+)
 from .models import create_client, safe_generate
 from .prompts import (
     NON_RAG_SYSTEM_PROMPT,
+    RAG_SYSTEM_PROMPT,
     SYSTEM_PROMPT,
     build_non_rag_prompt,
     build_rag_prompt,
@@ -116,7 +124,8 @@ class ComparisonRunner:
                         prompt,
                         temperature=spec.temperature,
                         max_tokens=spec.max_tokens,
-                        system_prompt=SYSTEM_PROMPT if spec.rag_enabled else NON_RAG_SYSTEM_PROMPT,
+                        system_prompt=RAG_SYSTEM_PROMPT if spec.rag_enabled else NON_RAG_SYSTEM_PROMPT,
+                        seed=spec.seed,
                     )
                     responses.append(
                         ModelResponse(
@@ -141,17 +150,28 @@ class ComparisonRunner:
             golden_path = self._resolve_reference_workbook(golden_workbook)
             if golden_path is not None:
                 self._log(f"Loading golden answers workbook: {golden_path}")
-                golden_references = load_reference_answers(golden_path, sheet_name=golden_sheet)
+                # Use ID-based loading for robust matching
+                golden_by_id = load_golden_answers(golden_path, sheet_name=golden_sheet)
+                # Build EvalQuestion list so we can use join_golden_answers
+                eval_qs = load_eval_questions(question_workbook, sheet_name=question_sheet)
+                if question_limit is not None:
+                    eval_qs = eval_qs[:question_limit]
+                enriched_qs, unmatched = join_golden_answers(eval_qs, golden_by_id)
                 matched_count = 0
-                for question in questions:
-                    answer = golden_references.get(question, "")
-                    if answer:
-                        references[question] = answer
-                        reference_sources[question] = "golden"
+                for eq in enriched_qs:
+                    if eq.golden_answer:
+                        references[eq.question] = eq.golden_answer
+                        reference_sources[eq.question] = "golden"
                         matched_count += 1
                 self._log(
-                    f"Matched {matched_count}/{len(questions)} questions to golden answers"
+                    f"Matched {matched_count}/{len(questions)} questions to golden answers "
+                    f"(unmatched IDs: {unmatched or 'none'})"
                 )
+                if unmatched:
+                    self._log(
+                        f"WARNING: {len(unmatched)} question(s) had no golden answer match: "
+                        f"{unmatched}"
+                    )
             if skip_evaluation:
                 self._log("Skipping reference generation and evaluation metrics")
             else:

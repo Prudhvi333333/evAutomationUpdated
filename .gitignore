@@ -1,3 +1,8 @@
+# SECURITY: never commit secrets
+.env
+*.env
+secrets/
+
 # Python-generated files
 __pycache__/
 *.py[oc]

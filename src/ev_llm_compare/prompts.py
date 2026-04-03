@@ -5,17 +5,49 @@ import re
 from .schemas import RetrievalResult
 
 
-SYSTEM_PROMPT = """You answer questions about one or more Excel workbooks.
-Use the provided evidence when available. Prefer exact values, company names, counts,
-locations, roles, and employment numbers from the source data.
-When no workbook evidence is provided, answer from general knowledge as helpfully as possible.
-Do not ask the user to re-upload the workbook unless the task explicitly requires exact workbook-only facts."""
 
-NON_RAG_SYSTEM_PROMPT = """You answer from general model knowledge only.
-Do not say that a workbook, spreadsheet, or uploaded file is missing.
-Do not give spreadsheet, filtering, pivot-table, or workbook instructions unless the user explicitly asks for a method.
-If the question asks for exact dataset-specific facts that you cannot verify, say so briefly and then give the closest general answer you can without inventing facts.
-Prefer direct domain answers over process descriptions."""
+# ──────────────────────────────────────────────────────────────────────────────
+# System prompts
+#
+# RAG_SYSTEM_PROMPT   – used when retrieved workbook evidence is injected.
+#                       Evidence-only; no silent fallback to general knowledge.
+# NON_RAG_SYSTEM_PROMPT – used when no evidence is provided.
+#                         General-knowledge baseline; explicit about limitations.
+# ──────────────────────────────────────────────────────────────────────────────
+
+# Legacy alias kept for backward compatibility
+SYSTEM_PROMPT = (
+    "You answer questions about EV supply chain workbook data.\n"
+    "Use ONLY the retrieved evidence to answer. Do not answer from general knowledge.\n"
+    "Cite each factual claim with its evidence tag, e.g. [E1], [E2].\n"
+    "If the evidence is insufficient to answer, write exactly: "
+    "'Insufficient evidence: <brief reason>.' and stop."
+)
+
+RAG_SYSTEM_PROMPT = (
+    "You answer questions about EV supply chain workbook data.\n"
+    "Use ONLY the retrieved evidence provided in the prompt. "
+    "Do NOT use general world knowledge, prior training knowledge, or unstated assumptions.\n"
+    "Rules:\n"
+    "- Cite every factual claim with the evidence tag shown in the context, e.g. [E1], [E2].\n"
+    "- Use exact values, company names, counts, locations, roles, and employment figures from the evidence.\n"
+    "- If evidence is absent or insufficient, respond with: "
+    "'Insufficient evidence: <brief reason>.' Do not guess or hallucinate.\n"
+    "- Do not ask the user to upload files. Do not mention workbook filenames.\n"
+    "- Do not repeat the evidence headers verbatim."
+)
+
+NON_RAG_SYSTEM_PROMPT = (
+    "You answer EV supply chain questions from your general model knowledge.\n"
+    "Rules:\n"
+    "- Do NOT mention missing files, workbooks, or datasets.\n"
+    "- Do NOT provide spreadsheet or filtering instructions unless explicitly asked.\n"
+    "- If the question asks for exact dataset-specific facts you cannot verify, "
+    "state briefly that the specific data is unavailable from general knowledge, "
+    "then give the closest general domain answer without inventing specifics.\n"
+    "- Prefer a direct, substantive answer over vague process descriptions.\n"
+    "- Do not invent company names, exact counts, or specific locations."
+)
 
 FIELD_LABELS = {
     "category": "Category",
@@ -94,25 +126,39 @@ def format_context(
     max_chars: int = 4200,
     compact: bool = True,
 ) -> str:
+    """Format retrieved evidence blocks for injection into the RAG prompt.
+
+    Each block is prefixed with a citation tag [E1], [E2], … so that the
+    model can cite specific evidence in its answer, enabling citation
+    coverage tracking during evaluation.
+    """
     if not results:
         return "No retrieved evidence."
+
     if question and compact:
-        blocks = compact_context_segments(
+        raw_blocks = compact_context_segments(
             question,
             results,
             max_results=max_results,
             max_chars=max_chars,
         )
-        return "\n\n".join(blocks)
+        # Prepend citation tags to each compact block
+        tagged: list[str] = []
+        for idx, block in enumerate(raw_blocks, start=1):
+            tagged.append(f"[E{idx}] {block}")
+        return "\n\n".join(tagged)
 
     blocks: list[str] = []
     for index, result in enumerate(results, start=1):
         company = result.metadata.get("company") or "n/a"
         chunk_type = result.metadata.get("chunk_type") or "retrieved_chunk"
-        source = f"{result.metadata.get('source_file')}::{result.metadata.get('sheet_name')}"
+        source = (
+            f"{result.metadata.get('source_file')}::"
+            f"{result.metadata.get('sheet_name')}"
+        )
         row_number = result.metadata.get("row_number")
         header = (
-            f"[Evidence {index}] type={chunk_type} company={company} source={source}"
+            f"[E{index}] type={chunk_type} company={company} source={source}"
             + (f" row={row_number}" if row_number else "")
         )
         blocks.append(f"{header}\n{result.text}")
@@ -120,39 +166,44 @@ def format_context(
 
 
 def build_rag_prompt(question: str, context: str) -> str:
+    """Construct the RAG user prompt.
+
+    Evidence blocks are pre-tagged [E1], [E2], … by format_context().
+    The model is required to cite every factual claim with these tags.
+    If the evidence does not support the question, the model must abstain
+    with the exact phrase 'Insufficient evidence:'.
+    """
     return (
-        "Answer the user question using only the retrieved workbook evidence.\n"
-        "If a structured workbook match summary is present, use it as a guide but verify it against the supporting rows when they are available.\n"
-        "The evidence may be compacted to only the most relevant rows and fields.\n\n"
-        f"Retrieved evidence:\n{context}\n\n"
+        "Use ONLY the retrieved evidence below. Do not use general knowledge.\n\n"
+        f"Evidence:\n{context}\n\n"
         f"Question: {question}\n\n"
         "Instructions:\n"
-        "- Be specific and concise.\n"
-        "- When the evidence includes exact counts, totals, or requested field values, copy those directly.\n"
-        "- If the structured summary already states the final grouped or ranked answer, reproduce that answer directly instead of recomputing it.\n"
-        "- For ranked or counted results, include the numeric value on every output line.\n"
-        "- When listing companies, preserve names exactly.\n"
-        "- Answer with the requested fields only; do not substitute Product / Service for Industry Group or omit Primary Facility Type when it is provided.\n"
-        "- Include all supported matches from the evidence, not just one example.\n"
-        "- For questions asking for all entries, a full set, a network, or items connected to each other, prefer coverage and completeness over brevity.\n"
-        "- If the evidence already groups companies by EV Supply Chain Role, copy that grouping directly.\n"
+        "- Cite every factual claim with the evidence tag, e.g. [E1] or [E1][E2].\n"
+        "- Use exact values from the evidence: company names, counts, locations, roles, employment numbers.\n"
+        "- If the structured summary already states the final answer, copy it directly; do not recompute.\n"
+        "- Include all evidence-supported matches; do not omit items.\n"
         "- Group results when the question asks for grouping.\n"
-        "- Do not repeat evidence headers such as [Evidence 1].\n"
-        "- Start directly with the answer.\n"
-        "- Prefer EV Supply Chain Role over Product / Service when both appear.\n"
-        "- Mention if the workbook evidence is incomplete for the question.\n"
-        "- Do not invent values that are not in evidence.\n\n"
+        "- If evidence is absent or insufficient, write exactly: "
+        "'Insufficient evidence: <brief reason>.' and stop.\n"
+        "- Do not invent values. Do not pad with general domain knowledge.\n"
+        "- Start directly with the answer; do not repeat question text.\n\n"
         "Answer:"
     )
 
 
 def build_non_rag_prompt(question: str) -> str:
+    """Construct the no-RAG user prompt.
+
+    The model answers from general knowledge only.
+    It must not pretend to have workbook data it does not have.
+    """
     return (
-        "Answer the user question directly from general model knowledge without relying on retrieved workbook evidence.\n"
-        "Do not mention missing workbooks, missing datasets, or ask the user to provide files.\n"
-        "Do not give spreadsheet, filtering, or pivot-table instructions unless the question explicitly asks for a method.\n"
-        "If the question depends on exact workbook-specific facts, say briefly that the exact dataset answer is unknown from general knowledge and then provide the closest domain-level answer you can.\n"
-        "Prefer a short substantive answer over an explanation of process.\n\n"
+        "Answer from your general model knowledge.\n"
+        "Do not mention missing files, workbooks, or datasets.\n"
+        "If the question requires exact dataset-specific facts that you cannot verify, "
+        "state briefly that the specific data is unavailable from general knowledge, "
+        "then give the closest general EV supply chain domain answer without inventing specifics.\n"
+        "Prefer a direct, substantive answer.\n\n"
         f"Question: {question}\n\n"
         "Answer:"
     )

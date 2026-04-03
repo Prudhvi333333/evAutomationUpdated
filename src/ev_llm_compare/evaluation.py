@@ -13,34 +13,121 @@ import pandas as pd
 
 from .models import LLMClient, create_client, safe_generate
 from .prompts import build_reference_prompt, compact_context_segments, format_context
+from .reference_metrics import compute_all_reference_metrics
 from .schemas import ModelResponse
 from .settings import ModelSpec, RuntimeSettings
 
-RAGAS_METRIC_NAMES = [
-    "answer_accuracy",
-    "faithfulness",
-    "response_groundedness",
-    "context_precision",
-    "context_recall",
-]
-DIAGNOSTIC_METRIC_NAMES = [
-    "grounded_claim_ratio",
-    "unsupported_claim_ratio",
-    "contradicted_claim_ratio",
-]
-DERIVED_METRIC_NAMES = ["overall_metric_score_pct"]
-BASE_METRIC_NAMES = [*RAGAS_METRIC_NAMES, *DIAGNOSTIC_METRIC_NAMES]
-REPORT_METRIC_NAMES = [*BASE_METRIC_NAMES, *DERIVED_METRIC_NAMES]
+# ──────────────────────────────────────────────────────────────────────────────
+# Metric name registries
+#
+# Three clearly-separated groups:
+#
+# REFERENCE_METRIC_NAMES   – applicable to ALL responses (RAG + no-RAG),
+#                            compare against golden answers.
+#                            These are the only metrics valid for cross-mode
+#                            comparison.
+#
+# CUSTOM_RAG_METRIC_NAMES  – applicable ONLY to RAG responses (rag_enabled=True).
+#                            Undefined / null for no-RAG.
+#                            Renamed from legacy "RAGAS_METRIC_NAMES" to avoid
+#                            confusion with the actual ragas library.
+#
+# RAGAS_LIBRARY_METRIC_NAMES – metrics produced by the actual ragas library,
+#                              RAG responses only (or answer_correctness for all).
+#
+# DIAGNOSTIC_METRIC_NAMES  – claim-level signals, RAG only.
+#
+# OPERATIONAL_METRIC_NAMES – always available (success, latency, length, etc.).
+# ──────────────────────────────────────────────────────────────────────────────
 
-OVERALL_SCORE_COMPONENTS: dict[str, tuple[float, bool]] = {
-    "answer_accuracy": (0.28, False),
-    "faithfulness": (0.20, False),
-    "response_groundedness": (0.16, False),
-    "context_precision": (0.12, False),
-    "context_recall": (0.12, False),
-    "unsupported_claim_ratio": (0.04, True),
-    "contradicted_claim_ratio": (0.04, True),
+# Cross-mode reference metrics (both RAG and no-RAG)
+REFERENCE_METRIC_NAMES: list[str] = [
+    "answer_accuracy",        # LLM dual-judge vs golden answer
+    "rouge_l",                # deterministic ROUGE-L F-measure
+    "token_f1",               # deterministic token F1
+    "semantic_similarity",    # sentence-embedding cosine similarity
+    "normalized_exact_match", # exact match after normalisation
+]
+
+# Custom LLM-judge grounding metrics — RAG only, clearly labelled as CUSTOM
+CUSTOM_RAG_METRIC_NAMES: list[str] = [
+    "custom_faithfulness",         # grounded claim ratio (claim-level attribution)
+    "custom_response_groundedness",# holistic 0/1/2 → normalised score
+    "custom_context_precision",    # average precision of ranked contexts
+    "custom_context_recall",       # fraction of reference claims in context
+    "unsupported_claim_ratio",     # 1 - faithfulness (diagnostic)
+    "contradicted_claim_ratio",    # claims contradicted by context
+]
+
+# Actual ragas library metrics — RAG only except answer_correctness
+RAGAS_LIBRARY_METRIC_NAMES: list[str] = [
+    "ragas_faithfulness",
+    "ragas_context_precision",
+    "ragas_context_recall",
+    "ragas_answer_correctness",  # all responses with golden answer
+]
+
+# Operational / diagnostic metrics
+OPERATIONAL_METRIC_NAMES: list[str] = [
+    "success",
+    "abstained",             # True when model said "Insufficient evidence:"
+    "response_length",
+    "citation_coverage",     # fraction of evidence IDs cited by model
+    "judge_failure_count",   # number of judge calls that had to be retried
+]
+
+# Full list used for DataFrame column creation
+ALL_METRIC_NAMES: list[str] = [
+    *REFERENCE_METRIC_NAMES,
+    *CUSTOM_RAG_METRIC_NAMES,
+    *RAGAS_LIBRARY_METRIC_NAMES,
+    *OPERATIONAL_METRIC_NAMES,
+]
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Mode-aware composite scores
+#
+# These are SEPARATE scores for each mode — they are NOT combined into a single
+# leaderboard score across modes, which would be methodologically invalid.
+#
+# rag_composite_score:   weighted combination of RAG-mode metrics only
+# answer_quality_score:  cross-mode score using reference metrics only
+# ──────────────────────────────────────────────────────────────────────────────
+
+RAG_COMPOSITE_COMPONENTS: dict[str, tuple[float, bool]] = {
+    # (weight, invert)  — invert=True means lower is better
+    "answer_accuracy":               (0.30, False),
+    "custom_faithfulness":           (0.20, False),
+    "custom_response_groundedness":  (0.15, False),
+    "custom_context_precision":      (0.12, False),
+    "custom_context_recall":         (0.12, False),
+    "unsupported_claim_ratio":       (0.06, True),
+    "contradicted_claim_ratio":      (0.05, True),
 }
+
+ANSWER_QUALITY_COMPONENTS: dict[str, tuple[float, bool]] = {
+    "answer_accuracy":        (0.40, False),
+    "semantic_similarity":    (0.30, False),
+    "rouge_l":                (0.20, False),
+    "token_f1":               (0.10, False),
+}
+
+# Legacy aliases — kept for backward compatibility with existing callers
+RAGAS_METRIC_NAMES = REFERENCE_METRIC_NAMES  # re-mapped, no longer raw RAGAS
+REPORT_METRIC_NAMES = ALL_METRIC_NAMES
+DIAGNOSTIC_METRIC_NAMES = ["unsupported_claim_ratio", "contradicted_claim_ratio"]
+DERIVED_METRIC_NAMES = ["rag_composite_score", "answer_quality_score"]
+# The old field names are mapped to their new canonical names
+_LEGACY_FIELD_MAP = {
+    "faithfulness": "custom_faithfulness",
+    "response_groundedness": "custom_response_groundedness",
+    "context_precision": "custom_context_precision",
+    "context_recall": "custom_context_recall",
+    "overall_metric_score_pct": "rag_composite_score",
+}
+
+# Keep OVERALL_SCORE_COMPONENTS for backward compat in callers (now unused internally)
+OVERALL_SCORE_COMPONENTS: dict[str, tuple[float, bool]] = RAG_COMPOSITE_COMPONENTS
 
 LLM_JUDGE_SCORE_SYSTEM_PROMPT = """You are a strict evaluation judge for workbook question answering.
 Judge only from the texts provided in the user prompt.
@@ -472,7 +559,12 @@ def build_reference_answers(
     return references
 
 
-def _make_judge_client(provider: str, model: str) -> LLMClient:
+def _make_judge_client(
+    provider: str,
+    model: str,
+    base_url: str | None = None,
+    api_key_env: str | None = None,
+) -> LLMClient:
     runtime = RuntimeSettings()
     runtime.ollama_base_url = os.getenv("OLLAMA_BASE_URL", runtime.ollama_base_url)
     spec = ModelSpec(
@@ -480,11 +572,18 @@ def _make_judge_client(provider: str, model: str) -> LLMClient:
         provider=provider,
         model_name=model,
         rag_enabled=False,
+        base_url=base_url,
+        api_key_env=api_key_env,
     )
     return create_client(spec, runtime)
 
 
-def _thread_local_judge_client(provider: str, model: str) -> LLMClient:
+def _thread_local_judge_client(
+    provider: str,
+    model: str,
+    base_url: str | None = None,
+    api_key_env: str | None = None,
+) -> LLMClient:
     cache = getattr(_THREAD_LOCAL_STATE, "judge_clients", None)
     if cache is None:
         cache = {}
@@ -492,7 +591,7 @@ def _thread_local_judge_client(provider: str, model: str) -> LLMClient:
     key = (provider, model)
     client = cache.get(key)
     if client is None:
-        client = _make_judge_client(provider, model)
+        client = _make_judge_client(provider, model, base_url=base_url, api_key_env=api_key_env)
         cache[key] = client
     return client
 
@@ -979,10 +1078,16 @@ def _evaluate_context_recall(
     return round(supported / len(reference_claims), 4)
 
 
-def _compute_overall_metric_score_pct(record: dict[str, Any]) -> float | None:
+def _compute_rag_composite_score(record: dict[str, Any]) -> float | None:
+    """Weighted composite for RAG responses only.
+
+    Uses only RAG-applicable metrics.  Returns None if no RAG metrics are
+    available (e.g., for no-RAG responses — callers must not store this value
+    on no-RAG records to avoid invalid cross-mode comparison).
+    """
     weighted_total = 0.0
     available_weight = 0.0
-    for metric_name, (weight, invert) in OVERALL_SCORE_COMPONENTS.items():
+    for metric_name, (weight, invert) in RAG_COMPOSITE_COMPONENTS.items():
         raw_value = record.get(metric_name)
         if raw_value is None or pd.isna(raw_value):
             continue
@@ -991,9 +1096,37 @@ def _compute_overall_metric_score_pct(record: dict[str, Any]) -> float | None:
         value = min(1.0, max(0.0, value))
         weighted_total += weight * value
         available_weight += weight
-    if available_weight <= 0:
+    if available_weight < 0.20:   # require at least 20% weight coverage
         return None
-    return (weighted_total / available_weight) * 100.0
+    return round((weighted_total / available_weight) * 100.0, 2)
+
+
+def _compute_answer_quality_score(record: dict[str, Any]) -> float | None:
+    """Weighted composite for cross-mode comparison.
+
+    Uses ONLY reference metrics (applicable to both RAG and no-RAG).
+    This is the only composite score that can legitimately be used to
+    compare RAG vs no-RAG responses directly.
+    """
+    weighted_total = 0.0
+    available_weight = 0.0
+    for metric_name, (weight, _invert) in ANSWER_QUALITY_COMPONENTS.items():
+        raw_value = record.get(metric_name)
+        if raw_value is None or pd.isna(raw_value):
+            continue
+        value = float(raw_value)
+        value = min(1.0, max(0.0, value))
+        weighted_total += weight * value
+        available_weight += weight
+    if available_weight < 0.30:   # require at least 30% weight coverage
+        return None
+    return round((weighted_total / available_weight) * 100.0, 2)
+
+
+# Legacy alias — kept for backward compatibility
+def _compute_overall_metric_score_pct(record: dict[str, Any]) -> float | None:
+    """Deprecated: use _compute_rag_composite_score or _compute_answer_quality_score."""
+    return _compute_rag_composite_score(record)
 
 
 def _score_response_metrics(
@@ -1004,14 +1137,64 @@ def _score_response_metrics(
     context_result_limit: int,
     context_char_budget: int,
     compact_context: bool,
+    embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2",
 ) -> dict[str, Any]:
-    record = {
+    """Score a single response with mode-aware, properly-labelled metrics.
+
+    Metric groups:
+      REFERENCE  – computed for all responses with a golden answer
+      CUSTOM_RAG – computed only for RAG responses
+      COMPOSITE  – mode-specific; rag_composite_score for RAG only,
+                   answer_quality_score for all
+
+    No retrieval-dependent score is ever set on a no-RAG response.
+    The composite scores use different formulas to prevent invalid
+    cross-mode comparison.
+    """
+    record: dict[str, Any] = {
         "run_name": response.run_name,
         "question": response.question,
-        **{metric_name: None for metric_name in REPORT_METRIC_NAMES},
+        "rag_enabled": response.rag_enabled,
+        **{metric_name: None for metric_name in ALL_METRIC_NAMES},
     }
+
+    # ── Operational metrics (always available) ────────────────────────────────
+    record["success"] = response.success
+    record["response_length"] = len((response.answer or "").split())
+    record["abstained"] = bool(
+        response.success
+        and "insufficient evidence" in (response.answer or "").lower()
+    )
+
+    # Citation coverage: fraction of evidence tags [E1],[E2]… cited by model
+    if response.rag_enabled and response.retrieved_chunks:
+        n_chunks = len(response.retrieved_chunks)
+        if n_chunks > 0:
+            cited_count = sum(
+                1 for i in range(1, n_chunks + 1)
+                if f"[E{i}]" in (response.answer or "")
+            )
+            record["citation_coverage"] = round(cited_count / n_chunks, 4)
+
+    if not response.success:
+        return record
+
     reference_answer = reference_answers.get(response.question, "")
-    if response.success and reference_answer:
+
+    # ── Reference metrics: applicable to ALL modes ────────────────────────────
+    if reference_answer:
+        # Deterministic metrics — no LLM needed
+        ref_metrics = compute_all_reference_metrics(
+            prediction=response.answer,
+            reference=reference_answer,
+            embedding_model=embedding_model,
+        )
+        record["rouge_l"] = ref_metrics.get("rouge_l")
+        record["token_f1"] = ref_metrics.get("token_f1")
+        record["semantic_similarity"] = ref_metrics.get("semantic_similarity")
+        record["normalized_exact_match"] = ref_metrics.get("normalized_exact_match")
+
+        # LLM dual-judge answer accuracy
         record["answer_accuracy"] = _dual_judge_score_metric(
             judge_client=judge_client,
             prompts=[
@@ -1028,7 +1211,9 @@ def _score_response_metrics(
             ],
             retries=max_retries,
         )
-    if response.success and response.rag_enabled and response.retrieved_chunks:
+
+    # ── Custom RAG grounding metrics: RAG responses only ─────────────────────
+    if response.rag_enabled and response.retrieved_chunks:
         retrieved_contexts = (
             compact_context_segments(
                 response.question,
@@ -1039,6 +1224,7 @@ def _score_response_metrics(
             if compact_context
             else [chunk.text for chunk in response.retrieved_chunks]
         )
+
         answer_claims = _segment_response_units(response.answer)
         if answer_claims:
             claim_labels = _classify_claims_against_context(
@@ -1050,9 +1236,12 @@ def _score_response_metrics(
             )
             claim_metrics = _compute_claim_ratios(claim_labels, len(answer_claims))
             if claim_metrics is not None:
-                record.update(claim_metrics)
+                # Map old names → new canonical names
+                record["custom_faithfulness"] = claim_metrics.get("faithfulness")
+                record["unsupported_claim_ratio"] = claim_metrics.get("unsupported_claim_ratio")
+                record["contradicted_claim_ratio"] = claim_metrics.get("contradicted_claim_ratio")
 
-        record["response_groundedness"] = _dual_judge_metric(
+        record["custom_response_groundedness"] = _dual_judge_metric(
             judge_client=judge_client,
             prompts=[
                 _llm_judge_prompt_response_groundedness(
@@ -1070,22 +1259,36 @@ def _score_response_metrics(
             rating_scale=2,
             retries=max_retries,
         )
+
         if reference_answer:
-            record["context_precision"] = _evaluate_context_precision(
+            record["custom_context_precision"] = _evaluate_context_precision(
                 judge_client=judge_client,
                 question=response.question,
                 reference_answer=reference_answer,
                 retrieved_contexts=retrieved_contexts,
                 retries=max_retries,
             )
-            record["context_recall"] = _evaluate_context_recall(
+            record["custom_context_recall"] = _evaluate_context_recall(
                 judge_client=judge_client,
                 question=response.question,
                 reference_answer=reference_answer,
                 retrieved_contexts=retrieved_contexts,
                 retries=max_retries,
             )
-    record["overall_metric_score_pct"] = _compute_overall_metric_score_pct(record)
+
+    # ── Composite scores — strictly mode-specific ─────────────────────────────
+    # answer_quality_score: cross-mode valid (reference metrics only)
+    record["answer_quality_score"] = _compute_answer_quality_score(record)
+
+    # rag_composite_score: RAG only — do NOT set this on no-RAG responses
+    if response.rag_enabled and response.retrieved_chunks:
+        record["rag_composite_score"] = _compute_rag_composite_score(record)
+    else:
+        record["rag_composite_score"] = None  # explicitly null for no-RAG
+
+    # Legacy field for backward compat callers
+    record["overall_metric_score_pct"] = record["rag_composite_score"]
+
     return record
 
 
@@ -1099,12 +1302,32 @@ def run_evaluation_metrics(
     context_char_budget: int = 2600,
     compact_context: bool = True,
     parallelism: int = 1,
+    embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2",
     progress_callback: Any | None = None,
+    judge_base_url: str | None = None,
+    judge_api_key_env: str | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Evaluate all responses with mode-aware metrics.
+
+    Returns:
+        (per_run_df, summary_df)
+
+    per_run_df has one row per (run_name, question) with all metric columns.
+    summary_df has one row per run_name with mean metrics.
+
+    IMPORTANT: The summary_df contains two separate composite scores:
+      - answer_quality_score: valid for cross-mode comparison (reference only)
+      - rag_composite_score:  RAG mode only, null for no-RAG rows
+    Do NOT sort by rag_composite_score across both modes.
+    Use answer_quality_score for cross-mode leaderboards.
+    """
     total = len(responses)
 
     def score_one(response: ModelResponse) -> dict[str, Any]:
-        judge_client = _thread_local_judge_client(judge_provider, judge_model)
+        judge_client = _thread_local_judge_client(
+            judge_provider, judge_model,
+            base_url=judge_base_url, api_key_env=judge_api_key_env,
+        )
         return _score_response_metrics(
             response=response,
             reference_answers=reference_answers,
@@ -1113,11 +1336,15 @@ def run_evaluation_metrics(
             context_result_limit=context_result_limit,
             context_char_budget=context_char_budget,
             compact_context=compact_context,
+            embedding_model=embedding_model,
         )
 
     per_run_records: list[dict[str, Any]]
     if parallelism <= 1 or total <= 1:
-        judge_client = _make_judge_client(judge_provider, judge_model)
+        judge_client = _make_judge_client(
+            judge_provider, judge_model,
+            base_url=judge_base_url, api_key_env=judge_api_key_env,
+        )
         _THREAD_LOCAL_STATE.judge_clients = {(judge_provider, judge_model): judge_client}
         per_run_records = []
         for index, response in enumerate(responses, start=1):
@@ -1130,6 +1357,7 @@ def run_evaluation_metrics(
                     context_result_limit=context_result_limit,
                     context_char_budget=context_char_budget,
                     compact_context=compact_context,
+                    embedding_model=embedding_model,
                 )
             )
             if progress_callback is not None:
@@ -1150,17 +1378,26 @@ def run_evaluation_metrics(
                     progress_callback(completed, total, responses[index])
         per_run_records = [record for record in records_by_index if record is not None]
 
-    per_run_df = pd.DataFrame(
-        per_run_records,
-        columns=["run_name", "question", *REPORT_METRIC_NAMES],
-    )
-    for metric_name in REPORT_METRIC_NAMES:
-        per_run_df[metric_name] = pd.to_numeric(per_run_df[metric_name], errors="coerce")
+    # Build DataFrame with all canonical metric columns
+    extra_cols = ["rag_enabled", "answer_quality_score", "rag_composite_score"]
+    all_cols = ["run_name", "question", *ALL_METRIC_NAMES, *extra_cols]
+    per_run_df = pd.DataFrame(per_run_records)
+    # Ensure all expected columns exist
+    for col in all_cols:
+        if col not in per_run_df.columns:
+            per_run_df[col] = None
+    per_run_df = per_run_df[[c for c in all_cols if c in per_run_df.columns]]
+
+    numeric_cols = [c for c in per_run_df.columns if c not in {"run_name", "question", "rag_enabled"}]
+    for col in numeric_cols:
+        per_run_df[col] = pd.to_numeric(per_run_df[col], errors="coerce")
+
+    # Summary: mean per run_name; sort by answer_quality_score for cross-mode validity
     summary_df = (
         per_run_df.groupby("run_name", dropna=False)
-        .agg({metric_name: "mean" for metric_name in REPORT_METRIC_NAMES})
+        .agg({col: "mean" for col in numeric_cols if col in per_run_df.columns})
         .reset_index()
-        .sort_values(by="overall_metric_score_pct", ascending=False, na_position="last")
+        .sort_values(by="answer_quality_score", ascending=False, na_position="last")
     )
     return per_run_df, summary_df
 
@@ -1296,6 +1533,8 @@ def export_single_model_report(
     filename_prefix: str | None = None,
     parallelism: int = 1,
     progress_callback: Any | None = None,
+    judge_base_url: str | None = None,
+    judge_api_key_env: str | None = None,
 ) -> Path:
     if not responses:
         raise ValueError("Cannot export a single-model report with no responses.")
@@ -1315,7 +1554,10 @@ def export_single_model_report(
     def build_one(response: ModelResponse) -> tuple[dict[str, Any], list[dict[str, Any]]]:
         judge_client = None
         if needs_judge and response.rag_enabled and response.retrieved_chunks:
-            judge_client = _thread_local_judge_client(judge_provider, judge_model)
+            judge_client = _thread_local_judge_client(
+                judge_provider, judge_model,
+                base_url=judge_base_url, api_key_env=judge_api_key_env,
+            )
         attribution = attribute_response_sources(
             response,
             judge_client=judge_client,
@@ -1352,7 +1594,10 @@ def export_single_model_report(
     attribution_rows: list[dict[str, Any]]
     if parallelism <= 1 or len(responses) <= 1:
         if needs_judge:
-            judge_client = _make_judge_client(judge_provider, judge_model)
+            judge_client = _make_judge_client(
+                judge_provider, judge_model,
+                base_url=judge_base_url, api_key_env=judge_api_key_env,
+            )
             _THREAD_LOCAL_STATE.judge_clients = {(judge_provider, judge_model): judge_client}
         report_rows = []
         attribution_rows = []
