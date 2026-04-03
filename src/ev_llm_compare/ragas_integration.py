@@ -22,6 +22,7 @@ All responses with a golden answer receive ragas_answer_correctness.
 from __future__ import annotations
 
 import os
+import time
 from typing import Any
 
 from .schemas import ModelResponse
@@ -44,6 +45,7 @@ try:
         LLMContextRecall,
         AnswerCorrectness,
     )
+    from ragas.run_config import RunConfig  # type: ignore[import]
     _RAGAS_AVAILABLE = True
 except ImportError:
     pass
@@ -111,7 +113,14 @@ def _build_ragas_llm(judge_provider: str, judge_model: str) -> Any:
                 "Install: pip install langchain-ollama"
             )
         base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-        llm = ChatOllama(model=judge_model, base_url=base_url, temperature=0.0)
+        timeout = int(os.getenv("RAGAS_OLLAMA_TIMEOUT", "600"))
+        llm = ChatOllama(
+            model=judge_model,
+            base_url=base_url,
+            temperature=0.0,
+            timeout=timeout,
+            num_ctx=8192,
+        )
         return LangchainLLMWrapper(llm)
 
     raise ValueError(
@@ -138,8 +147,8 @@ def _build_ragas_embedder(embedding_model: str) -> Any:
 def _build_evaluation_dataset(
     responses: list[ModelResponse],
     golden_answers: dict[str, str],
-    context_result_limit: int = 6,
-    context_char_budget: int = 4200,
+    context_result_limit: int = 5,
+    context_char_budget: int = 3000,
 ) -> "EvaluationDataset":
     """Build a ragas EvaluationDataset from ModelResponse objects.
 
@@ -156,7 +165,6 @@ def _build_evaluation_dataset(
         if not response.success or not (response.answer or "").strip():
             continue
 
-        # Build context strings
         if response.rag_enabled and response.retrieved_chunks:
             ctx_blocks = compact_context_segments(
                 response.question,
@@ -239,44 +247,71 @@ def run_ragas_evaluation(
 
     ragas_embedder = _build_ragas_embedder(embedding_model)
 
-    # Separate RAG responses (need context metrics) from all responses
+    ragas_timeout = int(os.getenv("RAGAS_TIMEOUT", "600"))
+    ragas_workers = 1 if judge_provider == "ollama" else 4
+    run_cfg = RunConfig(
+        timeout=ragas_timeout,
+        max_retries=2,
+        max_wait=120,
+        max_workers=ragas_workers,
+    )
+
     rag_responses = [r for r in responses if r.rag_enabled and r.success]
     all_valid_responses = [r for r in responses if r.success and r.answer.strip()]
 
     results: dict[str, dict[str, float | None]] = {}
+    overall_start = time.perf_counter()
 
-    # ── RAG-only metrics: Faithfulness, ContextPrecision, ContextRecall ───────
+    # ── RAG-only metrics: run each metric SEPARATELY to avoid Ollama overload ──
     if rag_responses:
-        try:
-            dataset = _build_evaluation_dataset(
-                rag_responses,
-                golden_answers,
-                context_result_limit=context_result_limit,
-                context_char_budget=context_char_budget,
-            )
-            rag_metrics = [
-                Faithfulness(llm=ragas_llm),
-                LLMContextPrecisionWithReference(llm=ragas_llm),
-                LLMContextRecall(llm=ragas_llm),
-            ]
-            rag_result = _ragas_evaluate(dataset=dataset, metrics=rag_metrics)
-            rag_df = rag_result.to_pandas()
+        rag_metric_instances = [
+            ("Faithfulness", Faithfulness(llm=ragas_llm)),
+            ("ContextPrecision", LLMContextPrecisionWithReference(llm=ragas_llm)),
+            ("ContextRecall", LLMContextRecall(llm=ragas_llm)),
+        ]
+        for metric_name, metric_instance in rag_metric_instances:
+            try:
+                dataset = _build_evaluation_dataset(
+                    rag_responses,
+                    golden_answers,
+                    context_result_limit=context_result_limit,
+                    context_char_budget=context_char_budget,
+                )
+                n_samples = len(dataset.samples)
+                print(
+                    f"[ragas_integration]   Running {metric_name} "
+                    f"on {n_samples} RAG responses...",
+                    flush=True,
+                )
+                metric_start = time.perf_counter()
+                metric_result = _ragas_evaluate(
+                    dataset=dataset,
+                    metrics=[metric_instance],
+                    batch_size=1,
+                    run_config=run_cfg,
+                )
+                metric_elapsed = round(time.perf_counter() - metric_start, 1)
+                metric_df = metric_result.to_pandas()
+                print(
+                    f"[ragas_integration]   {metric_name} done in {metric_elapsed}s.",
+                    flush=True,
+                )
 
-            for idx, response in enumerate(rag_responses):
-                if idx >= len(rag_df):
-                    break
-                row = rag_df.iloc[idx]
-                key = _response_key(response)
-                scores = results.setdefault(key, {})
-                for col in rag_df.columns:
-                    canonical = RAGAS_COLUMN_MAP.get(col.lower())
-                    if canonical:
-                        val = row.get(col)
-                        scores[canonical] = float(val) if val is not None else None
-        except Exception as exc:
-            print(
-                f"[ragas_integration] WARNING: RAG metrics evaluation failed: {exc}"
-            )
+                for idx, response in enumerate(rag_responses):
+                    if idx >= len(metric_df):
+                        break
+                    row = metric_df.iloc[idx]
+                    key = _response_key(response)
+                    scores = results.setdefault(key, {})
+                    for col in metric_df.columns:
+                        canonical = RAGAS_COLUMN_MAP.get(col.lower())
+                        if canonical:
+                            val = row.get(col)
+                            scores[canonical] = float(val) if val is not None else None
+            except Exception as exc:
+                print(
+                    f"[ragas_integration] WARNING: {metric_name} failed: {exc}"
+                )
 
     # ── All responses: AnswerCorrectness (needs golden reference) ─────────────
     scored_responses = [
@@ -290,11 +325,28 @@ def run_ragas_evaluation(
                 context_result_limit=context_result_limit,
                 context_char_budget=context_char_budget,
             )
-            ac_metric = [AnswerCorrectness(llm=ragas_llm)]
+            n_samples = len(dataset.samples)
+            print(
+                f"[ragas_integration]   Running AnswerCorrectness "
+                f"on {n_samples} responses...",
+                flush=True,
+            )
+            ac_start = time.perf_counter()
+            ac_metric = AnswerCorrectness(llm=ragas_llm)
             if ragas_embedder:
-                ac_metric[0].embeddings = ragas_embedder  # type: ignore[attr-defined]
-            ac_result = _ragas_evaluate(dataset=dataset, metrics=ac_metric)
+                ac_metric.embeddings = ragas_embedder  # type: ignore[attr-defined]
+            ac_result = _ragas_evaluate(
+                dataset=dataset,
+                metrics=[ac_metric],
+                batch_size=1,
+                run_config=run_cfg,
+            )
+            ac_elapsed = round(time.perf_counter() - ac_start, 1)
             ac_df = ac_result.to_pandas()
+            print(
+                f"[ragas_integration]   AnswerCorrectness done in {ac_elapsed}s.",
+                flush=True,
+            )
 
             for idx, response in enumerate(scored_responses):
                 if idx >= len(ac_df):
@@ -309,9 +361,15 @@ def run_ragas_evaluation(
                         scores[canonical] = float(val) if val is not None else None
         except Exception as exc:
             print(
-                f"[ragas_integration] WARNING: AnswerCorrectness evaluation failed: {exc}"
+                f"[ragas_integration] WARNING: AnswerCorrectness failed: {exc}"
             )
 
+    total_elapsed = round(time.perf_counter() - overall_start, 1)
+    print(
+        f"[ragas_integration] All RAGAS metrics completed in {total_elapsed}s "
+        f"({len(results)} scored responses).",
+        flush=True,
+    )
     return results
 
 

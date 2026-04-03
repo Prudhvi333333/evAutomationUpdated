@@ -67,6 +67,7 @@ from ev_llm_compare.prompts import (
     build_rag_prompt,
     format_context,
 )
+
 from ev_llm_compare.ragas_integration import (
     ragas_available,
     run_ragas_evaluation,
@@ -375,12 +376,17 @@ def _generate_responses(
                 seed=spec.seed,
             )
 
+            abstained = (
+                success
+                and ("insufficient evidence" in answer.lower()
+                     or "insufficient information" in answer.lower())
+            )
+
             citations = (
                 _extract_citation_ids(answer, len(retrieved))
                 if spec.rag_enabled
                 else []
             )
-            abstained = "insufficient evidence" in answer.lower() if success else False
 
             response = ModelResponse(
                 run_name=spec.run_name,
@@ -534,9 +540,9 @@ def run_experiment(
         )
 
         # ── Save generation checkpoint ────────────────────────────────────────
-        responses_csv = output_dir / f"responses_raw_{ts}.csv"
-        pd.DataFrame(flat_rows).to_csv(responses_csv, index=False)
-        print(f"[experiment] Raw responses CSV → {responses_csv}", flush=True)
+        responses_xlsx = output_dir / f"responses_raw_{ts}.xlsx"
+        pd.DataFrame(flat_rows).to_excel(responses_xlsx, index=False, engine="openpyxl")
+        print(f"[experiment] Raw responses → {responses_xlsx}", flush=True)
 
         responses_jsonl = output_dir / f"responses_raw_{ts}.jsonl"
         with responses_jsonl.open("w", encoding="utf-8") as fh:
@@ -546,7 +552,7 @@ def run_experiment(
 
         if skip_evaluation:
             print("[experiment] --skip-evaluation set; stopping after generation.", flush=True)
-            return responses_csv
+            return responses_xlsx
 
         # ── Custom LLM-judge + reference metrics evaluation ───────────────────
         print("\n[experiment] ═══ EVALUATION PHASE (custom metrics) ═══\n", flush=True)
@@ -646,23 +652,23 @@ def run_experiment(
                 for col, val in ragas_scores[key].items():
                     flat_df.loc[mask, col] = val
 
-        # ── Save merged results CSV ───────────────────────────────────────────
-        results_csv = output_dir / f"results_all_{ts}.csv"
-        flat_df.to_csv(results_csv, index=False)
-        print(f"\n[experiment] Full results CSV → {results_csv}", flush=True)
+        # ── Save merged results ────────────────────────────────────────────────
+        results_xlsx = output_dir / f"results_all_{ts}.xlsx"
+        flat_df.to_excel(results_xlsx, index=False, engine="openpyxl")
+        print(f"\n[experiment] Full results → {results_xlsx}", flush=True)
 
         # ── Save per-run metrics ───────────────────────────────────────────────
         if metrics_per_run is not None:
-            per_q_csv = output_dir / f"metrics_per_question_{ts}.csv"
-            metrics_per_run.to_csv(per_q_csv, index=False)
-            print(f"[experiment] Per-question metrics → {per_q_csv}", flush=True)
+            per_q_xlsx = output_dir / f"metrics_per_question_{ts}.xlsx"
+            metrics_per_run.to_excel(per_q_xlsx, index=False, engine="openpyxl")
+            print(f"[experiment] Per-question metrics → {per_q_xlsx}", flush=True)
 
         if metrics_summary is not None:
-            summary_csv = output_dir / f"metrics_summary_{ts}.csv"
-            metrics_summary.to_csv(summary_csv, index=False)
-            print(f"[experiment] Metrics summary → {summary_csv}", flush=True)
+            summary_xlsx = output_dir / f"metrics_summary_{ts}.xlsx"
+            metrics_summary.to_excel(summary_xlsx, index=False, engine="openpyxl")
+            print(f"[experiment] Metrics summary → {summary_xlsx}", flush=True)
 
-        return results_csv
+        return results_xlsx
 
     finally:
         retriever.close()

@@ -91,6 +91,8 @@ class QueryPlan:
     excluded_locations: list[str]
     matched_primary_oems: list[str]
     matched_role_terms: list[str]
+    matched_classification_methods: list[str]
+    matched_supplier_types: list[str]
     group_by_role: bool
     prefer_structured: bool
     broad_context_required: bool
@@ -136,6 +138,8 @@ class HybridRetriever:
         self.known_states = self._known_field_values("state")
         self.known_locations = self._known_field_values("location")
         self.known_primary_oems = self._known_field_values("primary_oems")
+        self.known_classification_methods = self._known_field_values("classification_method")
+        self.known_supplier_types = self._known_field_values("supplier_or_affiliation_type")
         self.role_terms = self._build_role_terms()
         self.client = client or self._create_client(qdrant_path)
         self._index_chunks()
@@ -399,6 +403,16 @@ class HybridRetriever:
         matched_role_terms = [
             term for term in getattr(self, "role_terms", []) if term and term in normalized_question
         ]
+        matched_classification_methods = [
+            normalize_text(cm)
+            for cm in getattr(self, "known_classification_methods", [])
+            if normalize_text(cm) in normalized_question
+        ]
+        matched_supplier_types = [
+            normalize_text(st)
+            for st in getattr(self, "known_supplier_types", [])
+            if normalize_text(st) in normalized_question
+        ]
         if any(term in normalized_question for term in {"linked to", "suppliers linked to", "supply to"}):
             if matched_companies and not matched_primary_oems:
                 matched_primary_oems = matched_companies.copy()
@@ -465,6 +479,8 @@ class HybridRetriever:
             + matched_locations
             + matched_primary_oems
             + matched_role_terms
+            + matched_classification_methods
+            + matched_supplier_types
         )
         if filters:
             dense_queries.append(" | ".join(dict.fromkeys(filters)))
@@ -501,6 +517,8 @@ class HybridRetriever:
             excluded_locations=excluded_locations,
             matched_primary_oems=matched_primary_oems,
             matched_role_terms=matched_role_terms,
+            matched_classification_methods=matched_classification_methods,
+            matched_supplier_types=matched_supplier_types,
             group_by_role="group" in normalized_question and "ev supply chain role" in normalized_question,
             prefer_structured=analytic_requested or (
                 bool(filters) and intent in {"aggregation", "comparison", "fact"}
@@ -676,6 +694,8 @@ class HybridRetriever:
                 query_plan.matched_locations,
                 query_plan.matched_primary_oems,
                 query_plan.matched_role_terms,
+                query_plan.matched_classification_methods,
+                query_plan.matched_supplier_types,
             ]
         )
         if (
@@ -747,11 +767,29 @@ class HybridRetriever:
         row_location = normalize_text(row.get("location", ""))
         row_state = normalize_text(row.get("state", ""))
         row_primary_oems = normalize_text(row.get("primary_oems", ""))
+        row_classification = normalize_text(row.get("classification_method", ""))
+        row_supplier_type = normalize_text(row.get("supplier_or_affiliation_type", ""))
 
-        if query_plan.matched_categories:
-            category_filters = {self._category_key(value) for value in query_plan.matched_categories}
-            if row_category not in category_filters:
+        # For relationship-heavy queries with both role_terms AND categories,
+        # allow rows that match EITHER the category OR the role (not both required).
+        # e.g. "Vehicle Assembly OEMs AND Tier 1 suppliers" should return both.
+        if (
+            query_plan.relationship_heavy
+            and query_plan.matched_categories
+            and query_plan.matched_role_terms
+        ):
+            category_ok = row_category in {
+                self._category_key(v) for v in query_plan.matched_categories
+            }
+            role_ok = any(term in row_role for term in query_plan.matched_role_terms)
+            if not category_ok and not role_ok:
                 return False
+        else:
+            if query_plan.matched_categories:
+                category_filters = {self._category_key(value) for value in query_plan.matched_categories}
+                if row_category not in category_filters:
+                    return False
+
         if query_plan.matched_companies:
             company_filters = {normalize_text(value) for value in query_plan.matched_companies}
             if row_company not in company_filters:
@@ -773,18 +811,25 @@ class HybridRetriever:
             if row_primary_oems not in oem_filters:
                 return False
         if query_plan.matched_role_terms:
-            role_match = any(term in row_role for term in query_plan.matched_role_terms)
-            if query_plan.relationship_heavy and row_category != "oem":
-                role_match = True
-            if not role_match:
-                allow_product_match = any(
-                    term in query_plan.normalized_question
-                    for term in {"product service", "product / service", "mentions"}
-                )
-                if not allow_product_match or not any(
-                    term in row_product for term in query_plan.matched_role_terms
-                ):
-                    return False
+            # Only skip the role check when relationship_heavy AND categories+roles
+            # are handled above by the OR logic
+            if not (query_plan.relationship_heavy and query_plan.matched_categories):
+                role_match = any(term in row_role for term in query_plan.matched_role_terms)
+                if not role_match:
+                    allow_product_match = any(
+                        term in query_plan.normalized_question
+                        for term in {"product service", "product / service", "mentions"}
+                    )
+                    if not allow_product_match or not any(
+                        term in row_product for term in query_plan.matched_role_terms
+                    ):
+                        return False
+        if query_plan.matched_classification_methods:
+            if not any(cm in row_classification for cm in query_plan.matched_classification_methods):
+                return False
+        if query_plan.matched_supplier_types:
+            if not any(st in row_supplier_type for st in query_plan.matched_supplier_types):
+                return False
         return True
 
     def _build_structured_summary(self, query_plan: QueryPlan, matched_rows: list[dict[str, str]]) -> str:
@@ -804,6 +849,10 @@ class HybridRetriever:
             applied_filters.append(f"primary OEMs in {query_plan.matched_primary_oems}")
         if query_plan.matched_role_terms:
             applied_filters.append(f"role terms in {query_plan.matched_role_terms}")
+        if query_plan.matched_classification_methods:
+            applied_filters.append(f"classification method in {query_plan.matched_classification_methods}")
+        if query_plan.matched_supplier_types:
+            applied_filters.append(f"supplier type in {query_plan.matched_supplier_types}")
         lines.append(f"Applied filters: {', '.join(applied_filters)}")
         lines.append(f"Matched rows: {len(matched_rows)}")
 

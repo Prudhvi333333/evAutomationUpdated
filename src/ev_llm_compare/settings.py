@@ -18,8 +18,8 @@ except ImportError:
 @dataclass(slots=True)
 class RetrievalSettings:
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
-    dense_top_k: int = 18
-    final_top_k: int = 12
+    dense_top_k: int = 30
+    final_top_k: int = 20
     batch_size: int = 64
     lexical_weight: float = 0.45
     dense_weight: float = 0.55
@@ -28,16 +28,16 @@ class RetrievalSettings:
     note_chunk_overlap: int = 150
     reranker_enabled: bool = True
     reranker_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
-    reranker_top_k: int = 12
+    reranker_top_k: int = 20
     reranker_weight: float = 0.35
-    max_chunks_per_company: int = 2
-    structured_summary_limit: int = 8
-    structured_exhaustive_limit: int = 150
+    max_chunks_per_company: int = 4
+    structured_summary_limit: int = 15
+    structured_exhaustive_limit: int = 210
     compact_context_enabled: bool = True
-    generation_context_result_limit: int = 8
-    generation_context_char_budget: int = 8000
-    evaluation_context_result_limit: int = 6
-    evaluation_context_char_budget: int = 4200
+    generation_context_result_limit: int = 15
+    generation_context_char_budget: int = 16000
+    evaluation_context_result_limit: int = 8
+    evaluation_context_char_budget: int = 6000
 
 
 # ──────────────────────────────────────────────────────────────────────────────

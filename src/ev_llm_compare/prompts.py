@@ -20,8 +20,8 @@ SYSTEM_PROMPT = (
     "You answer questions about EV supply chain workbook data.\n"
     "Use ONLY the retrieved evidence to answer. Do not answer from general knowledge.\n"
     "Cite each factual claim with its evidence tag, e.g. [E1], [E2].\n"
-    "If the evidence is insufficient to answer, write exactly: "
-    "'Insufficient evidence: <brief reason>.' and stop."
+    "ALWAYS attempt to answer using whatever relevant evidence is available, even if partial.\n"
+    "Only say 'Insufficient evidence' if the evidence contains ZERO relevant information."
 )
 
 RAG_SYSTEM_PROMPT = (
@@ -31,8 +31,12 @@ RAG_SYSTEM_PROMPT = (
     "Rules:\n"
     "- Cite every factual claim with the evidence tag shown in the context, e.g. [E1], [E2].\n"
     "- Use exact values, company names, counts, locations, roles, and employment figures from the evidence.\n"
-    "- If evidence is absent or insufficient, respond with: "
-    "'Insufficient evidence: <brief reason>.' Do not guess or hallucinate.\n"
+    "- ALWAYS attempt to answer using whatever relevant evidence is available, even if partial.\n"
+    "- List ALL matching companies and data points found in the evidence — do not omit any.\n"
+    "- Provide detailed, comprehensive answers. Include every relevant field: "
+    "company name, location, role, tier, employment, product/service, OEMs.\n"
+    "- Only say 'Insufficient evidence' if the evidence contains ZERO relevant information "
+    "for the question. Partial evidence should produce a partial answer, not abstention.\n"
     "- Do not ask the user to upload files. Do not mention workbook filenames.\n"
     "- Do not repeat the evidence headers verbatim."
 )
@@ -85,7 +89,7 @@ def compact_context_segments(
     )
     blocks: list[str] = []
     char_budget = max(600, max_chars)
-    reserved_summary_budget = int(char_budget * 0.62)
+    reserved_summary_budget = int(char_budget * 0.45)
 
     for index, result in enumerate(selected, start=1):
         remaining = char_budget - sum(len(block) for block in blocks)
@@ -181,11 +185,16 @@ def build_rag_prompt(question: str, context: str) -> str:
         "- Cite every factual claim with the evidence tag, e.g. [E1] or [E1][E2].\n"
         "- Use exact values from the evidence: company names, counts, locations, roles, employment numbers.\n"
         "- If the structured summary already states the final answer, copy it directly; do not recompute.\n"
-        "- Include all evidence-supported matches; do not omit items.\n"
+        "- Include ALL evidence-supported matches; do not omit any company or data point.\n"
+        "- For each company or entity, include as many fields as the evidence provides: "
+        "company name, Updated Location, EV Supply Chain Role, Supplier/Affiliation Type, "
+        "Employment, Product/Service, Primary OEMs, Primary Facility Type.\n"
         "- Group results when the question asks for grouping.\n"
-        "- If evidence is absent or insufficient, write exactly: "
-        "'Insufficient evidence: <brief reason>.' and stop.\n"
+        "- If the evidence has SOME relevant information, give a partial answer using it. "
+        "Only abstain if the evidence contains ZERO relevant data.\n"
         "- Do not invent values. Do not pad with general domain knowledge.\n"
+        "- Give a thorough, detailed answer. Do not give one-line answers when the evidence "
+        "supports a longer response.\n"
         "- Start directly with the answer; do not repeat question text.\n\n"
         "Answer:"
     )
@@ -259,9 +268,9 @@ def _select_compact_results(
         and summary_result
         and _summary_is_self_sufficient(summary_result.text)
     ):
-        result_limit = 1
+        result_limit = max(max_results, 5)
     elif analytic_question and has_structured_summary:
-        result_limit = min(max_results, 3)
+        result_limit = max_results
     else:
         result_limit = max_results
     ranked = sorted(
@@ -325,6 +334,23 @@ def _needs_broad_context(normalized_question: str) -> bool:
             "broken down by",
             "map all",
             "identify all",
+            "list all",
+            "show all",
+            "find all",
+            "which companies",
+            "which georgia companies",
+            "which areas",
+            "which county",
+            "which counties",
+            "how many",
+            "every ",
+            "each ",
+            "classified under",
+            "classified as",
+            "involved in",
+            "produce ",
+            "manufacture ",
+            "currently ",
         }
     )
 
@@ -359,14 +385,25 @@ def _needs_multi_record_context(normalized_question: str) -> bool:
             "multiple times",
             "appear multiple times",
             "county",
+            "counties",
             "cities",
+            "areas",
+            "employment",
+            "tier",
+            "role",
+            "suppliers",
+            "companies",
+            "battery",
+            "thermal",
+            "wiring",
+            "recycl",
         }
     )
 
 
 def _effective_compact_result_limit(normalized_question: str, max_results: int) -> int:
     if _needs_broad_context(normalized_question) or _is_relationship_heavy_question(normalized_question):
-        return max(max_results, 6)
+        return max(max_results, 15)
     return max_results
 
 
@@ -533,17 +570,25 @@ def _requested_fields(normalized_question: str, chunk_type: str) -> list[str]:
                 "supplier_or_affiliation_type",
             ]
         )
-    if fields:
-        return list(dict.fromkeys(fields))
-    if chunk_type == "location_theme":
-        return ["location", "primary_facility_type", "employment"]
+    # Always include core fields so the model has enough information to answer
+    core_fields = [
+        "ev_supply_chain_role",
+        "location",
+        "employment",
+        "supplier_or_affiliation_type",
+        "product_service",
+        "primary_oems",
+        "primary_facility_type",
+        "ev_battery_relevant",
+    ]
+    for f in core_fields:
+        if f not in fields:
+            fields.append(f)
     if chunk_type == "identity_theme":
-        return ["category", "industry_group", "classification_method"]
-    if chunk_type == "supply_chain_theme":
-        return ["ev_supply_chain_role", "primary_oems", "supplier_or_affiliation_type"]
-    if chunk_type == "product_theme":
-        return ["product_service", "ev_battery_relevant", "category"]
-    return ["category", "ev_supply_chain_role", "location", "employment"]
+        for f in ["category", "industry_group", "classification_method"]:
+            if f not in fields:
+                fields.append(f)
+    return list(dict.fromkeys(fields))
 
 
 def _is_analytic_question(normalized_question: str) -> bool:
