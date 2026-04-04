@@ -8,6 +8,14 @@ from typing import Any
 import pandas as pd
 
 from .schemas import TableRow, WorkbookNote
+from .column_matching import (
+    pick_column,
+    QUESTION_CANDIDATES,
+    QID_CANDIDATES,
+    KEY_FACTS_CANDIDATES,
+    ANSWER_CANDIDATES,
+)
+from .column_matching import pick_column, QUESTION_CANDIDATES, QID_CANDIDATES, KEY_FACTS_CANDIDATES, ANSWER_CANDIDATES
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -238,9 +246,9 @@ def load_questions(question_workbook: str | Path, sheet_name: str | None = None)
 
 
 # QID column name candidates (case-insensitive after normalisation)
-_QID_CANDIDATES = {"q_id", "id", "question id", "question_id", "#", "no", "num"}
-_QUESTION_CANDIDATES = {"question", "questions", "query", "prompt", "sample query"}
-_KEY_FACTS_CANDIDATES = {"key_facts", "key facts", "facts"}
+_QID_CANDIDATES = QID_CANDIDATES
+_QUESTION_CANDIDATES = QUESTION_CANDIDATES
+_KEY_FACTS_CANDIDATES = KEY_FACTS_CANDIDATES
 
 
 def load_eval_questions(
@@ -315,26 +323,10 @@ def load_eval_questions(
 
 
 def _pick_column(columns: list[str], candidates: set[str]) -> str | None:
-    for col in columns:
-        if normalize_cell(col).lower() in candidates:
-            return col
-    return None
+    return pick_column(columns, candidates)
 
 
-_ANSWER_CANDIDATES = {
-    "golden_answer",
-    "golden answer",
-    "reference_answer",
-    "reference answer",
-    "reference",
-    "answer",
-    "human validated answers",
-    "human validated answer",
-    "golden_summary",
-    "golden summary",
-    "expected answer",
-    "expected_answer",
-}
+_ANSWER_CANDIDATES = ANSWER_CANDIDATES
 
 
 def load_reference_answers(
