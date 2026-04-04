@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
-"""experiment.py — Authoritative 5-model × 2-mode × 50-question runner.
+"""experiment.py — Legacy runner (use main.py instead).
 
-This is the single entry-point for the full comparative study.
+DEPRECATED: The features of this script (JSONL checkpointing, auto-detection,
+--no-ragas flag) have been consolidated into main.py / runner.py.
+Use main.py as the single entry point going forward.
+
+This file is kept for backward compatibility only.
 
 Usage
 -----

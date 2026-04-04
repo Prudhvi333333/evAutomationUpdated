@@ -1,0 +1,117 @@
+q_id,question,golden_answer,answer,ragas_answer_accuracy,ragas_answer_similarity,ragas_answer_correctness,ragas_faithfulness,ragas_context_precision,ragas_context_recall
+1,"Show all Tier 1/2 suppliers in Georgia, list their EV Supply Chain Role and Product / Service.","There are 18 Tier 1/2 companies in Georgia.
+
+F&P Georgia Manufacturing [Tier 1/2] | Role: Battery Pack | Product: Lithium-ion battery recycler and raw materials provider
+Fouts Brothers Fire Equipment [Tier 1/2] | Role: General Automotive | Product: Automotive body parts and electronics Cylinder-head and specialty gaskets, housing modules and shielding systems for engines, transmissions, exhaust systems and auxiliary units
+Hitachi Astemo [Tier 1/2] | Role: General Automotive | Product: Car audio systems
+Hitachi Astemo Americas Inc. [Tier 1/2] | Role: Battery Cell | Product: Battery cells for electric mobility
+Hollingsworth & Vose Co. [Tier 1/2] | Role: Battery Pack | Product: Lithium-ion battery materials
+Honda Development & Manufacturing [Tier 1/2] | Role: Battery Cell | Product: Battery cells for electric mobility
+Hwashin [Tier 1/2] | Role: General Automotive | Product: Modules and storage systems
+Hyundai & LG Energy Solution (LGES) [Tier 1/2] | Role: General Automotive | Product: Storage batteries
+Hyundai Industrial Co. [Tier 1/2] | Role: General Automotive | Product: Automotive batteries
+Hyundai MOBIS (Georgia) [Tier 1/2] | Role: General Automotive | Product: Capacitors, electronic automotive components
+Hyundai Motor Group [Tier 1/2] | Role: Battery Pack | Product: Battery parts for electric vehicles
+Hyundai Transys Georgia Powertrain [Tier 1/2] | Role: Thermal Management | Product: Electrical heaters, control units, and actuators
+Hyundai Transys Georgia Seating Systems [Tier 1/2] | Role: General Automotive | Product: Automotive electronics, resonators, capacitors, resistors, electronics and electronic parts
+IMMI [Tier 1/2] | Role: Battery Pack | Product: Battery electrolyte
+IMS Gear Georgia Inc. [Tier 1/2] | Role: General Automotive | Product: Car audio systems
+Inalfa Roof Systems Inc. [Tier 1/2] | Role: General Automotive | Product: Automotive electronic safety systems
+JAC Products Inc. [Tier 1/2] | Role: General Automotive | Product: Switches, resistors and related products
+Jefferson Southern Corp. [Tier 1/2] | Role: General Automotive | Product: High current switches and resistors for automotive HVAC systems","There are 15 companies/suppliers/entries matching this query.
+**Battery Pack**
+F&P Georgia Manufacturing | Role: Battery Pack | Product / Service: Lithium-ion battery recycler and raw materials provider
+Hollingsworth & Vose Co. | Role: Battery Pack | Product / Service: Lithium-ion battery materials
+Hyundai Motor Group | Role: Battery Pack | Product / Service: Battery parts for electric vehicles
+IMMI | Role: Battery Pack | Product / Service: Battery electrolyte
+
+**Battery Cell**
+Hitachi Astemo Americas Inc. | Role: Battery Cell | Product / Service: Battery cells for electric mobility
+Honda Development & Manufacturing | Role: Battery Cell | Product / Service: Battery cells for electric mobility
+
+**General Automotive**
+Fouts Brothers Fire Equipment | Role: General Automotive | Product / Service: Automotive body parts and electronics Cylinder-head and specialty gaskets, housing modules and shielding systems for engines, transmissions, exhaust systems and auxiliary units
+Hitachi Astemo | Role: General Automotive | Product / Service: Car audio systems
+Hwashin | Role: General Automotive | Product / Service: Modules and storage systems
+Hyundai & LG Energy Solution (LGES) | Role: General Automotive | Product / Service: Storage batteries
+Hyundai Industrial Co. | Role: General Automotive | Product / Service: Automotive batteries
+Hyundai MOBIS (Georgia) | Role: General Automotive | Product / Service: Capacitors, electronic automotive components
+Hyundai Transys Georgia Seating Systems | Role: General Automotive | Product / Service: Automotive electronics, resonators, capacitors, resistors, electronics and electronic parts
+
+**Thermal Management**
+Hyundai Transys Georgia Powertrain | Role: Thermal Management | Product / Service: Electrical heaters, control units, and actuators",,0.835077270752224,,,0.9999999999,1.0
+2,"Which Georgia companies are classified under Battery Cell or Battery Pack roles, and what tier is each assigned?","There are 6 companies found with Battery Cell or Battery Pack roles.
+
+F&P Georgia Manufacturing [Tier 1/2] | Role: Battery Pack
+Hitachi Astemo Americas Inc. [Tier 1/2] | Role: Battery Cell
+Hollingsworth & Vose Co. [Tier 1/2] | Role: Battery Pack
+Honda Development & Manufacturing [Tier 1/2] | Role: Battery Cell
+Hyundai Motor Group [Tier 1/2] | Role: Battery Pack
+IMMI [Tier 1/2] | Role: Battery Pack","There are 6 matching entries
+
+**Battery Pack**
+F&P Georgia Manufacturing | role: Battery Pack | category: Tier 1/2 | classification: Supplier [E1, E12]
+Hollingsworth & Vose Co. | role: Battery Pack | category: Tier 1/2 | classification: Supplier [E1, E12]
+Hitachi Astemo Americas Inc. | role: Battery Pack | category: Tier 1/2 | classification: Supplier [E1, E12]
+
+**Battery Cell**
+F&P Georgia Manufacturing | role: Battery Cell | category: Tier 1/2 | classification: Supplier [E1, E12]
+Hollingsworth & Vose Co. | role: Battery Cell | category: Tier 1/2 | classification: Supplier [E1, E12]
+Hitachi Astemo Americas Inc. | role: Battery Cell | category: Tier 1/2 | classification: Supplier [E1, E12]",,0.6600556945385776,,,0.0,0.0
+3,Map all Thermal Management suppliers in Georgia and show which Primary OEMs they are linked to.,"There are 4 Thermal Management companies in Georgia.
+
+• Freudenberg-NOK | Location: LaGrange, Troup County | OEMs: Multiple OEMs
+• Hyundai Transys Georgia Powertrain | Location: West Point, Troup County | OEMs: Hyundai Kia Rivian
+• Novelis Inc. | Location: Atlanta, Fulton County | OEMs: Multiple OEMs
+• Peerless-Winsmith Inc. | Location: Flowery Branch, Hall County | OEMs: Multiple OEMs","There are 4 matching entries
+Freudenberg-NOK | primary_oems: Multiple OEMs [E1] [E2]
+Hyundai Transys Georgia Powertrain | primary_oems: Hyundai Kia Rivian [E1] [E3]
+Peerless-Winsmith Inc. | primary_oems: Multiple OEMs [E1] [E4]
+ZF Gainesville LLC | primary_oems:  [E1] [E5]",,0.5309478972402091,,,0.0,0.0
+4,"List every Georgia company classified under Power Electronics or Charging Infrastructure, along with their Employment size.","There are 4 companies in Power Electronics or Charging Infrastructure roles.
+
+GSC Steel Stamping LLC | Role: Power Electronics | Employment: 350
+Morgan Corp. | Role: Charging Infrastructure | Employment: 320
+Yazaki North America | Role: Power electronics, sensors, and EV systems | Employment: 230000
+ZF Gainesville LLC | Role: EV thermal management and power electronics | Employment: 17500","There are 3 matching entries
+GSC Steel Stamping LLC | employment: 350 | classification: Supplier [E1] [E2]
+Yazaki North America | employment: 230000 | classification: Public OEM footprint / supplier listing [E1] [E3]
+ZF Gainesville LLC | employment: 17500 | classification: Public OEM footprint / supplier listing [E1] [E4]",,0.5471312375550836,,,0.0,0.0
+5,"Which companies are classified as Direct Manufacturer, and what EV Supply Chain Roles do they cover?","The Direct Manufacturer group includes 11 companies.
+Kia Georgia Inc. | EV Supply Chain Role: Vehicle Assembly
+Minebea AccessSolutions USA Inc. | EV Supply Chain Role: General Automotive
+Superior Essex Inc. | EV Supply Chain Role: Vehicle Assembly
+Suzuki Manufacturing of America Corp. | EV Supply Chain Role: Vehicle Assembly
+TCI Powder Coatings | EV Supply Chain Role: Vehicle Assembly
+TDK Components USA Inc. | EV Supply Chain Role: Vehicle Assembly
+TE Connectivity | EV Supply Chain Role: Vehicle Assembly
+Teklas USA | EV Supply Chain Role: Vehicle Assembly
+Textron Specialized Vehicles | EV Supply Chain Role: Vehicle Assembly
+Thermal Ceramics Inc. | EV Supply Chain Role: Vehicle Assembly
+Thomson Plastics Inc. | EV Supply Chain Role: Vehicle Assembly","There are 13 matching entries
+
+Kia Georgia Inc. | role: Vehicle Assembly | classification: Direct Manufacturer [E1]
+
+Minebea AccessSolutions USA Inc. | role: General Automotive | classification: Direct Manufacturer [E1]
+
+Superior Essex Inc. | role: Vehicle Assembly | classification: Direct Manufacturer [E1]
+
+TDK Components USA Inc. | role: Vehicle Assembly | classification: Direct Manufacturer [E1]
+
+TCI Powder Coatings | role: Vehicle Assembly | classification: Direct Manufacturer [E1]
+
+Suzuki Manufacturing of America Corp. | role: Vehicle Assembly | classification: Direct Manufacturer [E1]
+
+Thermal Ceramics Inc. | role: Vehicle Assembly | classification: Direct Manufacturer [E1]
+
+Textron Specialized Vehicles | role: Vehicle Assembly | classification: Direct Manufacturer [E1]
+
+Blue Bird Corp. | role: Vehicle Assembly | classification: Direct Manufacturer [E14]
+
+Club Car LLC | role: Vehicle Assembly | classification: Direct Manufacturer [E14]
+
+Hyundai Motor Group | role: Vehicle Assembly | classification: Direct Manufacturer [E14]
+
+Kia Georgia Inc. | role: Vehicle Assembly | classification: Direct Manufacturer [E14]
+
+Mercedes-Benz USA LLC | role: Vehicle Assembly | classification: Direct Manufacturer [E14]",,0.655883736576412,,,0.9999999999,1.0

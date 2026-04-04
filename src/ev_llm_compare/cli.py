@@ -3,6 +3,38 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+# ──────────────────────────────────────────────────────────────────────────────
+# Auto-detection helpers — find common data/question files automatically
+# ──────────────────────────────────────────────────────────────────────────────
+
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+
+
+def _find_data_workbook() -> str:
+    candidates = [
+        _PROJECT_ROOT / "data" / "GNEM - Auto Landscape Lat Long Updated.xlsx",
+        _PROJECT_ROOT / "data" / "GNEM auto landscape.xlsx",
+        _PROJECT_ROOT / "data" / "GNEM updated excel.xlsx",
+        _PROJECT_ROOT / "GNEM updated excel (1).xlsx",
+        _PROJECT_ROOT / "GNEM updated excel.xlsx",
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return str(candidate)
+    return "GNEM updated excel (1).xlsx"
+
+
+def _find_question_workbook() -> str:
+    candidates = [
+        _PROJECT_ROOT / "data" / "Human validated 50 questions.xlsx",
+        _PROJECT_ROOT / "data" / "Sample questions.xlsx",
+        _PROJECT_ROOT / "Sample questions.xlsx",
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return str(candidate)
+    return "Sample questions.xlsx"
+
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -10,13 +42,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--data-workbook",
-        default="GNEM updated excel (1).xlsx",
-        help="Workbook containing the source data to index.",
+        default=_find_data_workbook(),
+        help="Workbook containing the source data to index. Auto-detected if not specified.",
     )
     parser.add_argument(
         "--question-workbook",
-        default="Sample questions.xlsx",
-        help="Workbook containing evaluation questions.",
+        default=_find_question_workbook(),
+        help="Workbook containing evaluation questions. Auto-detected if not specified.",
     )
     parser.add_argument(
         "--question-sheet",
@@ -88,6 +120,23 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Write a dedicated single-model workbook with per-question metrics and response attribution columns.",
     )
+    parser.add_argument(
+        "--no-ragas",
+        action="store_true",
+        dest="no_ragas",
+        help="Disable RAGAS library evaluation even if RAGAS_ENABLED=true in .env.",
+    )
+    parser.add_argument(
+        "--resume",
+        metavar="JSONL_PATH",
+        default=None,
+        dest="resume_from",
+        help=(
+            "Skip generation and load responses from a JSONL checkpoint file. "
+            "Pass the path to responses_raw.jsonl saved by a previous run "
+            "(e.g. artifacts/results/responses_raw.jsonl)."
+        ),
+    )
     return parser
 
 
@@ -114,6 +163,8 @@ def main() -> int:
         golden_sheet=args.golden_sheet,
         write_checkpoint=args.write_checkpoint,
         single_model_report=args.single_model_report,
+        no_ragas=args.no_ragas,
+        resume_from=args.resume_from,
     )
     print(f"Report written to {Path(report_path).resolve()}")
     return 0

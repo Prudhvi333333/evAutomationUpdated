@@ -1,0 +1,113 @@
+question,reference_answer,reference_source,answer,latency_seconds,success,error_message,answer_accuracy,rouge_l,token_f1,semantic_similarity,normalized_exact_match,custom_faithfulness,custom_response_groundedness,custom_context_precision,custom_context_recall,unsupported_claim_ratio,contradicted_claim_ratio,ragas_faithfulness,ragas_context_precision,ragas_context_recall,ragas_answer_correctness,abstained,response_length,citation_coverage,judge_failure_count
+"Show all Tier 1/2 suppliers in Georgia, list their EV Supply Chain Role and Product / Service.","There are 18 Tier 1/2 companies in Georgia.
+
+F&P Georgia Manufacturing [Tier 1/2] | Role: Battery Pack | Product: Lithium-ion battery recycler and raw materials provider
+Fouts Brothers Fire Equipment [Tier 1/2] | Role: General Automotive | Product: Automotive body parts and electronics Cylinder-head and specialty gaskets, housing modules and shielding systems for engines, transmissions, exhaust systems and auxiliary units
+Hitachi Astemo [Tier 1/2] | Role: General Automotive | Product: Car audio systems
+Hitachi Astemo Americas Inc. [Tier 1/2] | Role: Battery Cell | Product: Battery cells for electric mobility
+Hollingsworth & Vose Co. [Tier 1/2] | Role: Battery Pack | Product: Lithium-ion battery materials
+Honda Development & Manufacturing [Tier 1/2] | Role: Battery Cell | Product: Battery cells for electric mobility
+Hwashin [Tier 1/2] | Role: General Automotive | Product: Modules and storage systems
+Hyundai & LG Energy Solution (LGES) [Tier 1/2] | Role: General Automotive | Product: Storage batteries
+Hyundai Industrial Co. [Tier 1/2] | Role: General Automotive | Product: Automotive batteries
+Hyundai MOBIS (Georgia) [Tier 1/2] | Role: General Automotive | Product: Capacitors, electronic automotive components
+Hyundai Motor Group [Tier 1/2] | Role: Battery Pack | Product: Battery parts for electric vehicles
+Hyundai Transys Georgia Powertrain [Tier 1/2] | Role: Thermal Management | Product: Electrical heaters, control units, and actuators
+Hyundai Transys Georgia Seating Systems [Tier 1/2] | Role: General Automotive | Product: Automotive electronics, resonators, capacitors, resistors, electronics and electronic parts
+IMMI [Tier 1/2] | Role: Battery Pack | Product: Battery electrolyte
+IMS Gear Georgia Inc. [Tier 1/2] | Role: General Automotive | Product: Car audio systems
+Inalfa Roof Systems Inc. [Tier 1/2] | Role: General Automotive | Product: Automotive electronic safety systems
+JAC Products Inc. [Tier 1/2] | Role: General Automotive | Product: Switches, resistors and related products
+Jefferson Southern Corp. [Tier 1/2] | Role: General Automotive | Product: High current switches and resistors for automotive HVAC systems",golden,"Based on my general knowledge of the electric vehicle (EV) supply chain, I can provide an overview of some typical Tier 1 and Tier 2 suppliers located in Georgia and their roles within the EV supply chain. However, specific company names are not available without verified data. Here is a generalized list:
+
+### Tier 1 Suppliers
+1. **Supplier A**
+   - **Role:** Battery Manufacturing
+   - **Product/Service:** Production of lithium-ion batteries for electric vehicles.
+   
+2. **Supplier B**
+   - **Role:** Power Electronics and Charging Systems
+   - **Product/Service:** Development and manufacturing of onboard chargers, inverters, and DC fast charging stations.
+
+### Tier 2 Suppliers
+1. **Supplier C**
+   - **Role:** Battery Components
+   - **Product/Service:** Manufacturing of battery cells, separators, and electrolytes.
+   
+2. **Supplier D**
+   - **Role:** Charging Infrastructure Parts
+   - **Product/Service:** Production of components for charging stations such as connectors, cables, and control units.
+
+These suppliers play crucial roles in the EV supply chain by providing essential parts and services that enable the production and operation of electric vehicles.",10.575,True,,0.33,0.1886,0.2043,0.7393,0.0,,,,,,,,,,,False,164,,
+"Which Georgia companies are classified under Battery Cell or Battery Pack roles, and what tier is each assigned?","There are 6 companies found with Battery Cell or Battery Pack roles.
+
+F&P Georgia Manufacturing [Tier 1/2] | Role: Battery Pack
+Hitachi Astemo Americas Inc. [Tier 1/2] | Role: Battery Cell
+Hollingsworth & Vose Co. [Tier 1/2] | Role: Battery Pack
+Honda Development & Manufacturing [Tier 1/2] | Role: Battery Cell
+Hyundai Motor Group [Tier 1/2] | Role: Battery Pack
+IMMI [Tier 1/2] | Role: Battery Pack",golden,"Based on my general knowledge of the electric vehicle (EV) supply chain in Georgia, there are several notable companies involved in battery cell manufacturing and battery pack assembly. However, specific tier classifications can vary depending on their direct relationships with automakers or other major players in the EV industry.
+
+For example:
+- **Amperex Technology Limited (ATL)** has a significant presence in Georgia through its subsidiary, which is involved in battery pack assembly for various automotive clients. ATL would likely be classified as Tier 1 or Tier 2 based on their direct supply relationship.
+- **Contemporary Amperex Technology Ltd. (CATL)** also operates facilities that could include battery cell manufacturing and battery pack assembly roles. CATL's tier classification would depend on its primary customer relationships, potentially placing it in the Tier 1 category if supplying directly to major automakers.
+
+For precise tier classifications, you would need to refer to specific industry reports or company disclosures for exact details.",7.807,True,,0.23,0.19,0.2392,0.7001,0.0,,,,,,,,,,,False,156,,
+Map all Thermal Management suppliers in Georgia and show which Primary OEMs they are linked to.,"There are 4 Thermal Management companies in Georgia.
+
+• Freudenberg-NOK | Location: LaGrange, Troup County | OEMs: Multiple OEMs
+• Hyundai Transys Georgia Powertrain | Location: West Point, Troup County | OEMs: Hyundai Kia Rivian
+• Novelis Inc. | Location: Atlanta, Fulton County | OEMs: Multiple OEMs
+• Peerless-Winsmith Inc. | Location: Flowery Branch, Hall County | OEMs: Multiple OEMs",golden,"Based on my general knowledge of the electric vehicle (EV) supply chain, I can provide an overview of how thermal management suppliers in Georgia might be connected to primary original equipment manufacturers (OEMs). However, specific data about exact supplier-OEM relationships is not available without access to detailed industry reports or databases.
+
+In Georgia, several companies operate in the automotive and EV component manufacturing sectors. Thermal management systems are critical for maintaining optimal battery performance by regulating temperature. Major thermal management components include cooling fluids, heat exchangers, air conditioning units, and battery thermal packs.
+
+Some notable suppliers in this sector might be:
+
+1. **Modine Manufacturing Company** - While Modine has a significant presence in the automotive industry, specific operations or facilities in Georgia would need to be verified.
+2. **Thermal Corporation** - This company specializes in thermal management solutions but its exact footprint and partnerships in Georgia are not detailed without further research.
+
+Primary OEMs that might have supply chain links with these suppliers include:
+
+- **Tesla**
+- **General Motors (GM)**
+- **Ford Motor Company**
+
+These OEMs often work closely with multiple tier-one and tier-two suppliers across different states, including Georgia. To establish a precise map of supplier-OEM relationships in Georgia, detailed industry reports or direct company information would be necessary.
+
+For a comprehensive list and specific links, consulting the latest industry directories or contacting these companies directly would provide accurate details.",11.612,True,,0.38,0.0786,0.0815,0.7403,0.0,,,,,,,,,,,False,231,,
+"List every Georgia company classified under Power Electronics or Charging Infrastructure, along with their Employment size.","There are 4 companies in Power Electronics or Charging Infrastructure roles.
+
+GSC Steel Stamping LLC | Role: Power Electronics | Employment: 350
+Morgan Corp. | Role: Charging Infrastructure | Employment: 320
+Yazaki North America | Role: Power electronics, sensors, and EV systems | Employment: 230000
+ZF Gainesville LLC | Role: EV thermal management and power electronics | Employment: 17500",golden,"Based on my general knowledge, I don't have access to specific datasets that list all companies in Georgia classified under power electronics or charging infrastructure and their employment sizes. However, here is a general approach to finding such information:
+
+Companies operating in the EV supply chain within Georgia might include those involved in manufacturing components like inverters, converters, and chargers for electric vehicles. Some of these companies could be categorized under power electronics or charging infrastructure sectors.
+
+For example:
+- A company focused on developing and manufacturing high-efficiency power conversion systems.
+- Another company specializing in the design and installation of EV charging stations.
+
+To get precise employment sizes, you would typically refer to business directories, local economic development websites, or industry reports that provide such details. These sources often categorize companies by sector and include workforce information.
+
+Without specific data, I cannot list exact companies or their employment numbers but can suggest looking into Georgia's Department of Economic Development resources for more detailed and up-to-date information.",8.0,True,,0.12,0.1538,0.1887,0.6231,0.0,,,,,,,,,,,False,167,,
+"Which companies are classified as Direct Manufacturer, and what EV Supply Chain Roles do they cover?","The Direct Manufacturer group includes 11 companies.
+Kia Georgia Inc. | EV Supply Chain Role: Vehicle Assembly
+Minebea AccessSolutions USA Inc. | EV Supply Chain Role: General Automotive
+Superior Essex Inc. | EV Supply Chain Role: Vehicle Assembly
+Suzuki Manufacturing of America Corp. | EV Supply Chain Role: Vehicle Assembly
+TCI Powder Coatings | EV Supply Chain Role: Vehicle Assembly
+TDK Components USA Inc. | EV Supply Chain Role: Vehicle Assembly
+TE Connectivity | EV Supply Chain Role: Vehicle Assembly
+Teklas USA | EV Supply Chain Role: Vehicle Assembly
+Textron Specialized Vehicles | EV Supply Chain Role: Vehicle Assembly
+Thermal Ceramics Inc. | EV Supply Chain Role: Vehicle Assembly
+Thomson Plastics Inc. | EV Supply Chain Role: Vehicle Assembly",golden,"Companies classified as Direct Manufacturers in the electric vehicle (EV) supply chain typically include automakers that produce their own EVs. These manufacturers often handle multiple roles within the supply chain, including:
+
+1. **Vehicle Production**: Manufacturing of EVs.
+2. **Battery Production and Integration**: Some direct manufacturers also produce batteries or have partnerships with battery suppliers to integrate them into vehicles.
+3. **Component Sourcing**: Procurement of components such as electric motors, inverters, and other critical parts from various suppliers.
+4. **Research & Development**: Developing new technologies and innovations for EVs.
+
+Examples of companies that fit this classification include Tesla, Volkswagen Group, General Motors, and Nissan Motor Company. These firms are involved in the full spectrum of activities related to designing, manufacturing, and selling electric vehicles directly to consumers or through dealerships.",6.817,True,,0.38,0.1271,0.1293,0.7243,0.0,,,,,,,,,,,False,129,,

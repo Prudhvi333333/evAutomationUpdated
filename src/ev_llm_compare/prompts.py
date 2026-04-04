@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 import re
+from typing import Any, Callable
 
 from .schemas import RetrievalResult
 
@@ -169,13 +171,338 @@ def format_context(
     return "\n\n".join(blocks)
 
 
-def build_rag_prompt(question: str, context: str) -> str:
-    """Construct the RAG user prompt.
+def _detect_answer_mode(question: str) -> str:
+    """Route question to one of 3 generation modes.
 
-    Evidence blocks are pre-tagged [E1], [E2], … by format_context().
-    The model is required to cite every factual claim with these tags.
-    If the evidence does not support the question, the model must abstain
-    with the exact phrase 'Insufficient evidence:'.
+    Returns one of:
+        'structured_list'  – exhaustive listing / counting questions
+        'comparison'       – compare across categories, states, roles
+        'freeform'         – definitions, relationships, open-ended explanations
+    """
+    q = question.lower()
+
+    # Structured list: questions asking for a complete enumeration or count
+    structured_list_signals = [
+        "list all", "show all", "identify all", "map all",
+        "list every", "show every", "identify every", "find every",
+        "full list", "complete list", "how many", "what is the count",
+        "which companies", "which georgia companies",
+        "classified under", "classified as",
+        "show all tier", "list tier",
+    ]
+    if any(s in q for s in structured_list_signals):
+        return "structured_list"
+
+    # Comparison: questions that ask to compare across groups
+    comparison_signals = [
+        "compare", "versus", " vs ", "difference between",
+        "for each category", "for each role", "for each tier",
+        "by category", "by role", "by tier", "by state",
+        "breakdown", "broken down",
+        "highest", "lowest", "top ", "bottom ",
+        "average", "total employment by",
+    ]
+    if any(s in q for s in comparison_signals):
+        return "comparison"
+
+    return "freeform"
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Deterministic renderers
+# Code extracts rows from structured_row_match metadata, computes metrics,
+# and builds a pre-verified data block. LLM only does final wording.
+# ──────────────────────────────────────────────────────────────────────────────
+
+def _extract_structured_rows(retrieved_chunks: list[RetrievalResult]) -> list[dict]:
+    """Pull structured_row_match metadata from retrieved chunks.
+
+    Returns a deduplicated list of row dicts ordered by company name.
+    Each dict contains all available metadata fields.
+    """
+    seen_companies: set[str] = set()
+    rows: list[dict] = []
+    for chunk in retrieved_chunks:
+        if str(chunk.metadata.get("chunk_type", "")) != "structured_row_match":
+            continue
+        company = str(chunk.metadata.get("company", "")).strip()
+        if not company or company in seen_companies:
+            continue
+        seen_companies.add(company)
+        rows.append({
+            "company":             company,
+            "category":            str(chunk.metadata.get("category", "") or ""),
+            "ev_supply_chain_role":str(chunk.metadata.get("ev_supply_chain_role", "") or ""),
+            "employment":          str(chunk.metadata.get("employment", "") or ""),
+            "location":            str(chunk.metadata.get("location", "") or ""),
+            "product_service":     str(chunk.metadata.get("product_service", "") or ""),
+            "primary_oems":        str(chunk.metadata.get("primary_oems", "") or ""),
+            "primary_facility_type": str(chunk.metadata.get("primary_facility_type", "") or ""),
+            "supplier_type":       str(chunk.metadata.get("supplier_or_affiliation_type", "") or ""),
+            "ev_battery_relevant": str(chunk.metadata.get("ev_battery_relevant", "") or ""),
+            "classification_method": str(chunk.metadata.get("classification_method", "") or ""),
+            "state":               str(chunk.metadata.get("state", "") or ""),
+        })
+    rows.sort(key=lambda r: r["company"].lower())
+    return rows
+
+
+def _fields_requested(question: str) -> list[str]:
+    """Detect which fields the question asks for, to keep the table focused."""
+    q = question.lower()
+    fields: list[str] = ["company"]  # always included
+
+    if any(k in q for k in ["role", "supply chain role"]):
+        fields.append("ev_supply_chain_role")
+    if any(k in q for k in ["product", "service", "product / service"]):
+        fields.append("product_service")
+    if any(k in q for k in ["employment", "employee", "employees", "size"]):
+        fields.append("employment")
+    if any(k in q for k in ["location", "county", "city", "state", "where"]):
+        fields.append("location")
+    if any(k in q for k in ["oem", "linked to", "supply to", "supplier"]):
+        fields.append("primary_oems")
+    if any(k in q for k in ["tier", "category"]):
+        fields.append("category")
+    if any(k in q for k in ["facility", "facility type"]):
+        fields.append("primary_facility_type")
+    if any(k in q for k in ["affiliation", "supplier type", "affiliation type"]):
+        fields.append("supplier_type")
+    if any(k in q for k in ["ev / battery", "ev battery", "battery relevant"]):
+        fields.append("ev_battery_relevant")
+    if any(k in q for k in ["classification", "classified"]):
+        fields.append("classification_method")
+
+    # If no specific fields beyond company detected, include role as default
+    if fields == ["company"]:
+        fields.append("ev_supply_chain_role")
+    return fields
+
+
+def _render_row_table(rows: list[dict], fields: list[str]) -> str:
+    """Render a tab-aligned table of rows for the requested fields."""
+    if not rows:
+        return "(no matching rows found in structured data)"
+    lines: list[str] = []
+    for row in rows:
+        parts: list[str] = []
+        for f in fields:
+            label = f.replace("_", " ").replace("ev supply chain role", "Role") \
+                      .replace("product service", "Product/Service") \
+                      .replace("primary oems", "Primary OEMs") \
+                      .replace("primary facility type", "Facility Type") \
+                      .replace("supplier type", "Affiliation Type") \
+                      .replace("ev battery relevant", "EV/Battery Relevant") \
+                      .replace("classification method", "Classification") \
+                      .title()
+            val = row.get(f, "")
+            if val:
+                parts.append(f"{label}: {val}")
+        lines.append(" | ".join(parts))
+    return "\n".join(lines)
+
+
+def _detect_group_field(question: str) -> str | None:
+    """For comparison questions, detect what field to group by."""
+    q = question.lower()
+    if any(k in q for k in ["by role", "each role", "per role", "supply chain role"]):
+        return "ev_supply_chain_role"
+    if any(k in q for k in ["by category", "each category", "per category", "tier"]):
+        return "category"
+    if any(k in q for k in ["by state", "each state", "per state"]):
+        return "state"
+    if any(k in q for k in ["by location", "each location", "per location", "county"]):
+        return "location"
+    if any(k in q for k in ["by oem", "each oem", "per oem"]):
+        return "primary_oems"
+    if any(k in q for k in ["ev / battery", "ev battery", "battery relevant"]):
+        return "ev_battery_relevant"
+    if any(k in q for k in ["facility type", "facility"]):
+        return "primary_facility_type"
+    return None
+
+
+def build_deterministic_list_context(
+    question: str,
+    retrieved_chunks: list[RetrievalResult],
+) -> tuple[str, int]:
+    """Build a code-computed data block for structured_list questions.
+
+    Returns:
+        (data_block, row_count)
+
+    The data_block is passed to build_structured_list_prompt() instead of
+    the raw mixed-chunk context string.
+    row_count is the authoritative count computed from metadata, not from LLM.
+    """
+    rows = _extract_structured_rows(retrieved_chunks)
+    fields = _fields_requested(question)
+    # Always include ev_supply_chain_role in the rendered context so the
+    # extraction LLM can verify which companies match a role-based filter.
+    render_fields = fields[:]
+    if "ev_supply_chain_role" not in render_fields:
+        render_fields.insert(1, "ev_supply_chain_role")  # after company
+    table = _render_row_table(rows, render_fields)
+    count = len(rows)
+    block = (
+        f"VERIFIED DATA — {count} matching {'company' if count == 1 else 'companies'} "
+        f"extracted from workbook metadata (do not add or remove any row):\n\n"
+        f"{table}"
+    )
+    return block, count
+
+
+def build_deterministic_comparison_context(
+    question: str,
+    retrieved_chunks: list[RetrievalResult],
+) -> str:
+    """Build a code-computed grouped metrics block for comparison questions.
+
+    Groups rows by the detected field and computes count + total employment
+    per group in Python — no LLM arithmetic needed.
+    """
+    rows = _extract_structured_rows(retrieved_chunks)
+    group_field = _detect_group_field(question)
+    fields = _fields_requested(question)
+
+    if not group_field or not rows:
+        # Fall back to flat table if grouping can't be determined
+        table = _render_row_table(rows, fields)
+        return f"VERIFIED DATA — {len(rows)} rows:\n\n{table}"
+
+    # Group in code
+    from collections import defaultdict
+    groups: dict[str, list[dict]] = defaultdict(list)
+    for row in rows:
+        key = row.get(group_field, "") or "Unspecified"
+        groups[key].append(row)
+
+    lines: list[str] = [
+        f"VERIFIED GROUPED DATA — grouped by {group_field.replace('_', ' ')} "
+        f"(counts and totals computed from workbook metadata):\n"
+    ]
+    for group_key in sorted(groups):
+        group_rows = groups[group_key]
+        count = len(group_rows)
+        # Compute total employment if numeric values available
+        emp_values = []
+        for r in group_rows:
+            try:
+                emp_values.append(int(float(r["employment"].replace(",", ""))))
+            except (ValueError, AttributeError):
+                pass
+        emp_line = f" | Total Employment: {sum(emp_values):,}" if emp_values else ""
+        lines.append(f"\n{group_key} — Count: {count}{emp_line}")
+        for r in group_rows:
+            company_fields = [f for f in fields if f != "company"]
+            parts = [f"Company: {r['company']}"]
+            for f in company_fields:
+                v = r.get(f, "")
+                if v:
+                    label = f.replace("_", " ").title()
+                    parts.append(f"{label}: {v}")
+            lines.append("  " + " | ".join(parts))
+
+    return "\n".join(lines)
+
+
+def build_rag_prompt(
+    question: str,
+    context: str,
+    retrieved_chunks: list[RetrievalResult] | None = None,
+) -> str:
+    """Route to the correct specialised prompt builder based on question intent.
+
+    If retrieved_chunks is provided, structured_list and comparison questions
+    use the deterministic renderer — code computes the row set and metrics,
+    LLM only does final formatting.
+
+    If retrieved_chunks is None (legacy call), falls back to prompt-only path.
+    """
+    mode = _detect_answer_mode(question)
+
+    if mode == "structured_list":
+        if retrieved_chunks is not None:
+            data_block, row_count = build_deterministic_list_context(question, retrieved_chunks)
+            return build_structured_list_prompt(question, data_block, row_count=row_count)
+        return build_structured_list_prompt(question, context)
+
+    if mode == "comparison":
+        if retrieved_chunks is not None:
+            data_block = build_deterministic_comparison_context(question, retrieved_chunks)
+            return build_comparison_prompt(question, data_block)
+        return build_comparison_prompt(question, context)
+
+    return build_freeform_prompt(question, context)
+
+
+def build_structured_list_prompt(question: str, context: str, row_count: int = 0) -> str:
+    """Prompt for exhaustive list / count questions.
+
+    When called from the deterministic path, context is the pre-computed
+    verified data block (not raw mixed chunks), and row_count is the
+    authoritative count already computed in Python.
+    """
+    count_instruction = (
+        f"- Start your answer with exactly this sentence: "
+        f"'There are {row_count} {'company' if row_count == 1 else 'companies'} matching this query.'\n"
+        if row_count > 0
+        else
+        "- Start your answer with a count sentence: "
+        "'There are N companies/suppliers/entries matching this query.'\n"
+    )
+    return (
+        "Use ONLY the verified data below. Do not use general knowledge.\n\n"
+        f"Data:\n{context}\n\n"
+        f"Question: {question}\n\n"
+        "Instructions:\n"
+        "- The data block above is the COMPLETE and VERIFIED set of matching rows "
+        "extracted directly from the workbook. It is authoritative.\n"
+        "- DO NOT add any company that is not in the data block.\n"
+        "- DO NOT remove any company that is in the data block.\n"
+        f"{count_instruction}"
+        "- Then list EVERY company on its own line in this exact format:\n"
+        "  CompanyName | Role: <role> | <other requested fields>\n"
+        "- Include ONLY the fields the question asks for.\n"
+        "- If the question asks to group by role or category, group the lines "
+        "under bold role/category headers before listing.\n"
+        "- Do not add commentary or extra fields not requested.\n\n"
+        "Answer:"
+    )
+
+
+def build_comparison_prompt(question: str, context: str) -> str:
+    """Prompt for comparison / aggregation questions.
+
+    When called from the deterministic path, context is the pre-computed
+    grouped metrics block with counts and totals already calculated in Python.
+    """
+    return (
+        "Use ONLY the verified data below. Do not use general knowledge.\n\n"
+        f"Data:\n{context}\n\n"
+        f"Question: {question}\n\n"
+        "Instructions:\n"
+        "- The data block above contains groups with counts and totals already "
+        "computed from the workbook. These numbers are authoritative — do not "
+        "recompute or change them.\n"
+        "- Format the data as a clean comparison answer:\n"
+        "  Group A: count=N, total_employment=X — companies: ...\n"
+        "  Group B: count=N, total_employment=X — companies: ...\n"
+        "- Do not invent metrics. Use exactly the numbers in the data block.\n"
+        "- If a metric is not in the data block, say 'Not available'.\n"
+        "- End with a one-sentence summary identifying the largest/highest group "
+        "if the question asks for it.\n\n"
+        "Answer:"
+    )
+
+
+def build_freeform_prompt(question: str, context: str) -> str:
+    """Prompt for definitions, relationship explanations, and open-ended questions.
+
+    Strategy:
+    - Allow natural language prose.
+    - Still require citations.
+    - Faithful to evidence, no hallucination.
     """
     return (
         "Use ONLY the retrieved evidence below. Do not use general knowledge.\n\n"
@@ -183,19 +510,13 @@ def build_rag_prompt(question: str, context: str) -> str:
         f"Question: {question}\n\n"
         "Instructions:\n"
         "- Cite every factual claim with the evidence tag, e.g. [E1] or [E1][E2].\n"
-        "- Use exact values from the evidence: company names, counts, locations, roles, employment numbers.\n"
-        "- If the structured summary already states the final answer, copy it directly; do not recompute.\n"
+        "- Use exact values from the evidence: company names, counts, locations, "
+        "roles, employment numbers.\n"
         "- Include ALL evidence-supported matches; do not omit any company or data point.\n"
-        "- For each company or entity, include as many fields as the evidence provides: "
-        "company name, Updated Location, EV Supply Chain Role, Supplier/Affiliation Type, "
-        "Employment, Product/Service, Primary OEMs, Primary Facility Type.\n"
-        "- Group results when the question asks for grouping.\n"
-        "- If the evidence has SOME relevant information, give a partial answer using it. "
-        "Only abstain if the evidence contains ZERO relevant data.\n"
+        "- If the evidence has SOME relevant information, give a partial answer. "
+        "Only say 'Insufficient evidence' if the evidence contains ZERO relevant data.\n"
         "- Do not invent values. Do not pad with general domain knowledge.\n"
-        "- Give a thorough, detailed answer. Do not give one-line answers when the evidence "
-        "supports a longer response.\n"
-        "- Start directly with the answer; do not repeat question text.\n\n"
+        "- Start directly with the answer; do not repeat the question.\n\n"
         "Answer:"
     )
 
@@ -216,6 +537,312 @@ def build_non_rag_prompt(question: str) -> str:
         f"Question: {question}\n\n"
         "Answer:"
     )
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Two-pass generation
+# Pass 1: LLM extracts to strict JSON schema (constrained, no hallucination)
+# Pass 2: LLM verbalizes JSON into final user-facing answer (natural language)
+# ──────────────────────────────────────────────────────────────────────────────
+
+_EXTRACTION_SYSTEM_PROMPT = (
+    "You are a precise data extraction assistant. "
+    "You extract structured data from evidence and return ONLY valid JSON. "
+    "Do not add any text before or after the JSON. "
+    "Do not invent values. Only extract what is explicitly stated in the evidence."
+)
+
+_VERBALIZATION_SYSTEM_PROMPT = (
+    "You are a clear technical writer. "
+    "You convert structured JSON data into a well-formatted natural language answer. "
+    "Use only the data provided in the JSON. Do not add, remove, or change any values."
+)
+
+
+def _build_extraction_schema_for_list(fields: list[str]) -> str:
+    """Build the JSON schema description for pass 1 extraction."""
+    item_fields = []
+    for f in fields:
+        if f == "company":
+            item_fields.append('    "company": "exact company name from evidence"')
+        elif f == "ev_supply_chain_role":
+            item_fields.append('    "role": "EV Supply Chain Role from evidence"')
+        elif f == "product_service":
+            item_fields.append('    "product_service": "Product / Service from evidence"')
+        elif f == "employment":
+            item_fields.append('    "employment": "Employment value from evidence (number or string)"')
+        elif f == "location":
+            item_fields.append('    "location": "Updated Location from evidence"')
+        elif f == "primary_oems":
+            item_fields.append('    "primary_oems": "Primary OEMs from evidence"')
+        elif f == "category":
+            item_fields.append('    "category": "Category / Tier from evidence"')
+        elif f == "primary_facility_type":
+            item_fields.append('    "facility_type": "Primary Facility Type from evidence"')
+        elif f == "supplier_type":
+            item_fields.append('    "affiliation_type": "Supplier or Affiliation Type from evidence"')
+        elif f == "ev_battery_relevant":
+            item_fields.append('    "ev_battery_relevant": "EV / Battery Relevant value"')
+        elif f == "classification_method":
+            item_fields.append('    "classification": "Classification Method from evidence"')
+    item_schema = ",\n".join(item_fields)
+    return (
+        "{\n"
+        '  "count": <integer — total number of matching companies>,\n'
+        '  "items": [\n'
+        "    {\n"
+        f"{item_schema},\n"
+        '      "evidence": ["E1"]  // evidence tag(s) supporting this row\n'
+        "    }\n"
+        "  ]\n"
+        "}"
+    )
+
+
+def _build_extraction_schema_for_comparison(group_field: str) -> str:
+    return (
+        "{\n"
+        f'  "group_by": "{group_field}",\n'
+        '  "total_rows": <integer>,\n'
+        '  "groups": [\n'
+        "    {\n"
+        '      "group_name": "...",\n'
+        '      "count": <integer>,\n'
+        '      "companies": ["company1", "company2"],\n'
+        '      "total_employment": <integer or null if not available>,\n'
+        '      "evidence": ["E1"]\n'
+        "    }\n"
+        "  ]\n"
+        "}"
+    )
+
+
+def build_pass1_extraction_prompt(
+    question: str,
+    context: str,
+    mode: str,
+    fields: list[str] | None = None,
+    group_field: str | None = None,
+) -> str:
+    """Pass 1: ask the LLM to extract strict JSON from the evidence.
+
+    The LLM reads the context (with [E1] structured summary as authoritative)
+    and returns only valid JSON matching the schema. No prose, no explanation.
+    """
+    if mode == "structured_list":
+        schema = _build_extraction_schema_for_list(fields or ["company", "ev_supply_chain_role"])
+        task = (
+            "Extract every matching company from the evidence into the JSON schema below.\n"
+            "The evidence is the COMPLETE and VERIFIED set — do not add or invent companies.\n"
+            "For each company, extract ONLY the fields listed in the schema.\n"
+            "CRITICAL: Each company must appear EXACTLY ONCE in the items array.\n"
+            "Do NOT duplicate a company even if it appears under multiple roles.\n"
+            "Only include companies whose role EXPLICITLY matches the question filter "
+            "as stated in the evidence — do not infer or assume roles.\n"
+            "Set 'count' to the exact number of items in your 'items' array.\n"
+            "Return ONLY the JSON. No text before or after."
+        )
+    else:  # comparison
+        gf = group_field or "category"
+        schema = _build_extraction_schema_for_comparison(gf)
+        task = (
+            f"Group all companies from the evidence by '{gf}' into the JSON schema below.\n"
+            "The evidence is the COMPLETE and VERIFIED set — do not add or invent companies.\n"
+            "CRITICAL: Each company must appear in EXACTLY ONE group — "
+            "the group matching its actual value in the evidence.\n"
+            "Do NOT place the same company in multiple groups.\n"
+            "For each group: count the companies, list their names, sum employment if available.\n"
+            "Set 'total_rows' to the total number of companies across all groups.\n"
+            "Return ONLY the JSON. No text before or after."
+        )
+
+    return (
+        f"Evidence:\n{context}\n\n"
+        f"Question: {question}\n\n"
+        f"Task: {task}\n\n"
+        f"JSON Schema to fill:\n{schema}\n\n"
+        "JSON output:"
+    )
+
+
+def build_pass2_verbalization_prompt(
+    question: str,
+    extracted_json: dict[str, Any],
+    mode: str,
+) -> str:
+    """Pass 2: ask the LLM to convert validated JSON into a natural language answer.
+
+    The LLM receives only the validated JSON — no raw context. It cannot
+    hallucinate companies because the set is already fixed.
+    """
+    json_str = json.dumps(extracted_json, indent=2)
+
+    if mode == "structured_list":
+        count = extracted_json.get("count", len(extracted_json.get("items", [])))
+        return (
+            f"The following verified data answers the question below.\n\n"
+            f"Verified data (JSON):\n{json_str}\n\n"
+            f"Question: {question}\n\n"
+            "Instructions:\n"
+            f"- Start with exactly: 'There are {count} matching "
+            f"{'entry' if count == 1 else 'entries'}'\n"
+            "- Then list every item from the JSON on its own line.\n"
+            "- Use this format: CompanyName | Field: Value | Field: Value\n"
+            "- Do NOT include any citation markers or evidence labels "
+            "(such as [E1], [E2], [E12]) anywhere in your output.\n"
+            "- If 'role' contains grouping information (e.g. Battery Pack vs Battery Cell), "
+            "group items under bold headers.\n"
+            "- Do not add, remove, or change any company or value.\n"
+            "- Do not add commentary.\n\n"
+            "Answer:"
+        )
+    else:  # comparison
+        group_by = extracted_json.get("group_by", "category")
+        total = extracted_json.get("total_rows", "?")
+        return (
+            f"The following verified grouped data answers the question below.\n\n"
+            f"Verified data (JSON):\n{json_str}\n\n"
+            f"Question: {question}\n\n"
+            "Instructions:\n"
+            f"- Total companies: {total}. Use this exact number.\n"
+            f"- Present one paragraph per group, grouped by '{group_by}'.\n"
+            "- Format: **GroupName** — Count: N, Total Employment: X\n"
+            "  Companies: company1, company2, ...\n"
+            "- Do NOT include any citation markers or evidence labels "
+            "(such as [E1], [E2], [E12]) anywhere in your output.\n"
+            "- Do not change any counts, totals, or company names.\n"
+            "- End with a one-sentence summary of the result "
+            "(e.g. which group is largest).\n\n"
+            "Answer:"
+        )
+
+
+def _parse_json_from_llm_output(raw: str) -> dict[str, Any] | None:
+    """Extract and parse JSON from LLM output, handling common formatting issues."""
+    if not raw:
+        return None
+    # Strip markdown code fences if present
+    text = re.sub(r"```(?:json)?\s*", "", raw).strip().rstrip("`").strip()
+    # Find first { and last }
+    start = text.find("{")
+    end = text.rfind("}")
+    if start == -1 or end == -1:
+        return None
+    try:
+        return json.loads(text[start:end + 1])
+    except json.JSONDecodeError:
+        return None
+
+
+def build_two_pass_answer(
+    question: str,
+    context: str,
+    retrieved_chunks: list[RetrievalResult],
+    generate_fn: Callable[[str, str, float, int], tuple[str, float, bool, str | None]],
+    mode: str,
+) -> tuple[str, float, bool, str | None]:
+    """Run the 2-pass generation for structured_list and comparison questions.
+
+    Pass 1: LLM extracts verified JSON from evidence (temperature=0)
+    Pass 2: LLM verbalizes JSON into final answer (temperature=0)
+
+    Falls back to single-pass freeform prompt if JSON extraction fails.
+
+    Args:
+        question:        the user question
+        context:         pre-formatted evidence string (from format_context)
+        retrieved_chunks: raw RetrievalResult list for field detection
+        generate_fn:     callable(prompt, system_prompt, temperature, max_tokens)
+                         → (answer, latency, success, error)
+        mode:            'structured_list' or 'comparison'
+
+    Returns:
+        (final_answer, total_latency, success, error_message)
+    """
+    fields = _fields_requested(question)
+    group_field = _detect_group_field(question) if mode == "comparison" else None
+
+    # ── Build deterministic data block as Pass 1 input ────────────────────────
+    # Using the deterministic renderer means Pass 1 sees ONLY the pre-filtered
+    # structured_row_match rows (clean, no noise), not the full raw context.
+    # This prevents the LLM from hallucinating companies or duplicating rows.
+    python_row_count: int | None = None
+    if retrieved_chunks:
+        if mode == "structured_list":
+            det_context, python_row_count = build_deterministic_list_context(
+                question, retrieved_chunks
+            )
+        else:
+            det_context = build_deterministic_comparison_context(question, retrieved_chunks)
+        pass1_context = det_context
+    else:
+        pass1_context = context  # fallback to raw context if no chunks
+
+    # ── Pass 1: extraction ────────────────────────────────────────────────────
+    pass1_prompt = build_pass1_extraction_prompt(
+        question, pass1_context, mode,
+        fields=fields,
+        group_field=group_field,
+    )
+    raw1, latency1, ok1, err1 = generate_fn(
+        pass1_prompt,
+        _EXTRACTION_SYSTEM_PROMPT,
+        0.0,   # always deterministic for extraction
+        2500,  # large lists (18+ companies) need room; JSON is verbose
+    )
+
+    def _direct_fallback(reason: str):
+        row_count = python_row_count or 0
+        fb = build_structured_list_prompt(question, pass1_context, row_count=row_count)
+        ans, lat, ok, err = generate_fn(fb, RAG_SYSTEM_PROMPT, 0.0, 1500)
+        return ans, latency1 + lat, ok, f"{reason}; direct prompt used"
+
+    if not ok1:
+        return _direct_fallback(f"pass1_failed: {err1}")
+
+    extracted = _parse_json_from_llm_output(raw1)
+    if extracted is None:
+        return _direct_fallback("pass1_json_parse_failed")
+
+    # ── Verify extraction completeness ────────────────────────────────────────
+    # If extraction returned fewer items than Python found in metadata,
+    # the LLM truncated or missed companies. Fall back to direct single-pass
+    # rather than producing an answer with wrong count or missing entries.
+    if mode == "structured_list":
+        items = extracted.get("items", [])
+        n_extracted = len(items)
+        n_expected = python_row_count if python_row_count is not None else n_extracted
+        if n_extracted < n_expected:
+            return _direct_fallback(
+                f"extraction_partial: got {n_extracted} of {n_expected} companies"
+            )
+        extracted["count"] = n_expected  # Python count is authoritative
+
+    if mode == "comparison":
+        groups = extracted.get("groups", [])
+        python_total = sum(len(g.get("companies", [])) for g in groups)
+        if python_total > 0:
+            extracted["total_rows"] = python_total
+
+    # ── Strip internal evidence fields before verbalization ───────────────────
+    # Remove any "evidence" keys so citation markers can't leak into Pass 2 output.
+    if mode == "structured_list":
+        for item in extracted.get("items", []):
+            item.pop("evidence", None)
+    else:
+        for group in extracted.get("groups", []):
+            group.pop("evidence", None)
+
+    # ── Pass 2: verbalization ─────────────────────────────────────────────────
+    pass2_prompt = build_pass2_verbalization_prompt(question, extracted, mode)
+    raw2, latency2, ok2, err2 = generate_fn(
+        pass2_prompt,
+        _VERBALIZATION_SYSTEM_PROMPT,
+        0.0,
+        1500,
+    )
+    total_latency = latency1 + latency2
+    return raw2, total_latency, ok2, err2
 
 
 def build_reference_prompt(question: str, context: str) -> str:
@@ -281,14 +908,26 @@ def _select_compact_results(
     selected: list[RetrievalResult] = []
     seen_rows: set[str] = set()
     seen_companies: set[str] = set()
+    structured_match_companies: set[str] = set()
     note_used = False
     allow_repeated_company_rows = _needs_multi_record_context(normalized_question)
+    # Pre-compute which companies already have a structured_row_match chunk
+    # so we can skip lower-priority duplicates (row_full, company_profile)
+    for result in ranked:
+        if _chunk_type(result) == "structured_row_match":
+            c = str(result.metadata.get("company", "")).strip()
+            if c:
+                structured_match_companies.add(c)
 
     for result in ranked:
         chunk_type = _chunk_type(result)
         row_key = str(result.metadata.get("row_key", "")).strip()
         company = str(result.metadata.get("company", "")).strip()
         if chunk_type == "note_reference" and not definition_question:
+            continue
+        # Skip row_full / company_profile duplicates when a structured_row_match
+        # already covers this company — it's higher quality and more compact.
+        if chunk_type in {"row_full", "company_profile"} and company in structured_match_companies:
             continue
         if chunk_type == "note_reference" and note_used:
             continue
@@ -401,7 +1040,26 @@ def _needs_multi_record_context(normalized_question: str) -> bool:
     )
 
 
+def _is_exhaustive_listing_question(normalized_question: str) -> bool:
+    """Return True for questions that ask for a complete list of companies/entries."""
+    if any(
+        term in normalized_question
+        for term in {
+            "list all", "show all", "identify all", "map all",
+            "list every", "show every", "identify every", "find every",
+            "full list of", "complete list of", "every company",
+        }
+    ):
+        return True
+    import re as _re
+    if _re.search(r"\ball\s+\w+\s+(companies|suppliers|manufacturers|firms)\b", normalized_question):
+        return True
+    return False
+
+
 def _effective_compact_result_limit(normalized_question: str, max_results: int) -> int:
+    if _is_exhaustive_listing_question(normalized_question):
+        return max(max_results, 30)
     if _needs_broad_context(normalized_question) or _is_relationship_heavy_question(normalized_question):
         return max(max_results, 15)
     return max_results

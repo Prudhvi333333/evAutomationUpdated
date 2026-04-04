@@ -156,7 +156,21 @@ class HybridRetriever:
 
     def retrieve(self, question: str, top_k: int | None = None) -> list[RetrievalResult]:
         query_plan = self._plan_query(question)
+
+        # Fix 6: debug logging — query plan entity extraction summary
+        print(
+            f"[retrieval] Q: {question[:80]!r} | "
+            f"companies={query_plan.matched_companies} "
+            f"states={query_plan.matched_states} "
+            f"oems={query_plan.matched_primary_oems} "
+            f"roles={query_plan.matched_role_terms} "
+            f"cats={query_plan.matched_categories} "
+            f"exhaustive={self._is_exhaustive_question(query_plan)}"
+        )
+
         structured_results = self._structured_matches(query_plan)
+        print(f"[retrieval] structured_matches={len(structured_results)}")
+
         dense_rank, dense_scores = self._rank_dense(query_plan.dense_queries)
         lexical_rank, lexical_scores = self._rank_lexically(query_plan.dense_queries)
 
@@ -178,12 +192,22 @@ class HybridRetriever:
             )
         retrieved.sort(key=lambda item: item.final_score, reverse=True)
         reranked = self._rerank_candidates(question, retrieved)
-        return self._select_context_results(
+        final_results = self._select_context_results(
             query_plan,
             structured_results,
             reranked,
             limit=top_k,
         )
+        # Fix 6: log final selected chunks
+        print(
+            f"[retrieval] final_selected={len(final_results)} | "
+            + ", ".join(
+                f"{r.metadata.get('company','?')}/{r.metadata.get('chunk_type','?')}"
+                for r in final_results[:8]
+            )
+            + ("..." if len(final_results) > 8 else "")
+        )
+        return final_results
 
     def _index_chunks(self) -> None:
         self.qdrant_path.mkdir(parents=True, exist_ok=True)
@@ -808,13 +832,33 @@ class HybridRetriever:
                 return False
         if query_plan.matched_primary_oems:
             oem_filters = {normalize_text(value) for value in query_plan.matched_primary_oems}
-            if row_primary_oems not in oem_filters:
+            # Fix 1: containment-based OEM matching — a row like "Hyundai Kia Rivian" matches
+            # a filter for "Hyundai" because the cell may list multiple OEMs in one field.
+            if not any(oem in row_primary_oems for oem in oem_filters):
                 return False
         if query_plan.matched_role_terms:
             # Only skip the role check when relationship_heavy AND categories+roles
             # are handled above by the OR logic
             if not (query_plan.relationship_heavy and query_plan.matched_categories):
-                role_match = any(term in row_role for term in query_plan.matched_role_terms)
+                # Fix 2: relaxed role matching — normalize compound roles
+                # e.g. "power electronics, sensors, and ev systems" must match "power electronics"
+                def _role_tokens(text: str) -> list[str]:
+                    """Split a compound role string into individual normalized phrases."""
+                    parts = re.split(r"[,;/]|\s+and\s+", text)
+                    return [p.strip() for p in parts if p.strip()]
+
+                row_role_parts = _role_tokens(row_role)
+                # A term matches if it appears as a substring in ANY role part or in the full role string
+                def _term_in_role(term: str) -> bool:
+                    if term in row_role:
+                        return True
+                    term_tokens = _role_tokens(term)
+                    return any(
+                        all(tok in part for tok in term_tokens)
+                        for part in row_role_parts
+                    )
+
+                role_match = any(_term_in_role(term) for term in query_plan.matched_role_terms)
                 if not role_match:
                     allow_product_match = any(
                         term in query_plan.normalized_question
@@ -981,6 +1025,7 @@ class HybridRetriever:
 
     def _is_exhaustive_question(self, query_plan: QueryPlan) -> bool:
         question = query_plan.normalized_question
+        # Fix 3: extended exhaustive-question detection — covers more phrasings used in practice
         if any(
             term in question
             for term in {
@@ -988,18 +1033,28 @@ class HybridRetriever:
                 "show all",
                 "identify all",
                 "map all",
+                "list every",
+                "show every",
+                "identify every",
+                "find every",
                 "provide the matching companies",
                 "full set",
+                "full list of",
+                "complete list of",
                 "network",
                 "connected to each",
                 "linked to each",
                 "broken down by tier",
+                "every company",
             }
         ):
             return True
         if "include their" in question or "summarize their" in question:
             return True
         if "for each category" in question:
+            return True
+        # Patterns like "all georgia companies", "all tier 1 suppliers"
+        if re.search(r"\ball\s+\w+\s+(companies|suppliers|manufacturers|firms)\b", question):
             return True
         return False
 
@@ -1092,8 +1147,16 @@ class HybridRetriever:
             if str(result.metadata.get("chunk_type", "")) == "derived_analytic_summary"
             and normalize_text(str(result.metadata.get("state", ""))) in matched_states
         }
+        is_exhaustive = self._is_exhaustive_question(query_plan)
+
+        # Fix 4: for exhaustive/list queries relax the company cap and expand the result window
         company_cap = self.settings.max_chunks_per_company
-        if query_plan.relationship_heavy or query_plan.broad_context_required:
+        if is_exhaustive:
+            # Don't cap by company for exhaustive listing questions — every company must appear
+            company_cap = 999
+            if limit is None:
+                result_limit = max(result_limit, 50)
+        elif query_plan.relationship_heavy or query_plan.broad_context_required:
             company_cap = max(company_cap, 4)
         elif any(
             term in query_plan.normalized_question
@@ -1101,11 +1164,28 @@ class HybridRetriever:
         ):
             company_cap = max(company_cap, 3)
 
-        for result in structured_results[:1]:
+        # Fix 5: structured matches are always primary — insert ALL of them first before
+        # any dense/lexical candidates so the LLM sees the metadata-filtered rows first.
+        for result in structured_results:
             selected.append(result)
             seen_keys.add(result.chunk_id)
+            company = str(result.metadata.get("company", "")).strip()
+            if company:
+                company_counts[company] += 1
+            if not is_exhaustive and len(selected) >= result_limit:
+                break
 
-        for result in structured_results[1:] + ordered_candidates:
+        # For exhaustive listing questions, skip derived analytic summaries entirely —
+        # they group companies by county/role themes and confuse the model into listing
+        # companies that are NOT actually in the requested role.
+        # Only row-level chunks (structured_row_match, row_full, company_profile, etc.) are safe.
+        _DERIVED_TYPES = {"derived_analytic_summary", "county_cluster", "role_concentration",
+                          "capability_index", "oem_linkage", "battery_ecosystem"}
+
+        for result in ordered_candidates:
+            chunk_type = str(result.metadata.get("chunk_type", ""))
+            if is_exhaustive and chunk_type in _DERIVED_TYPES:
+                continue
             unique_key = str(result.metadata.get("row_key", "")).strip() or result.chunk_id
             if unique_key in seen_keys:
                 continue

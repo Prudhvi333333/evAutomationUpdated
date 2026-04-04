@@ -1,0 +1,8 @@
+{
+  "chunk_count": 1230,
+  "collection_name": "ev_compare_cb4abf49058c",
+  "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+  "fingerprint": "cb4abf49058c",
+  "manifest_version": 2,
+  "point_id_strategy": "uuid5"
+}

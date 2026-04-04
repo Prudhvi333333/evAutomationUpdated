@@ -13,8 +13,16 @@ wheels/
 
 # Virtual environments
 .venv
+.venv311/
+.venv_hf/
 venv/
 venv
+
+# Hugging Face local caches (private/local only)
+.hf_home/
+.cache/huggingface/
+models/hf/
+data/private/
 
 # OS files
 .DS_Store

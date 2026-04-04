@@ -555,7 +555,9 @@ def build_reference_answers(
         )
         prompt = build_reference_prompt(question, context)
         answer, _, success, _ = safe_generate(judge_client, prompt, temperature=0.0, max_tokens=500)
-        references[question] = answer if success else "Reference generation failed."
+        # Store empty string on failure so callers skip this question rather than
+        # comparing model answers against a "Reference generation failed." string.
+        references[question] = answer if success else ""
     return references
 
 
@@ -694,11 +696,15 @@ def _parse_llm_judge_score(raw_text: str) -> float | None:
         return None
     stripped = raw_text.strip()
 
-    explicit_match = re.fullmatch(
+    # Use re.search so that SCORE=<value> is found anywhere in the output.
+    # re.fullmatch was too strict: any extra character (period, newline, preamble)
+    # from the judge caused the parse to silently return None → all zeros in report.
+    explicit_match = re.search(
         r"SCORE\s*=\s*(0(?:\.\d+)?|1(?:\.0+)?)",
         stripped,
         flags=re.IGNORECASE,
     )
+    # Fallback: the entire output is just a bare number between 0 and 1
     bare_match = re.fullmatch(r"(0(?:\.\d+)?|1(?:\.0+)?)", stripped)
     match = explicit_match or bare_match
     if match is None:
@@ -957,9 +963,18 @@ def _classify_claims_against_context(
     retrieved_contexts: list[str],
     claims: list[str],
     retries: int,
-) -> dict[int, str]:
+) -> dict[int, str] | None:
+    """Classify each claim against retrieved context.
+
+    Returns None if every judge batch failed (caller should treat as missing data,
+    not as genuinely-zero faithfulness).  Individual failed batches still default to
+    'unsupported', but a total judge failure now propagates as None so metrics are
+    stored as null rather than as artificial zeros.
+    """
     labels_by_id: dict[int, str] = {}
     indexed_claims = list(enumerate(claims, start=1))
+    failed_batches = 0
+    total_batches = 0
     for start in range(0, len(indexed_claims), CLAIM_CLASSIFICATION_BATCH_SIZE):
         batch = indexed_claims[start : start + CLAIM_CLASSIFICATION_BATCH_SIZE]
         prompt = _build_claim_classification_prompt(
@@ -973,12 +988,17 @@ def _classify_claims_against_context(
             retries=retries,
         )
         batch_ids = {claim_id for claim_id, _ in batch}
+        total_batches += 1
         if parsed is None:
+            failed_batches += 1
             for claim_id in batch_ids:
                 labels_by_id[claim_id] = "unsupported"
             continue
         for claim_id in batch_ids:
             labels_by_id[claim_id] = parsed.get(claim_id, "unsupported")
+    # If every batch failed, return None so callers store null instead of a fake 0.
+    if total_batches > 0 and failed_batches == total_batches:
+        return None
     return labels_by_id
 
 
@@ -1047,12 +1067,15 @@ def _evaluate_context_precision(
         )
         batch_ids = {context_id for context_id, _ in batch}
         if parsed is None:
-            for context_id in batch_ids:
-                relevance_by_id[context_id] = False
+            # Judge failed for this batch — skip rather than defaulting to False
+            # (False would produce an artificial 0 in context_precision).
             continue
         for context_id in batch_ids:
             relevance_by_id[context_id] = parsed.get(context_id, False)
 
+    if not relevance_by_id:
+        # Every batch failed — return None so metric is stored as null, not 0.
+        return None
     flags = [relevance_by_id.get(index, False) for index, _ in ranked_contexts]
     return _average_precision(flags)
 
@@ -1074,6 +1097,8 @@ def _evaluate_context_recall(
         claims=reference_claims,
         retries=retries,
     )
+    if labels_by_id is None:
+        return None
     supported = sum(1 for label in labels_by_id.values() if label == "supported")
     return round(supported / len(reference_claims), 4)
 
@@ -1234,12 +1259,14 @@ def _score_response_metrics(
                 claims=answer_claims,
                 retries=max_retries,
             )
-            claim_metrics = _compute_claim_ratios(claim_labels, len(answer_claims))
-            if claim_metrics is not None:
-                # Map old names → new canonical names
-                record["custom_faithfulness"] = claim_metrics.get("faithfulness")
-                record["unsupported_claim_ratio"] = claim_metrics.get("unsupported_claim_ratio")
-                record["contradicted_claim_ratio"] = claim_metrics.get("contradicted_claim_ratio")
+            # claim_labels is None when every judge batch failed — store null,
+            # not a fake 0 that would be indistinguishable from genuinely 0 faithfulness.
+            if claim_labels is not None:
+                claim_metrics = _compute_claim_ratios(claim_labels, len(answer_claims))
+                if claim_metrics is not None:
+                    record["custom_faithfulness"] = claim_metrics.get("faithfulness")
+                    record["unsupported_claim_ratio"] = claim_metrics.get("unsupported_claim_ratio")
+                    record["contradicted_claim_ratio"] = claim_metrics.get("contradicted_claim_ratio")
 
         record["custom_response_groundedness"] = _dual_judge_metric(
             judge_client=judge_client,

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from .chunking import ExcelChunkBuilder
@@ -27,7 +28,9 @@ from .prompts import (
     SYSTEM_PROMPT,
     build_non_rag_prompt,
     build_rag_prompt,
+    build_two_pass_answer,
     format_context,
+    _detect_answer_mode,
 )
 from .retrieval import HybridRetriever
 from .schemas import ModelResponse
@@ -54,6 +57,8 @@ class ComparisonRunner:
         golden_sheet: str | None = None,
         write_checkpoint: bool = False,
         single_model_report: bool = False,
+        no_ragas: bool = False,
+        resume_from: str | None = None,
         **legacy_kwargs: object,
     ) -> Path:
         if "skip_ragas" in legacy_kwargs:
@@ -94,54 +99,134 @@ class ComparisonRunner:
             self._log("Retrieval complete")
             responses: list[ModelResponse] = []
 
-            for model_index, spec in enumerate(active_models, start=1):
-                self._log(
-                    f"Running model {model_index}/{len(active_models)}: "
-                    f"{spec.run_name} ({spec.model_name}, rag={spec.rag_enabled})"
-                )
-                client = create_client(spec, self.config.runtime)
-                for question_index, question in enumerate(questions, start=1):
-                    self._log(
-                        f"  Question {question_index}/{len(questions)} for {spec.run_name}"
+            if resume_from is not None:
+                # ── Resume from JSONL checkpoint — skip generation ────────────
+                jsonl_path = Path(resume_from).expanduser().resolve()
+                if not jsonl_path.exists():
+                    raise FileNotFoundError(
+                        f"Checkpoint file not found: {jsonl_path}\n"
+                        "Run without --resume first to generate responses."
                     )
-                    question_retrieval = retrievals[question]
-                    prompt = (
-                        build_rag_prompt(
-                            question,
-                            format_context(
+                self._log(f"Resuming from checkpoint: {jsonl_path}")
+                responses = self._load_responses_from_jsonl(jsonl_path, retrievals)
+                self._log(
+                    f"Loaded {len(responses)} responses from checkpoint "
+                    f"({len({r.run_name for r in responses})} run(s))"
+                )
+            else:
+                # ── Normal generation path ────────────────────────────────────
+                for model_index, spec in enumerate(active_models, start=1):
+                    self._log(
+                        f"Running model {model_index}/{len(active_models)}: "
+                        f"{spec.run_name} ({spec.model_name}, rag={spec.rag_enabled})"
+                    )
+                    client = create_client(spec, self.config.runtime)
+                    for question_index, question in enumerate(questions, start=1):
+                        self._log(
+                            f"  Question {question_index}/{len(questions)} for {spec.run_name}"
+                        )
+                        question_retrieval = retrievals[question]
+                        if spec.rag_enabled:
+                            answer_mode = _detect_answer_mode(question)
+                            # Pass retrieved_chunks so the deterministic renderer
+                            # can compute counts/groups in code for structured questions.
+                            # format_context() is still called to provide the freeform
+                            # fallback context string (used if chunks are empty).
+                            fallback_context = format_context(
                                 question_retrieval,
                                 question=question,
                                 max_results=self.config.retrieval.generation_context_result_limit,
                                 max_chars=self.config.retrieval.generation_context_char_budget,
                                 compact=self.config.retrieval.compact_context_enabled,
-                            ),
+                            )
+                            prompt = build_rag_prompt(
+                                question,
+                                fallback_context,
+                                retrieved_chunks=question_retrieval if question_retrieval else None,
+                            )
+                            # Structured list and comparison: temperature=0
+                            # — the answer is deterministic from workbook data
+                            effective_temperature = (
+                                0.0
+                                if answer_mode in {"structured_list", "comparison"}
+                                else spec.temperature
+                            )
+                        else:
+                            prompt = build_non_rag_prompt(question)
+                            effective_temperature = spec.temperature
+                            answer_mode = "freeform"
+                        if spec.rag_enabled and answer_mode in {"structured_list", "comparison"}:
+                            # 2-pass: Pass 1 extracts strict JSON, Pass 2 verbalizes it.
+                            # The LLM runs on every call but does constrained extraction
+                            # rather than noisy chunk selection.
+                            _seed = spec.seed
+                            _max_tokens = spec.max_tokens
+
+                            def generate_fn(
+                                _prompt: str,
+                                system_prompt: str,
+                                temperature: float,
+                                max_tokens: int,
+                                _s=_seed,
+                                _c=client,
+                            ):
+                                return safe_generate(
+                                    _c,
+                                    _prompt,
+                                    temperature=temperature,
+                                    max_tokens=max_tokens,
+                                    system_prompt=system_prompt,
+                                    seed=_s,
+                                )
+
+                            answer, latency, success, error = build_two_pass_answer(
+                                question=question,
+                                context=fallback_context,
+                                retrieved_chunks=question_retrieval or [],
+                                generate_fn=generate_fn,
+                                mode=answer_mode,
+                            )
+                        else:
+                            answer, latency, success, error = safe_generate(
+                                client,
+                                prompt,
+                                temperature=effective_temperature,
+                                max_tokens=spec.max_tokens,
+                                system_prompt=RAG_SYSTEM_PROMPT if spec.rag_enabled else NON_RAG_SYSTEM_PROMPT,
+                                seed=spec.seed,
+                            )
+                        responses.append(
+                            ModelResponse(
+                                run_name=spec.run_name,
+                                provider=spec.provider,
+                                model_name=spec.model_name,
+                                rag_enabled=spec.rag_enabled,
+                                question=question,
+                                answer=answer,
+                                latency_seconds=latency,
+                                retrieved_chunks=question_retrieval if spec.rag_enabled else [],
+                                prompt_tokens_estimate=max(1, len(prompt) // 4),
+                                success=success,
+                                error_message=error,
+                            )
                         )
-                        if spec.rag_enabled
-                        else build_non_rag_prompt(question)
-                    )
-                    answer, latency, success, error = safe_generate(
-                        client,
-                        prompt,
-                        temperature=spec.temperature,
-                        max_tokens=spec.max_tokens,
-                        system_prompt=RAG_SYSTEM_PROMPT if spec.rag_enabled else NON_RAG_SYSTEM_PROMPT,
-                        seed=spec.seed,
-                    )
-                    responses.append(
-                        ModelResponse(
-                            run_name=spec.run_name,
-                            provider=spec.provider,
-                            model_name=spec.model_name,
-                            rag_enabled=spec.rag_enabled,
-                            question=question,
-                            answer=answer,
-                            latency_seconds=latency,
-                            retrieved_chunks=question_retrieval if spec.rag_enabled else [],
-                            prompt_tokens_estimate=max(1, len(prompt) // 4),
-                            success=success,
-                            error_message=error,
-                        )
-                    )
+
+                # ── Save generation checkpoint as JSONL ───────────────────────
+                self.config.runtime.output_dir.mkdir(parents=True, exist_ok=True)
+                jsonl_path = self.config.runtime.output_dir / "responses_raw.jsonl"
+                with jsonl_path.open("w", encoding="utf-8") as fh:
+                    for resp in responses:
+                        fh.write(json.dumps({
+                            "run_name": resp.run_name,
+                            "model_name": resp.model_name,
+                            "rag_enabled": resp.rag_enabled,
+                            "question": resp.question,
+                            "answer": resp.answer,
+                            "success": resp.success,
+                            "latency_seconds": resp.latency_seconds,
+                            "error_message": resp.error_message,
+                        }, ensure_ascii=False) + "\n")
+                self._log(f"Generation checkpoint saved to {jsonl_path}")
 
             metrics_per_run = None
             metrics_summary = None
@@ -248,6 +333,50 @@ class ComparisonRunner:
                         f"{exc}. Continuing without metric sheets."
                     )
 
+                # ── Optional RAGAS phase ──────────────────────────────────────
+                if (
+                    self.config.evaluation.ragas_enabled
+                    and not no_ragas
+                    and not skip_evaluation
+                    and metrics_per_run is not None
+                ):
+                    try:
+                        from .ragas_integration import ragas_available, run_ragas_evaluation, _response_key
+                        if ragas_available():
+                            self._log("Running RAGAS evaluation phase")
+                            ragas_scores = run_ragas_evaluation(
+                                responses=responses,
+                                golden_answers={q: r for q, r in references.items() if r},
+                                judge_provider=self.config.evaluation.judge_provider,
+                                judge_model=self.config.evaluation.judge_model,
+                                embedding_model=self.config.evaluation.embedding_model,
+                                context_result_limit=self.config.retrieval.evaluation_context_result_limit,
+                                context_char_budget=self.config.retrieval.evaluation_context_char_budget,
+                            )
+                            if ragas_scores and not metrics_per_run.empty:
+                                import pandas as _pd
+                                ragas_cols = set()
+                                for scores in ragas_scores.values():
+                                    ragas_cols.update(scores.keys())
+                                for col in ragas_cols:
+                                    if col not in metrics_per_run.columns:
+                                        metrics_per_run[col] = None
+                                for resp in responses:
+                                    key = _response_key(resp)
+                                    if key not in ragas_scores:
+                                        continue
+                                    mask = (
+                                        (metrics_per_run["run_name"] == resp.run_name) &
+                                        (metrics_per_run["question"] == resp.question)
+                                    )
+                                    for col, val in ragas_scores[key].items():
+                                        metrics_per_run.loc[mask, col] = val
+                                self._log(f"RAGAS scores merged for {len(ragas_scores)} responses")
+                        else:
+                            self._log("RAGAS library not installed — skipping RAGAS phase")
+                    except Exception as exc:
+                        self._log(f"RAGAS evaluation failed: {exc}. Continuing without RAGAS scores.")
+
             if export_response_files and response_output_dir:
                 response_dir_path = export_response_sets(
                     output_dir=Path(response_output_dir),
@@ -335,6 +464,52 @@ class ComparisonRunner:
             raise ValueError(f"Unknown run name(s): {missing_display}. Available runs: {available}")
         return selected
 
+    def _load_responses_from_jsonl(
+        self,
+        jsonl_path: Path,
+        retrievals: dict[str, list],
+    ) -> list[ModelResponse]:
+        """Reconstruct ModelResponse objects from a responses_raw.jsonl checkpoint file.
+
+        Retrieved chunks are re-attached from the in-memory retrievals dict so that
+        evaluation metrics that need context (faithfulness, context precision, etc.)
+        still work correctly.
+        """
+        spec_by_run_name = {spec.run_name: spec for spec in self.config.models}
+        responses: list[ModelResponse] = []
+        with jsonl_path.open("r", encoding="utf-8") as fh:
+            for line_num, raw_line in enumerate(fh, start=1):
+                line = raw_line.strip()
+                if not line:
+                    continue
+                try:
+                    data = json.loads(line)
+                except json.JSONDecodeError as exc:
+                    self._log(f"WARNING: Skipping malformed JSONL line {line_num}: {exc}")
+                    continue
+                run_name = data["run_name"]
+                spec = spec_by_run_name.get(run_name)
+                provider = spec.provider if spec else "ollama"
+                rag_enabled = data.get("rag_enabled", False)
+                question = data["question"]
+                retrieved_chunks = retrievals.get(question, []) if rag_enabled else []
+                responses.append(
+                    ModelResponse(
+                        run_name=run_name,
+                        provider=provider,
+                        model_name=data["model_name"],
+                        rag_enabled=rag_enabled,
+                        question=question,
+                        answer=data.get("answer", ""),
+                        latency_seconds=data.get("latency_seconds", 0.0),
+                        retrieved_chunks=retrieved_chunks,
+                        prompt_tokens_estimate=max(1, len(question) // 4),
+                        success=data.get("success", True),
+                        error_message=data.get("error_message"),
+                    )
+                )
+        return responses
+
     def _resolve_reference_workbook(self, golden_workbook: str | None) -> Path | None:
         if golden_workbook:
             path = Path(golden_workbook).expanduser().resolve()
@@ -343,6 +518,7 @@ class ComparisonRunner:
             return path
 
         for candidate in (
+            Path("data/Human validated 50 questions.xlsx"),
             Path("artifacts/Golden_answers_updated.xlsx"),
             Path("artifacts/Golden_answers.xlsx"),
         ):

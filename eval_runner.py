@@ -41,7 +41,7 @@ if str(SRC_DIR) not in sys.path:
 
 from ev_llm_compare.chunking import ExcelChunkBuilder
 from ev_llm_compare.derived_analytics import build_derived_summary_chunks
-from ev_llm_compare.excel_loader import load_workbook, normalize_cell
+from ev_llm_compare.excel_loader import EvalQuestion, load_eval_questions, load_workbook, normalize_cell
 from ev_llm_compare.models import GenerationMetadata, create_client, safe_generate_with_metadata
 from ev_llm_compare.offline_corpus import build_document_chunks, load_offline_documents, resolve_tavily_root
 from ev_llm_compare.prompts import NON_RAG_SYSTEM_PROMPT
@@ -79,32 +79,8 @@ NON_RAG_EVAL_SYSTEM_PROMPT = (
     + "\nPrefer a substantive domain answer over abstaining when you can provide useful general knowledge."
 )
 
-QUESTION_COLUMN_CANDIDATES = {
-    "question",
-    "questions",
-    "query",
-    "prompt",
-    "sample query",
-}
-QID_COLUMN_CANDIDATES = {"q_id", "id", "question id", "question_id", "#"}
-EXPECTED_ANSWER_COLUMN_CANDIDATES = {
-    "expected_answer",
-    "expected answer",
-    "golden answer",
-    "golden_answer",
-    "answer",
-    "reference answer",
-    "reference_answer",
-}
-KEY_FACTS_COLUMN_CANDIDATES = {"key_facts", "key facts", "facts"}
-
-
-@dataclass(slots=True)
-class EvalQuestion:
-    q_id: str
-    question: str
-    expected_answer: str | None = None
-    key_facts: Any = None
+# EvalQuestion is imported from ev_llm_compare.excel_loader
+# (golden_answer field — was previously named expected_answer locally)
 
 
 @dataclass(slots=True)
@@ -212,133 +188,42 @@ def resolve_default_workbook_path() -> Path:
     raise FileNotFoundError(f"Could not find the local workbook corpus. Checked: {searched}")
 
 
-def normalize_header(value: object) -> str:
-    return normalize_cell(value).lower()
-
-
-def load_eval_questions(path: str | Path, max_questions: int | None = None) -> list[EvalQuestion]:
-    question_path = Path(path).expanduser().resolve()
-    suffix = question_path.suffix.lower()
-    if suffix in {".xlsx", ".xls"}:
-        df = _load_tabular_with_header_detection(question_path, excel=True)
-    elif suffix == ".csv":
-        df = _load_tabular_with_header_detection(question_path, excel=False)
-    elif suffix == ".json":
-        return _load_json_questions(question_path, max_questions=max_questions)
-    else:
-        raise ValueError("Questions file must be .xlsx, .xls, .csv, or .json")
-
-    questions = _questions_from_dataframe(df)
-    if max_questions is not None:
-        questions = questions[:max_questions]
-    if not questions:
-        raise ValueError(f"No valid questions found in {question_path}")
-    return questions
-
-
-def _load_tabular_with_header_detection(path: Path, *, excel: bool) -> pd.DataFrame:
-    reader = pd.read_excel if excel else pd.read_csv
-    df = reader(path)
-    if _has_question_columns(df.columns):
-        return df
-
-    raw_df = reader(path, header=None)
-    promoted = _promote_header_row(raw_df)
-    if promoted is None:
-        return df
-    return promoted
-
-
-def _has_question_columns(columns: Any) -> bool:
-    normalized = {normalize_header(column) for column in columns}
-    return bool(normalized & QUESTION_COLUMN_CANDIDATES)
-
-
-def _promote_header_row(raw_df: pd.DataFrame) -> pd.DataFrame | None:
-    for row_index in range(min(10, len(raw_df))):
-        candidate_headers = [normalize_cell(value) for value in raw_df.iloc[row_index].tolist()]
-        normalized = {header.lower() for header in candidate_headers if header}
-        if normalized & QUESTION_COLUMN_CANDIDATES:
-            headers = [
-                header if header else f"column_{column_index + 1}"
-                for column_index, header in enumerate(candidate_headers)
-            ]
-            data = raw_df.iloc[row_index + 1 :].copy().reset_index(drop=True)
-            data.columns = headers
-            return data
-    return None
-
-
-def _questions_from_dataframe(df: pd.DataFrame) -> list[EvalQuestion]:
-    cleaned_columns = [normalize_cell(column) for column in df.columns]
-    df = df.copy()
-    df.columns = cleaned_columns
-    question_column = _pick_column(cleaned_columns, QUESTION_COLUMN_CANDIDATES)
-    if question_column is None:
-        raise ValueError("Questions sheet must contain a question column.")
-
-    qid_column = _pick_column(cleaned_columns, QID_COLUMN_CANDIDATES)
-    expected_answer_column = _pick_column(cleaned_columns, EXPECTED_ANSWER_COLUMN_CANDIDATES)
-    key_facts_column = _pick_column(cleaned_columns, KEY_FACTS_COLUMN_CANDIDATES)
-
-    questions: list[EvalQuestion] = []
-    for index, row in df.iterrows():
-        question_text = normalize_cell(row.get(question_column))
-        if len(question_text) < 5:
-            continue
-        q_id = normalize_cell(row.get(qid_column)) if qid_column else str(index + 1)
-        expected_answer = normalize_cell(row.get(expected_answer_column)) if expected_answer_column else ""
-        key_facts = row.get(key_facts_column) if key_facts_column else None
-        if isinstance(key_facts, float) and pd.isna(key_facts):
-            key_facts = None
-        questions.append(
-            EvalQuestion(
-                q_id=q_id or str(index + 1),
-                question=question_text,
-                expected_answer=expected_answer or None,
-                key_facts=key_facts,
-            )
-        )
-    return questions
-
 
 def _load_json_questions(path: Path, max_questions: int | None = None) -> list[EvalQuestion]:
+    """Load questions from JSON — the only format not handled by excel_loader."""
     payload = json.loads(path.read_text(encoding="utf-8"))
     if isinstance(payload, dict):
-        if isinstance(payload.get("questions"), list):
-            items = payload["questions"]
-        else:
-            items = [{"q_id": key, "question": value} for key, value in payload.items()]
+        items = payload.get("questions") or [{"q_id": k, "question": v} for k, v in payload.items()]
     elif isinstance(payload, list):
         items = payload
     else:
-        raise ValueError("JSON questions file must contain a list or an object.")
-
+        raise ValueError("JSON questions file must be a list or object.")
     questions: list[EvalQuestion] = []
     for index, item in enumerate(items, start=1):
         if not isinstance(item, dict):
-            raise ValueError("Each JSON question entry must be an object.")
-        question_text = normalize_cell(item.get("question") or item.get("query") or item.get("prompt"))
-        if len(question_text) < 5:
             continue
-        questions.append(
-            EvalQuestion(
-                q_id=normalize_cell(item.get("q_id") or item.get("id") or index),
-                question=question_text,
-                expected_answer=normalize_cell(item.get("expected_answer")),
-                key_facts=item.get("key_facts"),
-            )
-        )
+        text = normalize_cell(item.get("question") or item.get("query") or item.get("prompt"))
+        if len(text) < 5:
+            continue
+        raw_answer = item.get("expected_answer") or item.get("golden_answer") or ""
+        questions.append(EvalQuestion(
+            q_id=normalize_cell(item.get("q_id") or item.get("id") or index),
+            question=text,
+            golden_answer=normalize_cell(raw_answer) or None,
+            key_facts=item.get("key_facts"),
+        ))
         if max_questions is not None and len(questions) >= max_questions:
             break
     return questions
 
 
-def _pick_column(columns: list[str], candidates: set[str]) -> str | None:
-    for column in columns:
-        if normalize_header(column) in candidates:
-            return column
-    return None
+def _load_questions(path: str | Path, max_questions: int | None = None) -> list[EvalQuestion]:
+    """Load questions — delegates to excel_loader for xlsx/csv, handles JSON locally."""
+    question_path = Path(path).expanduser().resolve()
+    if question_path.suffix.lower() == ".json":
+        return _load_json_questions(question_path, max_questions=max_questions)
+    return load_eval_questions(question_path, max_questions=max_questions)
+
 
 
 def build_model_spec(model_name: str, mode: str) -> ModelSpec:
@@ -784,7 +669,7 @@ def main() -> int:
         args.context_budget_tokens
         or max(800, config.retrieval.generation_context_char_budget // 4)
     )
-    questions = load_eval_questions(args.questions, max_questions=args.max_questions)
+    questions = _load_questions(args.questions, max_questions=args.max_questions)
     spec = build_model_spec(args.model, args.mode)
     client = create_client(spec, config.runtime)
     token_counter = TokenCounter()
@@ -916,7 +801,7 @@ def main() -> int:
                     "run_id": run_id,
                     "q_id": item.q_id,
                     "question": item.question,
-                    "expected_answer": item.expected_answer,
+                    "expected_answer": item.golden_answer,
                     "key_facts": item.key_facts,
                     "model": args.model,
                     "resolved_model_name": spec.model_name,

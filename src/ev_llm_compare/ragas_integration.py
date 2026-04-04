@@ -40,9 +40,15 @@ try:
     from ragas import evaluate as _ragas_evaluate  # type: ignore[attr-defined]
     from ragas.dataset_schema import EvaluationDataset, SingleTurnSample  # type: ignore[import]
     from ragas.metrics import (  # type: ignore[import]
+        AnswerAccuracy,
         Faithfulness,
+        ContextPrecision,
+        ContextRecall,
         LLMContextPrecisionWithReference,
         LLMContextRecall,
+        NonLLMContextPrecisionWithReference,
+        NonLLMContextRecall,
+        AnswerSimilarity,
         AnswerCorrectness,
     )
     from ragas.run_config import RunConfig  # type: ignore[import]
@@ -114,13 +120,20 @@ def _build_ragas_llm(judge_provider: str, judge_model: str) -> Any:
             )
         base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
         timeout = int(os.getenv("RAGAS_OLLAMA_TIMEOUT", "600"))
-        llm = ChatOllama(
+        num_ctx = int(os.getenv("RAGAS_OLLAMA_NUM_CTX", "4096"))
+        num_predict = int(os.getenv("RAGAS_OLLAMA_NUM_PREDICT", "128"))
+        ollama_format = os.getenv("RAGAS_OLLAMA_FORMAT", "").strip() or None
+        llm_kwargs = dict(
             model=judge_model,
             base_url=base_url,
             temperature=0.0,
             timeout=timeout,
-            num_ctx=8192,
+            num_ctx=num_ctx,
+            num_predict=num_predict,
         )
+        if ollama_format:
+            llm_kwargs["format"] = ollama_format
+        llm = ChatOllama(**llm_kwargs)
         return LangchainLLMWrapper(llm)
 
     raise ValueError(
@@ -160,7 +173,17 @@ def _build_evaluation_dataset(
     """
     from .prompts import compact_context_segments
 
+    eval_text_char_budget = int(os.getenv("RAGAS_EVAL_TEXT_CHAR_BUDGET", "0"))
+
+    def _clip(text: str) -> str:
+        if eval_text_char_budget <= 0:
+            return text
+        return text[:eval_text_char_budget]
+
     samples: list[Any] = []
+    use_reference_ctx_from_golden = (
+        os.getenv("RAGAS_REFERENCE_CONTEXT_FROM_GOLDEN", "0").strip() == "1"
+    )
     for response in responses:
         if not response.success or not (response.answer or "").strip():
             continue
@@ -176,12 +199,16 @@ def _build_evaluation_dataset(
             ctx_blocks = []
 
         reference = golden_answers.get(response.question, "")
+        response_text = _clip((response.answer or "").strip())
+        reference_text = _clip(reference or "")
+        reference_contexts = [reference] if (use_reference_ctx_from_golden and reference) else None
 
         sample = SingleTurnSample(
             user_input=response.question,
             retrieved_contexts=ctx_blocks,
-            response=response.answer,
-            reference=reference if reference else None,
+            reference_contexts=reference_contexts,
+            response=response_text,
+            reference=reference_text if reference_text else None,
         )
         samples.append(sample)
 
@@ -195,9 +222,14 @@ def _build_evaluation_dataset(
 RAGAS_COLUMN_MAP = {
     "faithfulness": "ragas_faithfulness",
     "llm_context_precision_with_reference": "ragas_context_precision",
+    "non_llm_context_precision_with_reference": "ragas_context_precision",
     "context_precision": "ragas_context_precision",
     "llm_context_recall": "ragas_context_recall",
+    "non_llm_context_recall": "ragas_context_recall",
     "context_recall": "ragas_context_recall",
+    "nv_accuracy": "ragas_answer_accuracy",
+    "answer_accuracy": "ragas_answer_accuracy",
+    "answer_similarity": "ragas_answer_similarity",
     "answer_correctness": "ragas_answer_correctness",
 }
 

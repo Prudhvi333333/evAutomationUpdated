@@ -1,0 +1,241 @@
+question,reference_answer,reference_source,answer,latency_seconds,success,error_message,answer_accuracy,rouge_l,token_f1,semantic_similarity,normalized_exact_match,custom_faithfulness,custom_response_groundedness,custom_context_precision,custom_context_recall,unsupported_claim_ratio,contradicted_claim_ratio,ragas_faithfulness,ragas_context_precision,ragas_context_recall,ragas_answer_correctness,abstained,response_length,citation_coverage,judge_failure_count
+"Show all Tier 1/2 suppliers in Georgia, list their EV Supply Chain Role and Product / Service.","There are 18 Tier 1/2 companies in Georgia.
+
+F&P Georgia Manufacturing [Tier 1/2] | Role: Battery Pack | Product: Lithium-ion battery recycler and raw materials provider
+Fouts Brothers Fire Equipment [Tier 1/2] | Role: General Automotive | Product: Automotive body parts and electronics Cylinder-head and specialty gaskets, housing modules and shielding systems for engines, transmissions, exhaust systems and auxiliary units
+Hitachi Astemo [Tier 1/2] | Role: General Automotive | Product: Car audio systems
+Hitachi Astemo Americas Inc. [Tier 1/2] | Role: Battery Cell | Product: Battery cells for electric mobility
+Hollingsworth & Vose Co. [Tier 1/2] | Role: Battery Pack | Product: Lithium-ion battery materials
+Honda Development & Manufacturing [Tier 1/2] | Role: Battery Cell | Product: Battery cells for electric mobility
+Hwashin [Tier 1/2] | Role: General Automotive | Product: Modules and storage systems
+Hyundai & LG Energy Solution (LGES) [Tier 1/2] | Role: General Automotive | Product: Storage batteries
+Hyundai Industrial Co. [Tier 1/2] | Role: General Automotive | Product: Automotive batteries
+Hyundai MOBIS (Georgia) [Tier 1/2] | Role: General Automotive | Product: Capacitors, electronic automotive components
+Hyundai Motor Group [Tier 1/2] | Role: Battery Pack | Product: Battery parts for electric vehicles
+Hyundai Transys Georgia Powertrain [Tier 1/2] | Role: Thermal Management | Product: Electrical heaters, control units, and actuators
+Hyundai Transys Georgia Seating Systems [Tier 1/2] | Role: General Automotive | Product: Automotive electronics, resonators, capacitors, resistors, electronics and electronic parts
+IMMI [Tier 1/2] | Role: Battery Pack | Product: Battery electrolyte
+IMS Gear Georgia Inc. [Tier 1/2] | Role: General Automotive | Product: Car audio systems
+Inalfa Roof Systems Inc. [Tier 1/2] | Role: General Automotive | Product: Automotive electronic safety systems
+JAC Products Inc. [Tier 1/2] | Role: General Automotive | Product: Switches, resistors and related products
+Jefferson Southern Corp. [Tier 1/2] | Role: General Automotive | Product: High current switches and resistors for automotive HVAC systems",golden,"Here are the Tier 1/2 suppliers in Georgia, their EV Supply Chain Role, and Product / Service, based on the provided evidence:
+
+*   **Company:** F&P Georgia Manufacturing | **EV Supply Chain Role:** Battery Pack | **Product / Service:** Lithium-ion battery recycler and raw materials provider | **Location:** Rome, Floyd County | **Employment:** 104 | **Primary OEMs:** Hyundai Kia | **Primary Facility Type:** Manufacturing Plant | **Supplier or Affiliation Type:** Automotive supply chain participant [E2]
+*   **Company:** Fouts Brothers Fire Equipment | **EV Supply Chain Role:** General Automotive | **Product / Service:** Automotive body parts and electronics Cylinder-head and specialty gaskets, housing modules and shielding systems for engines, transmissions, exhaust systems | **Location:** Shorter | **Employment:** 800 | **Primary OEMs:** Multiple OEMs | **Primary Facility Type:** Manufacturing Plant | **Supplier or Affiliation Type:** Automotive supply chain participant [E4]
+*   **Company:** Hitachi Astemo Americas Inc. | **EV Supply Chain Role:** Battery Cell | **Product / Service:** Battery cells for electric mobility | **Location:** Shorter | **Employment:** 723 | **Primary OEMs:** Hyundai Kia | **Primary Facility Type:** Manufacturing Plant | **Supplier or Affiliation Type:** Automotive supply chain participant [E5]
+*   **Company:** Hollingsworth & Vose Co. | **EV Supply Chain Role:** Battery Pack | **Product / Service:** Lithium-ion battery materials | **Location:** Hawkinsville, Pulaski County | **Employment:** 400 | **Primary OEMs:** Hyundai Kia | **Primary Facility Type:** Manufacturing Plant | **Supplier or Affiliation Type:** Automotive supply chain participant [E6]
+*   **Company:** Honda Development & Manufacturing | **EV Supply Chain Role:** Battery Cell | **Product / Service:** Battery cells for electric mobility | **Location:** Tallapoosa, Cherokee County | **Employment:** 400 | **Primary OEMs:** Hyundai Kia | **Primary Facility Type:** Manufacturing Plant | **Supplier or Affiliation Type:** Automotive supply chain participant [E7]
+*   **Company:** Hyundai & LG Energy Solution (LGES) | **EV Supply Chain Role:** General Automotive | **Product / Service:** Storage batteries | **Location:** Ellabell | **Employment:** 250 | **Primary OEMs:** Multiple OEMs | **Primary Facility Type:** Manufacturing Plant | **Supplier or Affiliation Type:** Automotive supply chain participant [E9]
+*   **Company:** Hyundai Industrial Co. | **EV Supply Chain Role:** General Automotive | **Product / Service:** Automotive batteries | **Location:** Pendergrass, Jackson County | **Employment:** 182 | **Primary OEMs:** Multiple OEMs | **Primary Facility Type:** Manufacturing Plant | **Supplier or Affiliation Type:** Automotive supply chain participant [E10]
+*   **Company:** Hyundai MOBIS (Georgia) | **EV Supply Chain Role:** General Automotive | **Product / Service:** Capacitors, electronic automotive components | **Location:** Lagrange, Meriwether County | **Employment:** 170 | **Primary OEMs:** Multiple OEMs | **Primary Facility Type:** Manufacturing Plant | **Supplier or Affiliation Type:** Automotive supply chain participant [E11]
+*   **Company:** Hyundai Motor Group | **EV Supply Chain Role:** Battery Pack | **Product / Service:** Battery parts for electric vehicles | **Location:** Ellabell, Bryan County | **Employment:** 164 | **Primary OEMs:** Hyundai Kia | **Primary Facility Type:** Manufacturing Plant | **Supplier or Affiliation Type:** Automotive supply chain participant [E12]
+*   **Company:** Hyundai Transys Georgia Powertrain | **EV Supply Chain Role:** Thermal Management | **Product / Service:** Electrical heaters, control units, and actuators | **Location:** West Point, Troup County | **Employment:** 130 | **Primary OEMs:** Hyundai Kia Rivian | **Primary Facility Type:** Manufacturing Plant | **Supplier or Affiliation Type:** Automotive supply chain participant [E13]
+*   **Company:** Hyundai Transys Georgia Seating Systems | **EV Supply Chain Role:** General Automotive | **Product / Service:** Automotive electronics, resonators, capacitors, resistors, electronics and electronic parts | **Location:** Rome, Floyd County | **Employment:** 110 | **Primary OEMs:** Multiple OEMs | **Primary Facility Type:** Manufacturing Plant | **Supplier or Affiliation Type:** Automotive supply chain participant [E14]
+*   **Company:** IMMI | **EV Supply Chain Role:** Battery Pack | **Product / Service:** Battery electrolyte | **Location:** Dublin, Laurens County | **Employment:** 100 | **Primary OEMs:** Hyundai Kia | **Primary Facility Type:** Manufacturing Plant | **Supplier or Affiliation Type:** Automotive supply chain participant [E15]",121.797,True,,,0.4145,0.4377,0.7851,0.0,,,,,,,,,,,False,635,0.3,
+"Which Georgia companies are classified under Battery Cell or Battery Pack roles, and what tier is each assigned?","There are 6 companies found with Battery Cell or Battery Pack roles.
+
+F&P Georgia Manufacturing [Tier 1/2] | Role: Battery Pack
+Hitachi Astemo Americas Inc. [Tier 1/2] | Role: Battery Cell
+Hollingsworth & Vose Co. [Tier 1/2] | Role: Battery Pack
+Honda Development & Manufacturing [Tier 1/2] | Role: Battery Cell
+Hyundai Motor Group [Tier 1/2] | Role: Battery Pack
+IMMI [Tier 1/2] | Role: Battery Pack",golden,"**Battery Cell Companies:**
+
+*   **Hollingsworth & Vose Co.** [E6, E12]
+    *   EV Supply Chain Role: Battery Cell
+    *   Tier: Tier 1/2
+    *   Updated Location: Hawkinsville, Pulaski County
+    *   Supplier/Affiliation Type: Automotive supply chain participant
+    *   Employment: Not specified in [E6, E12] but [E6] states employment of 150.
+    *   Product/Service: Not specified in [E6, E12]
+    *   Primary OEMs: Hyundai Kia [E12]
+    *   Primary Facility Type: Manufacturing Plant [E6]
+
+*   **Hitachi Astemo Americas Inc.** [E6, E12]
+    *   EV Supply Chain Role: Battery Cell
+    *   Tier: Tier 1/2
+    *   Updated Location: Shorter, Harris County
+    *   Supplier/Affiliation Type: Automotive supply chain participant
+    *   Employment: Not specified in [E6, E12]
+    *   Product/Service: Not specified in [E6, E12]
+    *   Primary OEMs: Hyundai Kia [E12]
+    *   Primary Facility Type: Manufacturing Plant [E6]
+
+**Battery Pack Companies:**
+
+*   **F&P Georgia Manufacturing** [E6, E12]
+    *   EV Supply Chain Role: Battery Pack
+    *   Tier: Tier 1/2
+    *   Updated Location: Rome, Floyd County
+    *   Supplier/Affiliation Type: Automotive supply chain participant
+    *   Employment: Not specified in [E6, E12]
+    *   Product/Service: Not specified in [E6, E12]
+    *   Primary OEMs: Hyundai Kia [E12]
+    *   Primary Facility Type: Manufacturing Plant [E6]
+
+*   **Hollingsworth & Vose Co.** [E6, E12] (Also listed under Battery Cell, as it fulfills both roles)
+    *   EV Supply Chain Role: Battery Pack
+    *   Tier: Tier 1/2
+    *   Updated Location: Hawkinsville, Pulaski County
+    *   Supplier/Affiliation Type: Automotive supply chain participant
+    *   Employment: Not specified in [E6, E12] but [E6] states employment of 150.
+    *   Product/Service: Not specified in [E6, E12]
+    *   Primary OEMs: Hyundai Kia [E12]
+    *   Primary Facility Type: Manufacturing Plant [E6]",82.446,True,,,0.2,0.2929,0.6837,0.0,,,,,,,,,,,False,259,0.1,
+Map all Thermal Management suppliers in Georgia and show which Primary OEMs they are linked to.,"There are 4 Thermal Management companies in Georgia.
+
+• Freudenberg-NOK | Location: LaGrange, Troup County | OEMs: Multiple OEMs
+• Hyundai Transys Georgia Powertrain | Location: West Point, Troup County | OEMs: Hyundai Kia Rivian
+• Novelis Inc. | Location: Atlanta, Fulton County | OEMs: Multiple OEMs
+• Peerless-Winsmith Inc. | Location: Flowery Branch, Hall County | OEMs: Multiple OEMs",golden,"Here are the Thermal Management suppliers in Georgia and their linked Primary OEMs, based on the provided evidence:
+
+**Freudenberg-NOK** [E1][E2]
+*   EV Supply Chain Role: Thermal Management [E1][E2]
+*   Location: Lagrange, Troup County [E2]
+*   Primary OEMs: Multiple OEMs [E1][E2]
+*   Employment: 160 [E2]
+*   Product / Service: Stamped blanks Flexible metal hoses for exhaust systems, thermal compensators, among other automotive [E2]
+*   Category: Tier 2/3 [E2]
+*   Primary Facility Type: Manufacturing Plant [E2]
+
+**Hyundai Transys Georgia Powertrain** [E1][E3]
+*   EV Supply Chain Role: Thermal Management [E1][E3]
+*   Location: West Point, Troup County [E3]
+*   Primary OEMs: Hyundai Kia Rivian [E1][E3]
+*   Employment: 130 [E3]
+*   Product / Service: Electrical heaters, control units, and actuators [E3]
+*   Category: Tier 1/2 [E3]
+*   Primary Facility Type: Manufacturing Plant [E3]
+
+**Peerless-Winsmith Inc.** [E1][E4]
+*   EV Supply Chain Role: Thermal Management [E1][E4]
+*   Location: Peachtree City, Fayette County [E4]
+*   Primary OEMs: Multiple OEMs [E1][E4]
+*   Employment: 160 [E4]
+*   Product / Service: Thermal solutions [E4]
+*   Category: Tier 1 [E4]
+*   Primary Facility Type: Manufacturing Plant [E4]
+
+**ZF Gainesville LLC** [E1][E5][E23]
+*   EV Supply Chain Role: Thermal Management [E1][E5]
+*   Location: Gainesville, Hall County [E5][E23]
+*   Primary OEMs: Not specified in the provided evidence. [E1][E5]
+*   Employment: 106100 (Automotive supplier - thermal systems, electrification, ADAS, lighting) [E23]
+*   Product / Service: EV thermal systems and electronics [E23]
+*   Category: OEM Footprint [E23]
+*   Primary Facility Type: EV thermal systems and electronics [E23]
+
+**Novion Technologies** [E21]
+*   EV Supply Chain Role: General Automotive [E21]
+*   Location: Register, Bulloch County [E21]
+*   Primary OEMs: Multiple OEMs [E21]
+*   Employment: 82 [E21]
+*   Product / Service: Molded floor covering, interior trim, floor mats [E21]
+*   Category: Tier 2/3 [E21]
+*   Primary Facility Type: Manufacturing Plant [E21]
+
+**Ecoplastic America Corporation** [E20]
+*   EV Supply Chain Role: General Automotive [E20]
+*   Location: Ellabell [E20]
+*   Primary OEMs: Multiple OEMs [E20]
+*   Employment: 200 [E20]
+*   Product / Service: Aluminum sheet for automotive bodies [E20]
+*   Category: Tier 2/3 [E20]
+*   Primary Facility Type: Manufacturing Plant [E20]",92.836,True,,,0.2167,0.2301,0.7737,0.0,,,,,,,,,,,False,339,0.2963,
+"List every Georgia company classified under Power Electronics or Charging Infrastructure, along with their Employment size.","There are 4 companies in Power Electronics or Charging Infrastructure roles.
+
+GSC Steel Stamping LLC | Role: Power Electronics | Employment: 350
+Morgan Corp. | Role: Charging Infrastructure | Employment: 320
+Yazaki North America | Role: Power electronics, sensors, and EV systems | Employment: 230000
+ZF Gainesville LLC | Role: EV thermal management and power electronics | Employment: 17500",golden,"Here are the Georgia companies classified under Power Electronics or Charging Infrastructure, along with their Employment size:
+
+**GSC Steel Stamping LLC** [E1][E2]
+*   Employment: 350 [E1][E2]
+*   EV Supply Chain Role: Power Electronics [E1][E2]
+*   Location: Gainesville, Hall County [E2]
+*   Primary OEMs: Hyundai Kia Rivian [E2]
+*   Product / Service: Deep grove ball bearings Toyota Industries Electric Systems North 255 DC-to-DC converters Jackson America, Inc.* [E2]
+*   Primary Facility Type: Manufacturing Plant [E2]
+*   Supplier or Affiliation Type: Automotive supply chain participant [E2]
+
+**Yazaki North America** [E1][E3]
+*   Employment: 230000 [E1][E3]
+*   EV Supply Chain Role: Power electronics, sensors, and EV systems [E3]
+*   Location: Newnan, Coweta County [E3]
+*   Product / Service: Automotive supplier division (mobility solutions: ADAS, powertrain, electronics) [E3]
+*   Primary Facility Type: Engineering / Operations [E3]
+*   Supplier or Affiliation Type: Automotive supply chain participant [E3]
+
+**ZF Gainesville LLC** [E1][E4]
+*   Employment: 17500 [E1][E4]
+*   EV Supply Chain Role: EV thermal management and power electronics [E4]
+*   Location: Gainesville, Hall County [E4]
+*   Product / Service: Automotive supplier footprint (electrification, thermal, powertrain, ADAS components) [E4]
+*   Primary Facility Type: Manufacturing [E4]
+*   Supplier or Affiliation Type: Automotive supply chain participant [E4]
+
+**Morgan Corp.** [E12]
+*   Employment: 320 [E12]
+*   EV Supply Chain Role: Charging Infrastructure [E12]
+*   Location: Morganton [E12]
+*   Product / Service: Engine components, turbochargers, exhaust parts and other automotive parts [E12]
+*   Primary Facility Type: Manufacturing Plant [E12]
+*   Supplier or Affiliation Type: Automotive supply chain participant [E12]",66.652,True,,,0.2536,0.3534,0.6929,0.0,,,,,,,,,,,False,246,0.2381,
+"Which companies are classified as Direct Manufacturer, and what EV Supply Chain Roles do they cover?","The Direct Manufacturer group includes 11 companies.
+Kia Georgia Inc. | EV Supply Chain Role: Vehicle Assembly
+Minebea AccessSolutions USA Inc. | EV Supply Chain Role: General Automotive
+Superior Essex Inc. | EV Supply Chain Role: Vehicle Assembly
+Suzuki Manufacturing of America Corp. | EV Supply Chain Role: Vehicle Assembly
+TCI Powder Coatings | EV Supply Chain Role: Vehicle Assembly
+TDK Components USA Inc. | EV Supply Chain Role: Vehicle Assembly
+TE Connectivity | EV Supply Chain Role: Vehicle Assembly
+Teklas USA | EV Supply Chain Role: Vehicle Assembly
+Textron Specialized Vehicles | EV Supply Chain Role: Vehicle Assembly
+Thermal Ceramics Inc. | EV Supply Chain Role: Vehicle Assembly
+Thomson Plastics Inc. | EV Supply Chain Role: Vehicle Assembly",golden,"The following companies are classified as Direct Manufacturers, along with their EV Supply Chain Roles and other details, as evidenced by the provided data:
+
+*   **Kia Georgia Inc.** [E13]
+    *   EV Supply Chain Role: Vehicle Assembly
+    *   Supplier/Affiliation Type: OEM
+    *   Location: West Point, Troup County
+    *   Primary Facility Type: OEM
+*   **Superior Essex Inc.** [E13]
+    *   EV Supply Chain Role: Vehicle Assembly
+    *   Supplier/Affiliation Type: OEM
+    *   Location: Kennesaw, Cobb County
+    *   Primary Facility Type: OEM
+*   **TCI Powder Coatings** [E13]
+    *   EV Supply Chain Role: Vehicle Assembly
+    *   Supplier/Affiliation Type: OEM
+    *   Location: Ellaville, Schley County
+    *   Primary Facility Type: OEM
+*   **TDK Components USA Inc.** [E13]
+    *   EV Supply Chain Role: Vehicle Assembly
+    *   Supplier/Affiliation Type: OEM
+    *   Location: Silver Creek, Floyd County
+    *   Primary Facility Type: OEM
+*   **Minebea AccessSolutions USA Inc.** [E13]
+    *   EV Supply Chain Role: General Automotive
+    *   Supplier/Affiliation Type: OEM
+    *   Location: Gainesville, Fulton County
+    *   Primary Facility Type: OEM
+*   **Suzuki Manufacturing of America Corp.** [E13]
+    *   EV Supply Chain Role: Vehicle Assembly
+    *   Supplier/Affiliation Type: OEM
+    *   Location: Rome, Douglas County
+    *   Primary Facility Type: OEM
+*   **Thermal Ceramics Inc.** [E13]
+    *   EV Supply Chain Role: Vehicle Assembly
+    *   Supplier/Affiliation Type: OEM
+    *   Location: Augusta, Richmond County
+    *   Primary Facility Type: OEM
+*   **Textron Specialized Vehicles** [E13]
+    *   EV Supply Chain Role: Vehicle Assembly
+    *   Supplier/Affiliation Type: OEM
+    *   Location: Augusta, Richmond County
+    *   Primary Facility Type: OEM
+*   **TE Connectivity** [E13]
+    *   EV Supply Chain Role: Vehicle Assembly
+    *   Supplier/Affiliation Type: OEM
+    *   Location: Kennesaw, Cobb County
+    *   Primary Facility Type: OEM",77.188,True,,,0.406,0.5511,0.6844,0.0,,,,,,,,,,,False,263,0.05,
