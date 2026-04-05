@@ -1,0 +1,49 @@
+{
+  "experiment_version": "2.0",
+  "prompt_version": "v2",
+  "created_at": "2026-04-05T01:27:38.285228+00:00",
+  "seed": null,
+  "output_dir": "/home/sm11926/Downloads/evAutomationUpdated-1/artifacts/results/qwen14b_rag_10q_20260404_212702",
+  "data_workbook": "/home/sm11926/Downloads/evAutomationUpdated-1/data/GNEM - Auto Landscape Lat Long Updated.xlsx",
+  "questions_file": "/home/sm11926/Downloads/evAutomationUpdated-1/data/Human validated 50 questions.xlsx",
+  "golden_answers_file": "/home/sm11926/Downloads/evAutomationUpdated-1/data/Human validated 50 questions.xlsx",
+  "n_questions": 10,
+  "question_ids": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "10"
+  ],
+  "models": [
+    {
+      "run_name": "qwen14b_rag",
+      "provider": "ollama",
+      "model_name": "qwen2.5:14b",
+      "rag_enabled": true,
+      "temperature": 0.1,
+      "max_tokens": 1500,
+      "seed": 42
+    }
+  ],
+  "retrieval": {
+    "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+    "dense_top_k": 30,
+    "final_top_k": 20,
+    "reranker_enabled": true,
+    "reranker_model": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+    "lexical_weight": 0.45,
+    "dense_weight": 0.55
+  },
+  "evaluation": {
+    "judge_provider": "ollama",
+    "judge_model": "qwen2.5:14b",
+    "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+    "ragas_enabled": false
+  }
+}
